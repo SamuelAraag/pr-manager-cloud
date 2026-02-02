@@ -447,7 +447,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
 
     let deployBtn = '';
     const info = projectPrs.find(p => p.version) || projectPrs[0];
-    const gitlabIssueLink = batchLink || info.gitlabIssueLink;
+    const gitlabIssueLink = batchLink || info?.gitlabIssueLink;
 
     if (hasVersionInfo) {
         let gitlabLink = '';
