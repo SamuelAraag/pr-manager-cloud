@@ -73,11 +73,19 @@ function renderOpenTable(data, containerId, onEdit) {
             animationDelay += 50;
 
             const needsCorrection = !!pr.needsCorrection;
-            const isSamuel = getItem('appUser') === 'Samuel Santos';
+            const currentUser = getItem('appUser');
+            const isSamuel = currentUser === 'Samuel Santos';
             
-            if (needsCorrection) {
-                tr.style.background = 'rgba(230, 126, 34, 0.05)';
-                tr.style.borderLeft = '3px solid #e67e22';
+            if (isSamuel) {
+                if (!needsCorrection) {
+                    tr.style.background = 'rgba(211, 84, 0, 0.05)';
+                    tr.style.borderLeft = '3px solid #d35400';
+                }
+            } else {
+                if (needsCorrection && pr.dev === currentUser) {
+                    tr.style.background = 'rgba(230, 126, 34, 0.05)';
+                    tr.style.borderLeft = '3px solid #e67e22';
+                }
             }
 
             let statusBg, statusText, statusTooltip;
@@ -87,14 +95,10 @@ function renderOpenTable(data, containerId, onEdit) {
                 statusText = 'Ajustes';
                 statusTooltip = `title="Motivo: ${pr.correctionReason || 'Geral'}" style="cursor:help; background: ${statusBg}"`;
             } else if (pr.reqVersion === 'ok' || !pr.reqVersion) {
-                // "Revisão" Status
                 statusText = 'Revisão';
-                // Admin sees Warning color, others see neutral
                 statusBg = isSamuel ? '#d35400' : '#30363d'; 
-                // Changed to a slightly darker orange/red (#d35400) for better contrast/warning on dark theme
                 statusTooltip = `style="background: ${statusBg}"`;
             } else {
-                 // Fallback for specific versions if any
                 statusBg = '#30363d';
                 statusText = pr.reqVersion;
                 statusTooltip = `style="background: ${statusBg}"`;
@@ -165,7 +169,6 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
         totalTestingBatches += deployedBatches.length;
     });
 
-    // Update total testing badge
     const totalTestingBadge = document.getElementById('totalTestingPrs');
     if (totalTestingBadge) {
         totalTestingBadge.textContent = totalTestingBatches;
