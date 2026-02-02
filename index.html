@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PR Manager</title>
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <!-- Profile Selection Screen (Disney+ Style) -->
+    <div id="profileScreen" class="modal-overlay" style="display: none; background: #0d1117; z-index: 2000;">
+        <div class="profile-container">
+            <h1>Quem está editando?</h1>
+            <div class="profiles-grid">
+                <div class="profile-item" data-user="Rodrigo Barbosa">
+                    <img class="avatar" src="src/assets/profiles/rodrigo-barbosa.jpeg">
+                    <span>Rodrigo Barbosa</span>
+                </div>
+                <div class="profile-item" data-user="Itallo Cerqueira">
+                    <img class="avatar" src="src/assets/profiles/itallo-cerqueira.jpeg">
+                    <span>Itallo Cerqueira</span>
+                </div>
+                <div class="profile-item" data-user="Marcos Paulo">
+                    <img class="avatar" src="src/assets/profiles/default-profile.png">
+                    <span>Marcos Paulo</span>
+                </div>
+                <div class="profile-item" data-user="Kemilly Alvez">
+                    <img class="avatar" src="src/assets/profiles/kemilly-alvez.jpeg">
+                    <span>Kemilly Alvez</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo-area">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div id="currentUserDisplay" class="current-user-avatar admin-only" title="Mudar Usuário">--</div>
+                    <div>
+                        <h1 id="appTitle">PR Manager</h1>
+                        <p style="color: var(--text-secondary); font-size: 0.8rem;">Controle de PRs centralizados</p>
+                    </div>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="changeUserBtn" class="btn btn-outline admin-only" title="Trocar Usuário (U)">
+                    <i data-lucide="users"></i>
+                </button>
+
+                <button id="newSprintBtn" class="btn btn-outline admin-only" title="Nova Sprint">
+                    <i data-lucide="plus-circle"></i>
+                    <span>Nova Sprint</span>
+                </button>
+
+                <button id="setupBtn" class="btn btn-outline admin-only" title="Configurar Token (S)"
+                    style="border-color: #da3633; color: #f85149;">
+                    <i data-lucide="settings"></i>
+                </button>
+                <div id="currentUserDisplayRight" class="current-user-avatar dev-only" title="Mudar Usuário"
+                    style="width: 100px; height: 100px; font-size: 0.6rem;">--</div>
+            </div>
+        </header>
+
+        <main>
+            <div id="loading" class="loading-container">
+                <span class="loader"></span>
+                <p>Carregando dados...</p>
+            </div>
+
+            <!-- PRs Em Aberto -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3
+                    style="color: var(--text-primary); border-left: 4px solid var(--accent-color); padding-left: 10px; margin: 0;">
+                    PRs em Aberto <span id="totalOpenPrs" class="tag"
+                        style="margin-left: 10px; background: var(--accent-color); color: white; display: none;">0</span>
+                </h3>
+                <button id="addPrBtn" class="btn btn-primary" title="Novo PR (N)">
+                    <i data-lucide="plus"></i> Novo PR
+                </button>
+            </div>
+            <div id="dashboard" class="data-card" style="margin-bottom: 3rem;">
+                <div class="table-container">
+                    <table id="openPrTable">
+                        <thead>
+                            <tr>
+                                <th>Projeto</th>
+                                <th>Resumo</th>
+                                <th>Dev</th>
+                                <th>Status</th>
+                                <th>Links</th>
+                                <th style="text-align: center;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="openPrTableBody">
+                            <!-- Items will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PRs Aprovados -->
+            <h3
+                style="margin-bottom: 1rem; color: var(--text-primary); border-left: 4px solid var(--success-color); padding-left: 10px;">
+                PRs Aprovados <span id="totalApprovedPrs" class="tag"
+                    style="margin-left: 10px; background: #238636; color: white; display: none;">0</span></h3>
+            <div id="dashboardApproved" class="data-card">
+                <!-- Tables will be injected here per project -->
+            </div>
+
+            <h3
+                style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-primary); border-left: 4px solid #8e44ad; padding-left: 10px;">
+                Versões em Teste (STG) <span id="totalTestingPrs" class="tag"
+                    style="margin-left: 10px; background: #8e44ad; color: white; display: none;">0</span></h3>
+            <div id="dashboardTesting" class="data-card">
+                <!-- Testing tables will be injected here -->
+            </div>
+
+            <h3
+                style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-secondary); border-left: 4px solid #30363d; padding-left: 10px;">
+                Histórico de Sprints</h3>
+            <div id="dashboardHistory" class="data-card" style="opacity: 0.8;">
+                <!-- History tables will be injected here -->
+            </div>
+
+        </main>
+        <footer>
+            <p>PR Manager &copy; 2026 - Versão <span id="appVersion">-.--.-</span></p>
+        </footer>
+    </div>
+
+    <div id="shortcutsModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Atalhos do Teclado</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="shortcuts-list">
+                <div class="shortcut-item">
+                    <span>Novo PR</span>
+                    <kbd>N</kbd>
+                </div>
+                <div class="shortcut-item">
+                    <span>Configurações</span>
+                    <kbd>S</kbd>
+                </div>
+                <div class="shortcut-item">
+                    <span>Atualizar Dados</span>
+                    <kbd>R</kbd>
+                </div>
+                <div class="shortcut-item">
+                    <span>Ver Atalhos</span>
+                    <kbd>?</kbd>
+                </div>
+                <div class="shortcut-item">
+                    <span>Mudar Usuário</span>
+                    <kbd>U</kbd>
+                </div>
+                <div class="shortcut-item">
+                    <span>Fechar Modal</span>
+                    <kbd>Esc</kbd>
+                </div>
+                <div class="shortcut-item">
+                    <span>Salvar Form</span>
+                    <kbd>⌘ + Enter</kbd>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Modal (Token) -->
+    <div id="setupModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Configurar Acesso</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>Token de Acesso GitHub</label>
+                <input type="password" id="ghTokenInput" placeholder="Token de acesso...">
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>Token de Acesso GitLab</label>
+                <input type="password" id="glTokenInput" placeholder="glpat-...">
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>****</label>
+                <input type="password" id="secretPasswordInput" placeholder="****">
+            </div>
+            <button id="saveConfigBtn" class="btn btn-primary"
+                style="width: 100%; margin-top: 1rem; justify-content: center;">Salvar</button>
+        </div>
+    </div>
+    </div>
+
+    <!-- Add/Edit PR Modal -->
+    <div id="prModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Novo Pull Request</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="prForm">
+                <input type="hidden" id="prId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Projeto</label>
+                        <select id="project" required>
+                            <option value="DF-e">DF-e</option>
+                            <option value="DF-e Eventos">DF-e Eventos</option>
+                            <option value="CT-e Buscador">CT-e Buscador</option>
+                            <option value="CT-e Conversor">CT-e Conversor</option>
+                            <option value="NF-e Buscador">NF-e Buscador</option>
+                            <option value="NF-e Conversor">NF-e Conversor</option>
+                            <option value="NFS-e Buscador">NFS-e Buscador</option>
+                            <option value="NFS-e Conversor">NFS-e Conversor</option>
+                            <option value="NF-e Buscador InvoiSys">NF-e Buscador InvoiSys</option>
+                            <option value="Classification">Classification</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Desenvolvedor</label>
+                        <input type="text" id="dev" list="devList" placeholder="Selecione ou digite..." required>
+                        <datalist id="devList">
+                            <option value="Rodrigo Barbosa">
+                            <option value="Itallo Cerqueira">
+                            <option value="Marcos Paulo">
+                            <option value="Samuel Santos">
+                            <option value="Kemilly Alvez">
+                        </datalist>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Resumo</label>
+                        <input type="text" id="summary" placeholder="Ex: Correção do cálculo de imposto" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Link PR</label>
+                        <input type="url" id="prLink" placeholder="https://bitbucket.org/...">
+                    </div>
+                    <div class="form-group">
+                        <label>Link Task (Jira)</label>
+                        <input type="url" id="taskLink" placeholder="https://atlassian.net/...">
+                    </div>
+                    <div class="form-group">
+                        <label>Post no Teams</label>
+                        <input type="url" id="teamsLink" placeholder="Link da mensagem">
+                    </div>
+                </div>
+                <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button type="button" class="btn btn-outline close-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast"></div>
+
+    <script type="module" src="src/script.js"></script>
+    <script>
+        // Initialize lucide icons
+        setTimeout(() => lucide.createIcons(), 100);
+    </script>
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="border: 1px solid #da3633; max-width: 600px;">
+            <div class="modal-header">
+                <h3 style="color: #da3633; display: flex; align-items: center;"><i data-lucide="alert-triangle"
+                        style="width: 24px; margin-right: 10px;"></i>Algo deu errado</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="errorFriendlyMessage"
+                    style="font-size: 1.1rem; margin-bottom: 1.5rem; line-height: 1.5; color: var(--text-primary);">
+                    Não foi possível completar a operação. Verifique sua conexão e tente novamente.
+                </p>
+
+                <details style="background: #0d1117; padding: 1rem; border-radius: 6px; border: 1px solid #30363d;">
+                    <summary
+                        style="cursor: pointer; color: var(--text-secondary); font-weight: 500; user-select: none;">
+                        Detalhes Técnicos (Stack Trace)</summary>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #30363d;">
+                        <pre id="errorStack"
+                            style="color: #ff7b72; font-family: 'SF Mono', monospace; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; margin: 0;"></pre>
+                    </div>
+                </details>
+            </div>
+            <div class="modal-footer" style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                <button class="btn btn-outline close-modal">Entendi</button>
+            </div>
+        </div>
+    </div>
+    <!-- God Mode Hidden Input (Truly secret) -->
+    <div id="godModeContainer" style="position: fixed; top: -100px; left: -100px; opacity: 0; pointer-events: none;">
+        <input type="password" id="godModeInput">
+    </div>
+</body>
+
+</html>
