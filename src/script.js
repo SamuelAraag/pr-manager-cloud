@@ -57,6 +57,10 @@ function renderProfileSelection() {
         profileItem.innerHTML = `
             <img class="avatar" src="${imageSrc}">
             <span>${user.name}</span>
+            <div class="profile-login-container">
+                <input type="password" class="profile-login-input">
+                <button class="profile-login-btn">OK</button>
+            </div>
         `;
         
         profilesGrid.appendChild(profileItem);
@@ -119,6 +123,7 @@ if (profileScreen) {
     profileScreen.addEventListener('click', (e) => {
         if (e.target === profileScreen && LocalStorage.getItem('appUser')) {
             profileScreen.style.display = 'none';
+            document.body.classList.remove('no-scroll');
         }
     });
 }
@@ -236,6 +241,7 @@ function closeAllModals() {
     
     if (LocalStorage.getItem('appUser')) {
         profileScreen.style.display = 'none';
+        document.body.classList.remove('no-scroll');
     }
 }
 
@@ -275,30 +281,94 @@ async function init() {
 
 function attachProfileListeners() {
     document.querySelectorAll('.profile-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const userName = item.getAttribute('data-user');
-            const userId = item.getAttribute('data-user-id');
-            
-            if (userName === 'Samuel Santos') {
-                EffectService.triggerGodMode();
-            }
+        const input = item.querySelector('.profile-login-input');
+        const btn = item.querySelector('.profile-login-btn');
+        
+        if(input) {
+            input.addEventListener('click', (e) => e.stopPropagation());
+            input.addEventListener('keydown', (e) => {
+                if(e.key === 'Enter') {
+                    e.preventDefault();
+                    handleLogin(item, input.value);
+                }
+            });
+        }
+        
+        if(btn) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleLogin(item, input.value);
+            });
+        }
 
-            LocalStorage.setItem('appUser', userName);
-            LocalStorage.setItem('appUserId', userId);
-            updateUserDisplay(userName);
-            profileScreen.style.display = 'none';
-            
-            loadData(true);
+        item.addEventListener('click', () => {
+             document.querySelectorAll('.profile-item.active').forEach(activeItem => {
+                 if (activeItem !== item) {
+                     activeItem.classList.remove('active');
+                     const activeInput = activeItem.querySelector('.profile-login-input');
+                     if(activeInput) activeInput.value = '';
+                 }
+             });
+
+             item.classList.toggle('active');
+             
+             if(item.classList.contains('active')) {
+                 setTimeout(() => {
+                     if(input) input.focus();
+                 }, 100);
+             }
         });
     });
 }
 
-function showProfileSelection() {
-    profileScreen.style.display = 'flex';
+async function handleLogin(item, password) {
+    const userName = item.getAttribute('data-user');
+    const userId = item.getAttribute('data-user-id');
+    
+    if (!password) {
+        DOM.showToast('Por favor, digite a senha.', 'error');
+        return;
+    }
+
+    try {
+        DOM.showLoading(true);
+        const result = await API.login(userName, password);
+
+        if (userName === 'Samuel Santos') {
+             EffectService.triggerGodMode();
+        }
+
+        LocalStorage.setItem('appUser', userName);
+        LocalStorage.setItem('appUserId', userId);
+        
+        if (result && result.token) {
+            LocalStorage.setItem('token', result.token);
+        }
+        
+        updateUserDisplay(userName);
+        profileScreen.style.display = 'none';
+        document.body.classList.remove('no-scroll');
+        
+        document.querySelectorAll('.profile-login-input').forEach(inp => inp.value = '');
+        document.querySelectorAll('.profile-item.active').forEach(el => el.classList.remove('active'));
+
+        await loadData(true);
+        
+    } catch (error) {
+        console.error('Erro no login:', error);
+        DOM.showToast('Autenticação falhou: ' + error.message, 'error');
+    } finally {
+        DOM.showLoading(false);
+    }
 }
 
-// openSetupModal is defined below near the save button logic
-
+function showProfileSelection() {
+    document.querySelectorAll('.profile-login-input').forEach(inp => inp.value = '');
+    document.querySelectorAll('.profile-item.active').forEach(el => el.classList.remove('active'));
+    
+    profileScreen.style.display = 'flex';
+    document.body.classList.add('no-scroll');
+}
 
 function updateUserDisplay(userName) {
     const profileImages = {

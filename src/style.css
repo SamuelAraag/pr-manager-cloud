@@ -33,6 +33,10 @@ body {
     min-height: 100vh;
 }
 
+body.no-scroll {
+    overflow: hidden;
+}
+
 .container {
     max-width: 1400px;
     margin: 0 auto;
@@ -143,13 +147,15 @@ h1 {
     cursor: pointer;
 }
 
-/* Profile Selection (Disney+ Style) */
+.profile-login-input
 .profile-container {
     text-align: center;
     animation: fadeIn 0.5s ease;
 }
 
 .profile-container h1 {
+    display: flex;
+    justify-content: center;
     margin-bottom: 3rem;
     font-size: 2.5rem;
     color: white;
@@ -162,6 +168,7 @@ h1 {
     gap: 2.5rem;
     justify-content: center;
     flex-wrap: wrap;
+    align-items: flex-start;
 }
 
 .profile-item {
@@ -171,6 +178,7 @@ h1 {
     gap: 1rem;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    width: 160px;
 }
 
 .profile-item .avatar {
@@ -196,21 +204,73 @@ h1 {
 }
 
 .profile-item:hover {
+    transform: scale(1.05);
+}
+
+.profile-item.active {
     transform: scale(1.1);
 }
 
-.profile-item:hover .avatar {
+.profile-item:hover .avatar, .profile-item.active .avatar {
     border-color: white;
     box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
 }
 
-.profile-item:hover span {
+.profile-item:hover span, .profile-item.active span {
     color: white;
 }
 
 .actions {
     display: flex;
     gap: 0.5rem;
+}
+
+.profile-login-container {
+    display: none;
+    width: 100%;
+    margin-top: 10px;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeIn 0.3s ease;
+}
+
+.profile-item.active .profile-login-container {
+    display: flex !important;
+}
+
+.profile-login-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    text-align: center;
+    width: 100%;
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.profile-login-input:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.profile-login-btn {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-login-btn:hover {
+    filter: brightness(1.1);
 }
 
 /* Header User Avatar */

@@ -451,6 +451,29 @@ async function adminLogin(password) {
   }
 }
 
+async function login(username, password) {
+  const url = `${ApiConstants.BASE_URL}/Auth/login`;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: getBackendHeaders(),
+      body: JSON.stringify({ "Name": username, "Password": password }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(
+        `Login falhou: ${errorBody.message || response.statusText}`,
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Falha no Login:", error);
+    throw error;
+  }
+}
+
 async function archivePR(prId) {
   const url = `${ApiConstants.BASE_URL}/PullRequests/${prId}/archive`;
 
@@ -497,5 +520,6 @@ export {
   getAutomationConfig,
   saveAutomationConfig,
   adminLogin,
+  login,
   archivePR,
 };
