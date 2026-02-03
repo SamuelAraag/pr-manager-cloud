@@ -5,6 +5,7 @@ import { GitLabService } from './automationService.js';
 import { EffectService } from './effectService.js';
 import { VersionConstants } from './constants/versionConstants.js';
 import { ApiConstants } from './constants/apiConstants.js';
+import { ChangelogData } from './constants/changelog.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -278,6 +279,7 @@ async function init() {
         }
     }, ApiConstants.POLLING_INTERVAL);
 }
+
 
 function attachProfileListeners() {
     document.querySelectorAll('.profile-item').forEach(item => {

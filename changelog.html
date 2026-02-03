@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog - PR Manager</title>
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-area">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="index.html" style="text-decoration: none;">
+                        <h1 id="appTitle">PR Manager</h1>
+                    </a>
+                    <div>
+                        <p id="appSubtitle" style="color: var(--text-secondary); font-size: 0.8rem;">Histórico de
+                            Versões</p>
+                    </div>
+                </div>
+            </div>
+            <div id="viewNavigation" style="display: flex; align-items: center; gap: 1rem;">
+                <a href="index.html" class="btn btn-outline" style="text-decoration: none;">
+                    <i data-lucide="arrow-left"></i> Voltar ao Dashboard
+                </a>
+            </div>
+        </header>
+
+        <main>
+            <div id="changelogFullView" style="animation: fadeIn 0.4s ease-out;">
+                <div style="margin-bottom: 2rem;">
+                    <h2 style="display: flex; align-items: center; gap: 12px; font-size: 2rem; color: white;">
+                        Notas de Atualização
+                    </h2>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Acompanhe a evolução do PR Manager
+                        Cloud</p>
+                </div>
+
+                <div id="fullChangelogContent" class="data-card" style="padding: 2.5rem; background: var(--card-bg);">
+                    <!-- Changelog items will be injected here -->
+                </div>
+            </div>
+        </main>
+        <footer>
+            <p>PR Manager &copy; 2026 - Versão <span id="appVersion">-.--.-</span></p>
+        </footer>
+    </div>
+
+    <script type="module">
+        import { ChangelogData } from './src/constants/changelog.js';
+        import { VersionConstants } from './src/constants/versionConstants.js';
+
+        const versionEl = document.getElementById('appVersion');
+        if (versionEl) versionEl.textContent = VersionConstants.VERSION;
+
+        const container = document.getElementById('fullChangelogContent');
+        if (container) {
+            container.innerHTML = ChangelogData.map(item => `
+                <div class="changelog-item">
+                    <div class="changelog-header">
+                        <span class="changelog-version">v${item.version}</span>
+                        <span class="changelog-date">${new Date(item.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+                    </div>
+                    <ul class="changelog-list">
+                        ${item.changes.map(change => `<li>${change}</li>`).join('')}
+                    </ul>
+                </div>
+            `).join('');
+        }
+
+        setTimeout(() => lucide.createIcons(), 100);
+    </script>
+</body>
+
+</html>

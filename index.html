@@ -72,64 +72,67 @@
                 <p>Carregando dados...</p>
             </div>
 
-            <!-- PRs Em Aberto -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div id="homeView">
+                <!-- PRs Em Aberto -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3
+                        style="color: var(--text-primary); border-left: 4px solid var(--accent-color); padding-left: 10px; margin: 0;">
+                        PRs em Aberto <span id="totalOpenPrs" class="tag"
+                            style="margin-left: 10px; background: var(--accent-color); color: white; display: none;">0</span>
+                    </h3>
+                    <button id="addPrBtn" class="btn btn-primary" title="Novo PR (N)">
+                        <i data-lucide="plus"></i> Novo PR
+                    </button>
+                </div>
+                <div id="dashboard" class="data-card" style="margin-bottom: 3rem;">
+                    <div class="table-container">
+                        <table id="openPrTable">
+                            <thead>
+                                <tr>
+                                    <th>Projeto</th>
+                                    <th>Resumo</th>
+                                    <th>Dev</th>
+                                    <th>Status</th>
+                                    <th>Links</th>
+                                    <th style="text-align: center;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="openPrTableBody">
+                                <!-- Items will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PRs Aprovados -->
                 <h3
-                    style="color: var(--text-primary); border-left: 4px solid var(--accent-color); padding-left: 10px; margin: 0;">
-                    PRs em Aberto <span id="totalOpenPrs" class="tag"
-                        style="margin-left: 10px; background: var(--accent-color); color: white; display: none;">0</span>
-                </h3>
-                <button id="addPrBtn" class="btn btn-primary" title="Novo PR (N)">
-                    <i data-lucide="plus"></i> Novo PR
-                </button>
-            </div>
-            <div id="dashboard" class="data-card" style="margin-bottom: 3rem;">
-                <div class="table-container">
-                    <table id="openPrTable">
-                        <thead>
-                            <tr>
-                                <th>Projeto</th>
-                                <th>Resumo</th>
-                                <th>Dev</th>
-                                <th>Status</th>
-                                <th>Links</th>
-                                <th style="text-align: center;">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="openPrTableBody">
-                            <!-- Items will be injected here -->
-                        </tbody>
-                    </table>
+                    style="margin-bottom: 1rem; color: var(--text-primary); border-left: 4px solid var(--success-color); padding-left: 10px;">
+                    PRs Aprovados <span id="totalApprovedPrs" class="tag"
+                        style="margin-left: 10px; background: #238636; color: white; display: none;">0</span></h3>
+                <div id="dashboardApproved" class="data-card">
+                    <!-- Tables will be injected here per project -->
+                </div>
+
+                <h3
+                    style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-primary); border-left: 4px solid #8e44ad; padding-left: 10px;">
+                    Versões em Teste (STG) <span id="totalTestingPrs" class="tag"
+                        style="margin-left: 10px; background: #8e44ad; color: white; display: none;">0</span></h3>
+                <div id="dashboardTesting" class="data-card">
+                    <!-- Testing tables will be injected here -->
+                </div>
+
+                <h3
+                    style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-secondary); border-left: 4px solid #30363d; padding-left: 10px;">
+                    Histórico de Sprints</h3>
+                <div id="dashboardHistory" class="data-card" style="opacity: 0.8;">
+                    <!-- History tables will be injected here -->
                 </div>
             </div>
-
-            <!-- PRs Aprovados -->
-            <h3
-                style="margin-bottom: 1rem; color: var(--text-primary); border-left: 4px solid var(--success-color); padding-left: 10px;">
-                PRs Aprovados <span id="totalApprovedPrs" class="tag"
-                    style="margin-left: 10px; background: #238636; color: white; display: none;">0</span></h3>
-            <div id="dashboardApproved" class="data-card">
-                <!-- Tables will be injected here per project -->
-            </div>
-
-            <h3
-                style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-primary); border-left: 4px solid #8e44ad; padding-left: 10px;">
-                Versões em Teste (STG) <span id="totalTestingPrs" class="tag"
-                    style="margin-left: 10px; background: #8e44ad; color: white; display: none;">0</span></h3>
-            <div id="dashboardTesting" class="data-card">
-                <!-- Testing tables will be injected here -->
-            </div>
-
-            <h3
-                style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-secondary); border-left: 4px solid #30363d; padding-left: 10px;">
-                Histórico de Sprints</h3>
-            <div id="dashboardHistory" class="data-card" style="opacity: 0.8;">
-                <!-- History tables will be injected here -->
-            </div>
-
         </main>
         <footer>
-            <p>PR Manager &copy; 2026 - Versão <span id="appVersion">-.--.-</span></p>
+            <p>PR Manager &copy; 2026 - Versão <span id="appVersion">-.--.-</span> | <a href="changelog.html"
+                    style="color: var(--accent-color); text-decoration: none; font-weight: 500;">O que há de novo?</a>
+            </p>
         </footer>
     </div>
 
@@ -291,6 +294,8 @@
             </div>
         </div>
     </div>
+    <!-- God Mode Hidden Input (Truly secret) -->
+
     <!-- God Mode Hidden Input (Truly secret) -->
     <div id="godModeContainer" style="position: fixed; top: -100px; left: -100px; opacity: 0; pointer-events: none;">
         <input type="password" id="godModeInput">

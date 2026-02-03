@@ -620,3 +620,74 @@ footer p {
     animation: fadeInUp 0.4s ease-out forwards;
     opacity: 0;
 }
+
+/* Navigation & Views */
+#viewNavigation {
+    animation: fadeIn 0.3s ease;
+}
+
+#viewNavigation .btn {
+    background: var(--glass-bg);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+#viewNavigation .btn:hover {
+    background: var(--accent-glow);
+    transform: translateX(-5px);
+}
+
+/* Changelog Styles */
+.changelog-item {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.changelog-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.changelog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.2rem;
+}
+
+.changelog-version {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--accent-color);
+    background: rgba(88, 166, 255, 0.1);
+    padding: 4px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--accent-glow);
+}
+
+.changelog-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.changelog-list {
+    list-style: none;
+    padding-left: 0.5rem;
+}
+
+.changelog-list li {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.changelog-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--accent-color);
+    font-weight: bold;
+}

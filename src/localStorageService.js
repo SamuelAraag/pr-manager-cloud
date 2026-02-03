@@ -1,5 +1,3 @@
-// localStorageService.js
-
 const setItem = (key, value) => {
     try {
         const serializedValue = JSON.stringify(value);

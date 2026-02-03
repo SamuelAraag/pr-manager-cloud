@@ -14,7 +14,6 @@ function showToast(message, type = 'success') {
 function renderTable(prs, batches, sprints, onEdit) {
     const openPrs = prs.filter(p => !p.approved);
     
-    // Split approved for Dashboard
     const approvedTotal = prs.filter(p => p.approved);
     const approvedPending = approvedTotal.filter(p => !p.deployedToStg);
     
@@ -189,10 +188,9 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
         
         if (deployedBatches.length === 0) return;
 
-        // Sprint Header with Complete Config
         const headerContainer = document.createElement('div');
-        headerContainer.className = 'fade-in-row'; // Add animation class
-        headerContainer.style.animationDelay = `${animationDelay}ms`; // Set delay
+        headerContainer.className = 'fade-in-row';
+        headerContainer.style.animationDelay = `${animationDelay}ms`;
         animationDelay += 50;
 
         headerContainer.style.display = 'flex';
@@ -254,8 +252,6 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
             animationDelay += 50;
             card.style.marginBottom = '1.5rem';
             card.style.borderLeft = '4px solid #8e44ad';
-            
-            // ... (rest of the card construction logic)
             
             const headerDiv = document.createElement('div');
             headerDiv.style.padding = '1rem';
@@ -369,7 +365,7 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit) {
             const tableContainer = document.createElement('div');
             tableContainer.className = 'table-container';
             const table = document.createElement('table');
-            table.style.fontSize = '0.85rem'; // Smaller text for history
+            table.style.fontSize = '0.85rem';
             table.innerHTML = `<thead><tr style="background:transparent;"><th style="padding:0.5rem;">Projeto</th><th style="padding:0.5rem;">Resumo</th><th style="padding:0.5rem;">Dev</th></tr></thead><tbody></tbody>`;
             const tbody = table.querySelector('tbody');
             (batch.pullRequests || []).forEach(pr => {
@@ -396,7 +392,6 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit) {
     const prIdsInBatches = new Set(batches.flatMap(b => b.pullRequests.map(pr => pr.id)));
     const backlogPrs = approvedPrs.filter(pr => !prIdsInBatches.has(pr.id));
     
-    // Update total approved badge
     const totalApprovedBadge = document.getElementById('totalApprovedPrs');
     if (totalApprovedBadge) {
         totalApprovedBadge.textContent = approvedPrs.length;
@@ -459,7 +454,6 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                 </a>
             `;
             
-            // Show Deploy Button if Issue Link Exists
             if (currentUser === 'Samuel Santos') {
                     deployBtn = `
                     <button class="btn" style="background-color: #8e44ad; color: white; padding: 0.3rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" onclick="window.confirmDeploy('${batchId}')">
@@ -517,7 +511,6 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     }
     
     
-    // Add delete batch button
     let deleteBatchBtn = '';
     if (batchId && currentUser === 'Samuel Santos') {
         deleteBatchBtn = `
@@ -551,7 +544,6 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     projectPrs.forEach(pr => {
         const tr = document.createElement('tr');
         
-        // Add remove button for batches that have batchId and (version info or requesting version)
         let prRemoveBtn = '';
         if (batchId && (isRequestingVersion || hasVersionInfo) && currentUser === 'Samuel Santos') {
             prRemoveBtn = `
@@ -563,7 +555,6 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
             `;
         }
         
-        // Add archive button for backlog PRs (those without batchId)
         let archiveBtn = '';
         if (!batchId && (currentUser === 'Samuel Santos')) {
             archiveBtn = `
