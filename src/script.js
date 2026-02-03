@@ -466,9 +466,21 @@ function openEditModal(pr) {
     document.getElementById('prLink').value = pr.prLink || '';
     document.getElementById('taskLink').value = pr.taskLink || '';
     document.getElementById('teamsLink').value = pr.teamsLink || '';
+    
+    updateSummaryLabel(pr.taskLink || '');
+
+    const relatedContainer = document.getElementById('relatedTasksContainer');
+    relatedContainer.innerHTML = '';
+    
+    if (pr.linksRelatedTask) {
+        //create the related links using ';'
+        const links = pr.linksRelatedTask.split(';').filter(link => link.trim() !== '');
+        links.forEach(link => addRelatedTaskInput(link));
+    }
+    
+    updateSummaryLabel();
 
     const appUser = LocalStorage.getItem('appUser');
-    const isSamuel = appUser === 'Samuel Santos';
     const isApproved = !!pr.approved;
 
 
@@ -476,6 +488,15 @@ function openEditModal(pr) {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = isApproved;
     });
+
+    const relatedInputs = document.querySelectorAll('.related-task-input');
+    relatedInputs.forEach(input => input.disabled = isApproved);
+    
+    const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
+    if (addRelatedBtn) addRelatedBtn.disabled = isApproved;
+    
+    const removeRelatedBtns = document.querySelectorAll('#relatedTasksContainer button');
+    removeRelatedBtns.forEach(btn => btn.disabled = isApproved);
 
     if (isApproved) {
         document.getElementById('modalTitle').innerHTML = 'Editar Pull Request <span class="tag" style="background:#238636; color:white; margin-left:10px;">Aprovado</span>';
@@ -491,6 +512,10 @@ function openAddModal() {
     prForm.reset();
     document.getElementById('prId').value = '';
     
+    updateSummaryLabel();
+    
+    document.getElementById('relatedTasksContainer').innerHTML = '';
+    
     const appUser = LocalStorage.getItem('appUser');
     if (appUser) {
         document.getElementById('dev').value = appUser;
@@ -500,12 +525,110 @@ function openAddModal() {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = false;
     });
+
+    const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
+    if (addRelatedBtn) addRelatedBtn.disabled = false;
     
     prModal.style.display = 'flex';
 }
 
 document.getElementById('addPrBtn').addEventListener('click', openAddModal);
 document.getElementById('setupBtn').addEventListener('click', openSetupModal);
+document.getElementById('addRelatedTaskBtn').addEventListener('click', () => addRelatedTaskInput());
+
+const taskLinkInput = document.getElementById('taskLink');
+if (taskLinkInput) {
+    taskLinkInput.addEventListener('input', () => {
+        updateSummaryLabel();
+    });
+}
+
+function updateSummaryLabel() {
+    const taskLinkLabel = document.querySelector('#taskLink').parentElement.querySelector('label');
+    const tagsContainer = document.getElementById('taskIdTagsContainer');
+    
+    if (!taskLinkLabel || !tagsContainer) return;
+
+    const mainUrl = document.getElementById('taskLink').value;
+    const relatedUrls = Array.from(document.querySelectorAll('.related-task-input')).map(i => i.value);
+    
+    const allUrls = [mainUrl, ...relatedUrls];
+    const jiraIds = [...new Set(allUrls.map(url => extractJiraId(url)).filter(id => id !== null))];
+
+    taskLinkLabel.textContent = 'Link Task (Jira)';
+    
+    if (jiraIds.length > 0) {
+        const tags = jiraIds.map(id => `<span class="tag" style="background: var(--accent-color); color: white; font-size: 0.7rem; padding: 0.2rem 0.6rem;">${id}</span>`).join('');
+        tagsContainer.innerHTML = tags;
+        tagsContainer.style.display = 'flex';
+    } else {
+        tagsContainer.style.display = 'none';
+    }
+}
+
+function extractJiraId(url) {
+    if (!url) return null;
+    // regex to get task id
+    const regex = /(?:browse\/|selectedIssue=)([A-Z0-9]+-[0-9]+)/i;
+    const match = url.match(regex);
+    return match ? match[1].toUpperCase() : null;
+}
+
+function addRelatedTaskInput(value = '') {
+    const container = document.getElementById('relatedTasksContainer');
+    if (container.children.length >= 5) {
+        DOM.showToast('Máximo de 5 links vinculados permitidos.', 'warning');
+        return;
+    }
+    
+    const div = document.createElement('div');
+    div.style.display = 'flex';
+    div.style.gap = '10px';
+    div.style.alignItems = 'center';
+    
+    const input = document.createElement('input');
+    input.type = 'url';
+    input.className = 'related-task-input';
+    input.placeholder = 'Link da tarefa vinculada...';
+    input.value = value;
+    input.style.flex = '1';
+    input.style.background = '#0d1117';
+    input.style.border = '1px solid #30363d';
+    input.style.color = '#c9d1d9';
+    input.style.borderRadius = '6px';
+    input.style.padding = '0.5rem 0.7rem';
+    input.style.fontSize = '0.85rem';
+    
+    input.addEventListener('input', () => {
+        updateSummaryLabel();
+    });
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-outline';
+    removeBtn.style.padding = '0.4rem';
+    removeBtn.style.minWidth = '34px';
+    removeBtn.style.height = '34px';
+    removeBtn.style.color = 'var(--danger-color)';
+    removeBtn.style.borderColor = 'var(--border-color)';
+    removeBtn.style.display = 'flex';
+    removeBtn.style.alignItems = 'center';
+    removeBtn.style.justifyContent = 'center';
+    removeBtn.title = 'Remover link';
+    removeBtn.innerHTML = '<i data-lucide="trash-2" style="width: 16px;"></i>';
+    removeBtn.onclick = () => {
+        div.remove();
+        updateSummaryLabel();
+    };
+    
+    div.appendChild(input);
+    div.appendChild(removeBtn);
+    container.appendChild(div);
+    
+    if(window.lucide) {
+        window.lucide.createIcons();
+    }
+}
 
 document.getElementById('changeUserBtn').addEventListener('click', showProfileSelection);
 
@@ -530,7 +653,6 @@ document.getElementById('newSprintBtn').addEventListener('click', async () => {
     }
 });
 
-// Shortcuts specific function
 window.approvePr = async (prId) => {
     if (!prId) return;
 
@@ -538,7 +660,6 @@ window.approvePr = async (prId) => {
         return;
     }
     
-    // Check if user is logged in
     const appUserId = LocalStorage.getItem('appUserId');
     if (!appUserId) {
         DOM.showToast('Erro: Usuário não identificado. Selecione um perfil na tela inicial.', 'error');
@@ -746,7 +867,11 @@ prForm.addEventListener('submit', async (e) => {
             summary: document.getElementById('summary').value,
             prLink: document.getElementById('prLink').value || '',
             taskLink: document.getElementById('taskLink').value || '',
-            teamsLink: document.getElementById('teamsLink').value || ''
+            teamsLink: document.getElementById('teamsLink').value || '',
+            linksRelatedTask: Array.from(document.querySelectorAll('.related-task-input'))
+                .map(input => input.value.trim())
+                .filter(val => val !== '')
+                .join(';')
         };
 
         let savedPR;
