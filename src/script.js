@@ -6,12 +6,12 @@ import { EffectService } from './effectService.js';
 import { VersionConstants } from './constants/versionConstants.js';
 import { ApiConstants } from './constants/apiConstants.js';
 import { ChangelogData } from './constants/changelog.js';
+import { extractJiraId } from './utils.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
 const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez'];
 
-// Load users from API
 async function loadUsers() {
     try {
         const users = await API.fetchUsers();
@@ -29,7 +29,6 @@ async function loadUsers() {
     }
 }
 
-// Render profile selection dynamically
 function renderProfileSelection() {
     const profilesGrid = document.querySelector('.profiles-grid');
     if (!profilesGrid) return;
@@ -466,9 +465,28 @@ function openEditModal(pr) {
     document.getElementById('prLink').value = pr.prLink || '';
     document.getElementById('taskLink').value = pr.taskLink || '';
     document.getElementById('teamsLink').value = pr.teamsLink || '';
+    
+    updateSummaryLabel(pr.taskLink || '');
+
+    const relatedContainer = document.getElementById('relatedTasksContainer');
+    relatedContainer.innerHTML = '';
+    
+    if (pr.linksRelatedTask) {
+        const links = pr.linksRelatedTask.split(';').filter(link => link.trim() !== '');
+        links.forEach(linkData => {
+            let [summary, url] = linkData.split('|');
+            // If only one part exists, it's the legacy URL
+            if (!url) {
+                url = summary;
+                summary = '';
+            }
+            addRelatedTaskInput(url, summary);
+        });
+    }
+    
+    updateSummaryLabel();
 
     const appUser = LocalStorage.getItem('appUser');
-    const isSamuel = appUser === 'Samuel Santos';
     const isApproved = !!pr.approved;
 
 
@@ -476,6 +494,15 @@ function openEditModal(pr) {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = isApproved;
     });
+
+    const relatedInputs = document.querySelectorAll('.related-task-input');
+    relatedInputs.forEach(input => input.disabled = isApproved);
+    
+    const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
+    if (addRelatedBtn) addRelatedBtn.disabled = isApproved;
+    
+    const removeRelatedBtns = document.querySelectorAll('#relatedTasksContainer button');
+    removeRelatedBtns.forEach(btn => btn.disabled = isApproved);
 
     if (isApproved) {
         document.getElementById('modalTitle').innerHTML = 'Editar Pull Request <span class="tag" style="background:#238636; color:white; margin-left:10px;">Aprovado</span>';
@@ -491,6 +518,10 @@ function openAddModal() {
     prForm.reset();
     document.getElementById('prId').value = '';
     
+    updateSummaryLabel();
+    
+    document.getElementById('relatedTasksContainer').innerHTML = '';
+    
     const appUser = LocalStorage.getItem('appUser');
     if (appUser) {
         document.getElementById('dev').value = appUser;
@@ -500,12 +531,113 @@ function openAddModal() {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = false;
     });
+
+    const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
+    if (addRelatedBtn) addRelatedBtn.disabled = false;
     
     prModal.style.display = 'flex';
 }
 
 document.getElementById('addPrBtn').addEventListener('click', openAddModal);
 document.getElementById('setupBtn').addEventListener('click', openSetupModal);
+document.getElementById('addRelatedTaskBtn').addEventListener('click', () => addRelatedTaskInput());
+
+const taskLinkInput = document.getElementById('taskLink');
+if (taskLinkInput) {
+    taskLinkInput.addEventListener('input', () => {
+        updateSummaryLabel();
+    });
+}
+
+function updateSummaryLabel() {
+    const primaryTagsContainer = document.getElementById('taskIdTagsContainer');
+    const relatedTagsContainer = document.getElementById('relatedTaskIdsContainer');
+    
+    if (!primaryTagsContainer || !relatedTagsContainer) return;
+
+    const mainUrl = document.getElementById('taskLink').value;
+    const primaryId = extractJiraId(mainUrl);
+
+    if (primaryId) {
+        primaryTagsContainer.innerHTML = `<span class="tag" style="background: var(--accent-color); color: white; font-size: 0.7rem; padding: 0.2rem 0.6rem;">${primaryId}</span>`;
+        primaryTagsContainer.style.display = 'flex';
+    } else {
+        primaryTagsContainer.style.display = 'none';
+    }
+
+    const relatedUrls = Array.from(document.querySelectorAll('.related-task-input-url')).map(i => i.value);
+    const relatedIds = [...new Set(relatedUrls.map(url => extractJiraId(url)).filter(id => id !== null && id !== primaryId))];
+
+    if (relatedIds.length > 0) {
+        const tags = relatedIds.map(id => `<span class="tag" style="background: #30363d; color: #58a6ff; font-size: 0.7rem; padding: 0.2rem 0.6rem; border: 1px solid var(--accent-color);">${id}</span>`).join('');
+        relatedTagsContainer.innerHTML = tags;
+        relatedTagsContainer.style.display = 'flex';
+    } else {
+        relatedTagsContainer.style.display = 'none';
+    }
+}
+
+function addRelatedTaskInput(url = '', summary = '') {
+    const container = document.getElementById('relatedTasksContainer');
+    if (container.children.length >= 5) {
+        DOM.showToast('Máximo de 5 links vinculados permitidos.', 'warning');
+        return;
+    }
+    
+    const div = document.createElement('div');
+    div.className = 'related-task-group';
+    div.style.display = 'flex';
+    div.style.gap = '10px';
+    div.style.alignItems = 'center';
+    
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.className = 'related-task-input-url';
+    urlInput.placeholder = 'Link Jira...';
+    urlInput.value = url;
+    urlInput.style.flex = '1';
+    
+    const summaryInput = document.createElement('input');
+    summaryInput.type = 'text';
+    summaryInput.className = 'related-task-input-summary';
+    summaryInput.placeholder = 'Resumo da task...';
+    summaryInput.value = summary;
+    summaryInput.style.flex = '1.5';
+    
+    // Use the class defined in CSS for consistency
+    urlInput.classList.add('related-task-input');
+    summaryInput.classList.add('related-task-input');
+    
+    urlInput.addEventListener('input', () => updateSummaryLabel());
+    summaryInput.addEventListener('input', () => updateSummaryLabel());
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-outline';
+    removeBtn.style.padding = '0.4rem';
+    removeBtn.style.minWidth = '34px';
+    removeBtn.style.height = '34px';
+    removeBtn.style.color = 'var(--danger-color)';
+    removeBtn.style.borderColor = 'var(--border-color)';
+    removeBtn.style.display = 'flex';
+    removeBtn.style.alignItems = 'center';
+    removeBtn.style.justifyContent = 'center';
+    removeBtn.title = 'Remover link';
+    removeBtn.innerHTML = '<i data-lucide="trash-2" style="width: 16px;"></i>';
+    removeBtn.onclick = () => {
+        div.remove();
+        updateSummaryLabel();
+    };
+    
+    div.appendChild(summaryInput);
+    div.appendChild(urlInput);
+    div.appendChild(removeBtn);
+    container.appendChild(div);
+    
+    if(window.lucide) {
+        window.lucide.createIcons();
+    }
+}
 
 document.getElementById('changeUserBtn').addEventListener('click', showProfileSelection);
 
@@ -530,7 +662,6 @@ document.getElementById('newSprintBtn').addEventListener('click', async () => {
     }
 });
 
-// Shortcuts specific function
 window.approvePr = async (prId) => {
     if (!prId) return;
 
@@ -538,7 +669,6 @@ window.approvePr = async (prId) => {
         return;
     }
     
-    // Check if user is logged in
     const appUserId = LocalStorage.getItem('appUserId');
     if (!appUserId) {
         DOM.showToast('Erro: Usuário não identificado. Selecione um perfil na tela inicial.', 'error');
@@ -746,7 +876,15 @@ prForm.addEventListener('submit', async (e) => {
             summary: document.getElementById('summary').value,
             prLink: document.getElementById('prLink').value || '',
             taskLink: document.getElementById('taskLink').value || '',
-            teamsLink: document.getElementById('teamsLink').value || ''
+            teamsLink: document.getElementById('teamsLink').value || '',
+            linksRelatedTask: Array.from(document.querySelectorAll('.related-task-group'))
+                .map(group => {
+                    const url = group.querySelector('.related-task-input-url').value.trim();
+                    const summary = group.querySelector('.related-task-input-summary').value.trim();
+                    return url ? `${summary}|${url}` : '';
+                })
+                .filter(val => val !== '')
+                .join(';')
         };
 
         let savedPR;
@@ -999,6 +1137,19 @@ window.completeSprint = async (sprintId) => {
             DOM.showToast('Erro ao concluir sprint: ' + error.message, 'error');
         } finally {
             DOM.showLoading(false);
+        }
+    }
+};
+
+window.toggleRelated = (prId, btn) => {
+    const subRow = document.getElementById(`related-${prId}`);
+    if (subRow) {
+        const isHidden = subRow.style.display === 'none';
+        subRow.style.display = isHidden ? 'table-row' : 'none';
+        btn.classList.toggle('active', isHidden);
+        
+        if (isHidden && window.lucide) {
+            window.lucide.createIcons();
         }
     }
 };

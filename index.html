@@ -200,12 +200,16 @@
     <div id="prModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="modalTitle">Novo Pull Request</h2>
+                <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
+                    <h2 id="modalTitle">Novo Pull Request</h2>
+                    <div id="taskIdTagsContainer" style="display: none; gap: 0.5rem; align-items: center;">
+                    </div>
+                </div>
                 <button class="close-btn">&times;</button>
             </div>
             <form id="prForm">
                 <input type="hidden" id="prId">
-                <div class="form-grid">
+                <div class="form-grid" style="gap: 1rem;">
                     <div class="form-group">
                         <label>Projeto</label>
                         <select id="project" required>
@@ -247,6 +251,26 @@
                     <div class="form-group">
                         <label>Post no Teams</label>
                         <input type="url" id="teamsLink" placeholder="Link da mensagem">
+                    </div>
+
+                    <div class="form-group full-width"
+                        style="margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                            <div style="display: flex; align-items: center;">
+                                <label
+                                    style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.8rem;">Tasks
+                                    Vinculadas (Max 5)</label>
+                                <div id="relatedTaskIdsContainer"
+                                    style="display: none; gap: 0.3rem; align-items: center; margin-left: 10px;"></div>
+                            </div>
+                            <button type="button" id="addRelatedTaskBtn" class="btn btn-outline">
+                                <i data-lucide="plus-circle" style="width: 14px;"></i> Nova Task
+                            </button>
+                        </div>
+                        <div id="relatedTasksContainer" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <!-- inputs addeddynamically -->
+                        </div>
                     </div>
                 </div>
                 <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
@@ -294,9 +318,7 @@
             </div>
         </div>
     </div>
-    <!-- God Mode Hidden Input (Truly secret) -->
 
-    <!-- God Mode Hidden Input (Truly secret) -->
     <div id="godModeContainer" style="position: fixed; top: -100px; left: -100px; opacity: 0; pointer-events: none;">
         <input type="password" id="godModeInput">
     </div>
