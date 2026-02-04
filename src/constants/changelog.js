@@ -1,6 +1,6 @@
 export const ChangelogData = [
     {
-        version: "3.1.11",
+        version: "4.1.11",
         date: "2026-02-04",
         changes: [
             "Possibilita criação de PR com outras tarefas relacionadas",
