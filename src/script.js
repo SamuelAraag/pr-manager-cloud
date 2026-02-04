@@ -5,6 +5,7 @@ import { GitLabService } from './automationService.js';
 import { EffectService } from './effectService.js';
 import { ApiConstants } from './constants/apiConstants.js';
 import { CURRENT_VERSION } from './constants/changelog.js';
+import { extractJiraId } from './utils.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
