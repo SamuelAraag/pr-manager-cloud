@@ -890,8 +890,6 @@ prForm.addEventListener('submit', async (e) => {
         let savedPR;
         
         if (prIdInput) {
-
-            debugger
             savedPR = await API.updatePR(prIdInput, prData);
             DOM.showToast('PR atualizado com sucesso!');
         } else {
