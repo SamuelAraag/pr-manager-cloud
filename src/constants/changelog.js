@@ -112,3 +112,5 @@ export const ChangelogData = [
         ]
     }
 ];
+
+export const CURRENT_VERSION = ChangelogData[0].version;

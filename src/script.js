@@ -3,10 +3,8 @@ import * as API from './apiService.js';
 import * as DOM from './domService.js';
 import { GitLabService } from './automationService.js';
 import { EffectService } from './effectService.js';
-import { VersionConstants } from './constants/versionConstants.js';
 import { ApiConstants } from './constants/apiConstants.js';
-import { ChangelogData } from './constants/changelog.js';
-import { extractJiraId } from './utils.js';
+import { CURRENT_VERSION } from './constants/changelog.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -248,14 +246,12 @@ function closeAllModals() {
 async function init() {
     LocalStorage.init();
     
-    // Set application version
     const versionEl = document.getElementById('appVersion');
     if (versionEl) {
-        versionEl.textContent = VersionConstants.VERSION;
+        //version as dynamic
+        versionEl.textContent = CURRENT_VERSION;
     }
     
-    // Load users from API first
-
     //TODO: Implementar oadUsers
     // await loadUsers();
     renderProfileSelection();
