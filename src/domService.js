@@ -1,4 +1,5 @@
 import { getItem } from './localStorageService.js';
+import { extractJiraId } from './utils.js';
 
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
@@ -103,9 +104,19 @@ function renderOpenTable(data, containerId, onEdit) {
                 statusTooltip = `style="background: ${statusBg}"`;
             }
 
+
+            const hasRelated = pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
+            const expandBtn = hasRelated ? `<button class="expand-btn" onclick="window.toggleRelated('${pr.id}', this)"><i data-lucide="chevron-right" style="width: 14px;"></i></button>` : '';
+            const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
+
             tr.innerHTML = `
-                <td><span class="tag">${pr.project || '-'}</span></td>
-                <td style="font-weight: 500;">${pr.summary || '-'}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        ${expandBtn}
+                        <span class="tag">${mainJiraId}</span>
+                    </div>
+                </td>
+                <td style="font-weight: 500; padding-left: 0px;">${pr.summary || '-'}</td>
                 <td>${pr.dev || '-'}</td>
                 <td><span class="status-badge" ${statusTooltip}>${statusText}</span></td>
                 <td><div style="display: flex; gap: 0.8rem;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 16px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 16px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>
@@ -151,6 +162,15 @@ function renderOpenTable(data, containerId, onEdit) {
             const editBtn = tr.querySelector('.edit-btn');
             editBtn.addEventListener('click', () => onEdit(pr));
             body.appendChild(tr);
+
+            if (hasRelated) {
+                const subRow = document.createElement('tr');
+                subRow.id = `related-${pr.id}`;
+                subRow.className = 'related-tasks-row';
+                subRow.style.display = 'none';
+                subRow.innerHTML = `<td colspan="6">${renderRelatedTasksList(pr.linksRelatedTask, pr.project)}</td>`;
+                body.appendChild(subRow);
+            }
         });
     });
 }
@@ -542,8 +562,6 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     const tbody = table.querySelector('tbody');
     
     projectPrs.forEach(pr => {
-        const tr = document.createElement('tr');
-        
         let prRemoveBtn = '';
         if (batchId && (isRequestingVersion || hasVersionInfo) && currentUser === 'Samuel Santos') {
             prRemoveBtn = `
@@ -565,9 +583,19 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                 </button>
             `;
         }
-        
+
+        const tr = document.createElement('tr');
+        const prHasRelated = pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
+        const expandBtn = prHasRelated ? `<button class="expand-btn" onclick="window.toggleRelated('${pr.id}', this)"><i data-lucide="chevron-right" style="width: 14px;"></i></button>` : '';
+        const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
+
         tr.innerHTML = `
-            <td><span class="tag">${pr.project || '-'}</span></td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    ${expandBtn}
+                    <span class="tag">${mainJiraId}</span>
+                </div>
+            </td>
             <td style="font-weight: 500;">${pr.summary || '-'}</td>
             <td>${pr.dev || '-'}</td>
             <td><span class="status-badge" style="background: #8e44ad">Mergeado</span></td>
@@ -575,14 +603,23 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
             <td>
                 <div style="display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
                     ${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}
-                    ${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 16px;"></i></a>` : ''}
-                    ${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 16px;"></i></a>` : ''}
+                    ${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}
+                    ${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}
                     ${renderRelatedLinks(pr.linksRelatedTask)}
                     ${prRemoveBtn}
                     ${archiveBtn}
                 </div>
             </td>`;
         tbody.appendChild(tr);
+
+        if (prHasRelated) {
+            const subRow = document.createElement('tr');
+            subRow.id = `related-${pr.id}`;
+            subRow.className = 'related-tasks-row';
+            subRow.style.display = 'none';
+            subRow.innerHTML = `<td colspan="6">${renderRelatedTasksList(pr.linksRelatedTask, pr.project)}</td>`;
+            tbody.appendChild(subRow);
+        }
     });
     card.appendChild(headerDiv);
     if (versionInputs) {
@@ -598,12 +635,58 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     return card;
 }
 
+function renderRelatedTasksList(linksString, projectTag = 'DF-e') {
+    if (!linksString || typeof linksString !== 'string') return '';
+    try {
+        const links = linksString.split(';').filter(link => link.trim() !== '');
+        if (links.length === 0) return '';
+
+        const listItems = links.map(linkData => {
+            let [summary, link] = linkData.split('|');
+            if (!link) {
+                link = summary;
+                summary = 'Link';
+            }
+            const jiraId = extractJiraId(link);
+            const tagHtml = jiraId ? `<span class="tag" style="font-size: 0.7rem; padding: 1px 6px;">${jiraId}</span>` : '';
+
+            return `
+                <div style="margin-bottom: 8px; display: flex; align-items: center;">
+                    <a href="${link}" target="_blank" style="color: var(--text-primary); text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; transition: all 0.2s ease;" onmouseover="this.style.color='#bc85ff'" onmouseout="this.style.color='var(--text-primary)'">
+                        <i data-lucide="corner-down-right" style="width: 14px; height: 14px; color: #bc85ff;"></i>
+                        ${tagHtml}
+                        <span>${summary}</span>
+                    </a>
+                </div>`;
+        }).join('');
+
+        return `
+            <div style="padding-left: 50px;">
+                ${listItems}
+            </div>`;
+    } catch (e) {
+        return '';
+    }
+}
+
 function renderRelatedLinks(linksString) {
     if (!linksString || typeof linksString !== 'string') return '';
     try {
-        const links = linksString.split(';').filter(link => link.trim().startsWith('http'));
-        return links.map((link, index) => {
-            return `<a href="${link}" target="_blank" class="link-icon" title="Tarefa Vinculada ${index + 1}" style="color: #bc85ff;"><i data-lucide="link" style="width: 14px;"></i></a>`;
+        const links = linksString.split(';').filter(link => link.trim() !== '');
+        return links.map((linkData) => {
+            let [summary, link] = linkData.split('|');
+            
+            if (!link) {
+                link = summary;
+                summary = 'Tarefa Vinculada';
+            }
+            
+            const cleanLink = link.trim();
+            if (!cleanLink.startsWith('http')) return '';
+            
+            return `<a href="${cleanLink}" target="_blank" class="link-icon" title="${summary || 'Tarefa Vinculada'}" style="color: #bc85ff; position: relative;">
+                <i data-lucide="link" style="width: 14px;"></i>
+            </a>`;
         }).join('');
     } catch (e) {
         return '';
