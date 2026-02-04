@@ -12,7 +12,6 @@ let currentData = { prs: [] };
 let availableUsers = [];
 const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez'];
 
-// Load users from API
 async function loadUsers() {
     try {
         const users = await API.fetchUsers();
@@ -30,7 +29,6 @@ async function loadUsers() {
     }
 }
 
-// Render profile selection dynamically
 function renderProfileSelection() {
     const profilesGrid = document.querySelector('.profiles-grid');
     if (!profilesGrid) return;
