@@ -6,6 +6,7 @@ import { EffectService } from './effectService.js';
 import { VersionConstants } from './constants/versionConstants.js';
 import { ApiConstants } from './constants/apiConstants.js';
 import { ChangelogData } from './constants/changelog.js';
+import { extractJiraId } from './utils.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -473,9 +474,16 @@ function openEditModal(pr) {
     relatedContainer.innerHTML = '';
     
     if (pr.linksRelatedTask) {
-        //create the related links using ';'
         const links = pr.linksRelatedTask.split(';').filter(link => link.trim() !== '');
-        links.forEach(link => addRelatedTaskInput(link));
+        links.forEach(linkData => {
+            let [summary, url] = linkData.split('|');
+            // If only one part exists, it's the legacy URL
+            if (!url) {
+                url = summary;
+                summary = '';
+            }
+            addRelatedTaskInput(url, summary);
+        });
     }
     
     updateSummaryLabel();
@@ -544,37 +552,34 @@ if (taskLinkInput) {
 }
 
 function updateSummaryLabel() {
-    const taskLinkLabel = document.querySelector('#taskLink').parentElement.querySelector('label');
-    const tagsContainer = document.getElementById('taskIdTagsContainer');
+    const primaryTagsContainer = document.getElementById('taskIdTagsContainer');
+    const relatedTagsContainer = document.getElementById('relatedTaskIdsContainer');
     
-    if (!taskLinkLabel || !tagsContainer) return;
+    if (!primaryTagsContainer || !relatedTagsContainer) return;
 
     const mainUrl = document.getElementById('taskLink').value;
-    const relatedUrls = Array.from(document.querySelectorAll('.related-task-input')).map(i => i.value);
-    
-    const allUrls = [mainUrl, ...relatedUrls];
-    const jiraIds = [...new Set(allUrls.map(url => extractJiraId(url)).filter(id => id !== null))];
+    const primaryId = extractJiraId(mainUrl);
 
-    taskLinkLabel.textContent = 'Link Task (Jira)';
-    
-    if (jiraIds.length > 0) {
-        const tags = jiraIds.map(id => `<span class="tag" style="background: var(--accent-color); color: white; font-size: 0.7rem; padding: 0.2rem 0.6rem;">${id}</span>`).join('');
-        tagsContainer.innerHTML = tags;
-        tagsContainer.style.display = 'flex';
+    if (primaryId) {
+        primaryTagsContainer.innerHTML = `<span class="tag" style="background: var(--accent-color); color: white; font-size: 0.7rem; padding: 0.2rem 0.6rem;">${primaryId}</span>`;
+        primaryTagsContainer.style.display = 'flex';
     } else {
-        tagsContainer.style.display = 'none';
+        primaryTagsContainer.style.display = 'none';
+    }
+
+    const relatedUrls = Array.from(document.querySelectorAll('.related-task-input-url')).map(i => i.value);
+    const relatedIds = [...new Set(relatedUrls.map(url => extractJiraId(url)).filter(id => id !== null && id !== primaryId))];
+
+    if (relatedIds.length > 0) {
+        const tags = relatedIds.map(id => `<span class="tag" style="background: #30363d; color: #58a6ff; font-size: 0.7rem; padding: 0.2rem 0.6rem; border: 1px solid var(--accent-color);">${id}</span>`).join('');
+        relatedTagsContainer.innerHTML = tags;
+        relatedTagsContainer.style.display = 'flex';
+    } else {
+        relatedTagsContainer.style.display = 'none';
     }
 }
 
-function extractJiraId(url) {
-    if (!url) return null;
-    // regex to get task id
-    const regex = /(?:browse\/|selectedIssue=)([A-Z0-9]+-[0-9]+)/i;
-    const match = url.match(regex);
-    return match ? match[1].toUpperCase() : null;
-}
-
-function addRelatedTaskInput(value = '') {
+function addRelatedTaskInput(url = '', summary = '') {
     const container = document.getElementById('relatedTasksContainer');
     if (container.children.length >= 5) {
         DOM.showToast('Máximo de 5 links vinculados permitidos.', 'warning');
@@ -582,26 +587,31 @@ function addRelatedTaskInput(value = '') {
     }
     
     const div = document.createElement('div');
+    div.className = 'related-task-group';
     div.style.display = 'flex';
     div.style.gap = '10px';
     div.style.alignItems = 'center';
     
-    const input = document.createElement('input');
-    input.type = 'url';
-    input.className = 'related-task-input';
-    input.placeholder = 'Link da tarefa vinculada...';
-    input.value = value;
-    input.style.flex = '1';
-    input.style.background = '#0d1117';
-    input.style.border = '1px solid #30363d';
-    input.style.color = '#c9d1d9';
-    input.style.borderRadius = '6px';
-    input.style.padding = '0.5rem 0.7rem';
-    input.style.fontSize = '0.85rem';
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.className = 'related-task-input-url';
+    urlInput.placeholder = 'Link Jira...';
+    urlInput.value = url;
+    urlInput.style.flex = '1';
     
-    input.addEventListener('input', () => {
-        updateSummaryLabel();
-    });
+    const summaryInput = document.createElement('input');
+    summaryInput.type = 'text';
+    summaryInput.className = 'related-task-input-summary';
+    summaryInput.placeholder = 'Resumo da task...';
+    summaryInput.value = summary;
+    summaryInput.style.flex = '1.5';
+    
+    // Use the class defined in CSS for consistency
+    urlInput.classList.add('related-task-input');
+    summaryInput.classList.add('related-task-input');
+    
+    urlInput.addEventListener('input', () => updateSummaryLabel());
+    summaryInput.addEventListener('input', () => updateSummaryLabel());
     
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
@@ -621,7 +631,8 @@ function addRelatedTaskInput(value = '') {
         updateSummaryLabel();
     };
     
-    div.appendChild(input);
+    div.appendChild(summaryInput);
+    div.appendChild(urlInput);
     div.appendChild(removeBtn);
     container.appendChild(div);
     
@@ -868,8 +879,12 @@ prForm.addEventListener('submit', async (e) => {
             prLink: document.getElementById('prLink').value || '',
             taskLink: document.getElementById('taskLink').value || '',
             teamsLink: document.getElementById('teamsLink').value || '',
-            linksRelatedTask: Array.from(document.querySelectorAll('.related-task-input'))
-                .map(input => input.value.trim())
+            linksRelatedTask: Array.from(document.querySelectorAll('.related-task-group'))
+                .map(group => {
+                    const url = group.querySelector('.related-task-input-url').value.trim();
+                    const summary = group.querySelector('.related-task-input-summary').value.trim();
+                    return url ? `${summary}|${url}` : '';
+                })
                 .filter(val => val !== '')
                 .join(';')
         };
@@ -877,6 +892,8 @@ prForm.addEventListener('submit', async (e) => {
         let savedPR;
         
         if (prIdInput) {
+
+            debugger
             savedPR = await API.updatePR(prIdInput, prData);
             DOM.showToast('PR atualizado com sucesso!');
         } else {
@@ -1124,6 +1141,19 @@ window.completeSprint = async (sprintId) => {
             DOM.showToast('Erro ao concluir sprint: ' + error.message, 'error');
         } finally {
             DOM.showLoading(false);
+        }
+    }
+};
+
+window.toggleRelated = (prId, btn) => {
+    const subRow = document.getElementById(`related-${prId}`);
+    if (subRow) {
+        const isHidden = subRow.style.display === 'none';
+        subRow.style.display = isHidden ? 'table-row' : 'none';
+        btn.classList.toggle('active', isHidden);
+        
+        if (isHidden && window.lucide) {
+            window.lucide.createIcons();
         }
     }
 };

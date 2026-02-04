@@ -1,5 +1,15 @@
 export const ChangelogData = [
     {
+        version: "3.1.10",
+        date: "2026-02-04",
+        changes: [
+            "Possibilita criação de PR com outras tarefas relacionadas",
+            "Melhoria na visualização do Pull Request e visualização de tarefas relacionadas",
+            "Amostragem do Id da tarefa do Jira no cadastro de Pull Request",
+            "Amostragem do Id Das tarefas do Jira no Pull Request Principal e nas tarefas relacionadas"
+        ]
+    },
+    {
         version: "3.0.10",
         date: "2026-02-03",
         changes: [

@@ -202,7 +202,7 @@
             <div class="modal-header">
                 <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
                     <h2 id="modalTitle">Novo Pull Request</h2>
-                    <div id="taskIdTagsContainer" style="display: none; gap: 0.3rem; align-items: center;">
+                    <div id="taskIdTagsContainer" style="display: none; gap: 0.5rem; align-items: center;">
                     </div>
                 </div>
                 <button class="close-btn">&times;</button>
@@ -257,12 +257,14 @@
                         style="margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
-                            <label
-                                style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.8rem;">Tasks
-                                Vinculadas
-                                (Max 5)</label>
-                            <button type="button" id="addRelatedTaskBtn" class="btn btn-outline"
-                                style="padding: 0.3rem 0.6rem; font-size: 0.7rem; border-color: var(--accent-color); color: var(--accent-color);">
+                            <div style="display: flex; align-items: center;">
+                                <label
+                                    style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.8rem;">Tasks
+                                    Vinculadas (Max 5)</label>
+                                <div id="relatedTaskIdsContainer"
+                                    style="display: none; gap: 0.3rem; align-items: center; margin-left: 10px;"></div>
+                            </div>
+                            <button type="button" id="addRelatedTaskBtn" class="btn btn-outline">
                                 <i data-lucide="plus-circle" style="width: 14px;"></i> Nova Task
                             </button>
                         </div>

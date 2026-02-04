@@ -13,6 +13,7 @@
     --danger-color: #da3633;
     --glass-bg: rgba(255, 255, 255, 0.03);
     --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 * {
@@ -671,6 +672,41 @@ footer p {
     color: var(--text-secondary);
 }
 
+/* Related Tasks Inputs */
+.related-task-input {
+    flex: 1;
+    background: #0d1117 !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 0.7rem !important;
+    font-size: 0.85rem !important;
+    transition: all 0.2s ease;
+}
+
+.related-task-input:hover {
+    border-color: var(--accent-color) !important;
+}
+
+.related-task-input:focus {
+    outline: none !important;
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 0 2px var(--accent-glow) !important;
+}
+
+#addRelatedTaskBtn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transition: all 0.2s ease;
+}
+
+#addRelatedTaskBtn:hover {
+    background: var(--accent-glow);
+    border-color: var(--accent-color);
+}
+
 .changelog-list {
     list-style: none;
     padding-left: 0.5rem;
@@ -690,4 +726,98 @@ footer p {
     left: 0;
     color: var(--accent-color);
     font-weight: bold;
+}
+
+/* Expansion & Tree Structure */
+.expand-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.expand-btn.active {
+    transform: rotate(90deg);
+}
+
+.related-tasks-row {
+    background: rgba(88, 166, 255, 0.02);
+}
+
+.tree-container {
+    padding: 0.5rem 0 1rem 4rem;
+    position: relative;
+}
+
+.tree-item {
+    position: relative;
+    padding: 0.4rem 0;
+    display: flex;
+    align-items: center;
+}
+
+.tree-item::before {
+    content: "";
+    position: absolute;
+    left: -25px;
+    top: 50%;
+    width: 25px;
+    height: 1px;
+    background: var(--border-color);
+}
+
+.tree-item::after {
+    content: "";
+    position: absolute;
+    left: -25px;
+    top: -50%;
+    width: 1px;
+    height: 100%;
+    background: var(--border-color);
+}
+
+.tree-item:first-child::after {
+    height: 50%;
+    top: 0;
+}
+
+.tree-item:last-child::after {
+    height: 50%;
+    top: -50%;
+}
+
+.tree-line-vertical {
+    display: none; /* Replaced by pseudo-elements */
+}
+
+.tree-node {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 900px;
+    padding: 0.6rem 1.2rem;
+    background: rgba(48, 54, 61, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    gap: 15px;
+    transition: all 0.2s ease;
+}
+
+.tree-node .tag {
+    background: rgba(88, 166, 255, 0.1);
+    border: 1px solid rgba(88, 166, 255, 0.2);
+    color: var(--accent-color);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.tree-node:hover {
+    border-color: var(--accent-color);
+    background: rgba(88, 166, 255, 0.05);
+    transform: translateX(5px);
 }
