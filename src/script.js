@@ -472,7 +472,6 @@ function openEditModal(pr) {
         const links = pr.linksRelatedTask.split(';').filter(link => link.trim() !== '');
         links.forEach(linkData => {
             let [summary, url] = linkData.split('|');
-            // If only one part exists, it's the legacy URL
             if (!url) {
                 url = summary;
                 summary = '';
@@ -483,7 +482,6 @@ function openEditModal(pr) {
     
     updateSummaryLabel();
 
-    // Set noTestingRequired checkbox
     const noTestingCheckbox = document.getElementById('noTestingRequired');
     if (noTestingCheckbox) {
         noTestingCheckbox.checked = !!pr.noTestingRequired;
@@ -498,7 +496,6 @@ function openEditModal(pr) {
         document.getElementById(id).disabled = isApproved;
     });
 
-    // Also disable noTestingRequired checkbox when approved
     if (noTestingCheckbox) {
         noTestingCheckbox.disabled = isApproved;
     }
@@ -540,7 +537,6 @@ function openAddModal() {
         document.getElementById(id).disabled = false;
     });
 
-    // Reset noTestingRequired checkbox
     const noTestingCheckbox = document.getElementById('noTestingRequired');
     if (noTestingCheckbox) {
         noTestingCheckbox.checked = false;
@@ -619,7 +615,6 @@ function addRelatedTaskInput(url = '', summary = '') {
     summaryInput.value = summary;
     summaryInput.style.flex = '1.5';
     
-    // Use the class defined in CSS for consistency
     urlInput.classList.add('related-task-input');
     summaryInput.classList.add('related-task-input');
     
