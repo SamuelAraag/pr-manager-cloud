@@ -45,4 +45,17 @@ const init = () => {
     }
 };
 
-export { setItem, getItem, removeItem, clear, init };
+/**
+ * Get current user information
+ * Note: This function is kept here for backwards compatibility
+ * For role-based checks, use authService instead
+ */
+const getUserInfo = () => {
+    return {
+        name: getItem('appUser'),
+        id: getItem('appUserId'),
+        token: getItem('token')
+    };
+};
+
+export { setItem, getItem, removeItem, clear, init, getUserInfo };

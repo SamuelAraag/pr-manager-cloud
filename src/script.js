@@ -1,11 +1,13 @@
 import * as LocalStorage from './localStorageService.js';
 import * as API from './apiService.js';
 import * as DOM from './domService.js';
+import * as AuthService from './authService.js';
 import { GitLabService } from './automationService.js';
 import { EffectService } from './effectService.js';
 import { ApiConstants } from './constants/apiConstants.js';
 import { CURRENT_VERSION } from './constants/changelog.js';
 import { extractJiraId } from './utils.js';
+import { PERMISSIONS, ROLES } from './constants/roles.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -160,11 +162,10 @@ window.addEventListener('keydown', (e) => {
         
         const currentUser = LocalStorage.getItem('appUser');
         const previousUser = LocalStorage.getItem('previousUser');
-        const adminUser = 'Samuel Santos';
         const existingToken = LocalStorage.getItem('token');
 
-        if (currentUser === adminUser) {
-            if (previousUser && previousUser !== adminUser) {
+        if (AuthService.isAdmin()) {
+            if (previousUser && !AuthService.isAdmin()) {
                 LocalStorage.setItem('appUser', previousUser);
                 updateUserDisplay(previousUser);
                 loadData(true);
@@ -175,9 +176,11 @@ window.addEventListener('keydown', (e) => {
         LocalStorage.setItem('previousUser', currentUser);
 
         if (existingToken) {
-            LocalStorage.setItem('appUser', adminUser);
+            // Switch to admin if token exists
+            // The backend should return admin user data with admin role
+            // For now, we keep the UI behavior but rely on token role
             EffectService.triggerGodMode();
-            updateUserDisplay(adminUser);
+            updateUserDisplay(currentUser);
             loadData(true);
             return;
         }
@@ -193,7 +196,7 @@ window.addEventListener('keydown', (e) => {
             LocalStorage.removeItem('token');
             LocalStorage.removeItem('previousUser');
             
-            if (LocalStorage.getItem('appUser') === 'Samuel Santos') {
+            if (AuthService.isAdmin()) {
                 LocalStorage.removeItem('appUser');
                 showProfileSelection();
             }
@@ -222,6 +225,9 @@ if (godModeInput) {
                     
                     godModeContainer.style.display = 'none';
                     godModeInput.value = '';
+                    
+                    // Apply role-based visibility
+                    AuthService.applyRoleBasedVisibility();
                 }
             } catch (error) {
                 console.error('Erro no God Mode:', error);
@@ -332,15 +338,15 @@ async function handleLogin(item, password) {
         DOM.showLoading(true);
         const result = await API.login(userName, password);
 
-        if (userName === 'Samuel Santos') {
-             EffectService.triggerGodMode();
-        }
-
         LocalStorage.setItem('appUser', userName);
         LocalStorage.setItem('appUserId', userId);
         
         if (result && result.token) {
             LocalStorage.setItem('token', result.token);
+        }
+
+        if (AuthService.isAdmin()) {
+             EffectService.triggerGodMode();
         }
         
         updateUserDisplay(userName);
@@ -351,6 +357,8 @@ async function handleLogin(item, password) {
         document.querySelectorAll('.profile-item.active').forEach(el => el.classList.remove('active'));
 
         await loadData(true);
+        
+        AuthService.applyRoleBasedVisibility();
         
     } catch (error) {
         console.error('Erro no login:', error);
@@ -377,7 +385,7 @@ function updateUserDisplay(userName) {
     };
 
     const imageSrc = profileImages[userName] || 'src/assets/profiles/default-profile.png';
-    const isAdmin = userName === 'Samuel Santos';
+    const isAdmin = AuthService.isAdmin();
 
     const updateDisplay = (display) => {
         if (!display) return;
@@ -403,7 +411,6 @@ function updateUserDisplay(userName) {
         document.documentElement.style.setProperty('--dev-display', 'flex');
     }
 
-    // Show/hide setup button - only admin can configure tokens
     const setupBtn = document.getElementById('setupBtn');
     if (setupBtn) {
         setupBtn.style.display = isAdmin ? 'inline-flex' : 'none';

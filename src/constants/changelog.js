@@ -3,6 +3,7 @@ export const ChangelogData = [
         version: "4.1.12",
         date: "2026-02-05",
         changes: [
+            "Possibilitamos que um QA possa liberar um PR para STG",
             "Adicionado link para a base de conhecimento no rodapé da aplicação",
             "Tickets de deploy - Correção na formatação de tarefas relacionadas nos chamados criados no GitLab (separação adequada por linhas)",
         ]

@@ -1,5 +1,7 @@
 import { getItem } from './localStorageService.js';
 import { extractJiraId } from './utils.js';
+import * as AuthService from './authService.js';
+import { PERMISSIONS } from './constants/roles.js';
 
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
@@ -34,6 +36,11 @@ function renderTable(prs, batches, sprints, onEdit) {
 
     if (window.lucide) {
         window.lucide.createIcons();
+    }
+    
+    // Apply role-based visibility to dynamically rendered elements
+    if (AuthService && AuthService.applyRoleBasedVisibility) {
+        AuthService.applyRoleBasedVisibility();
     }
 }
 
@@ -74,9 +81,9 @@ function renderOpenTable(data, containerId, onEdit) {
 
             const needsCorrection = !!pr.needsCorrection;
             const currentUser = getItem('appUser');
-            const isSamuel = currentUser === 'Samuel Santos';
+            const isAdmin = AuthService.isAdmin();
             
-            if (isSamuel) {
+            if (isAdmin) {
                 if (!needsCorrection) {
                     tr.style.background = 'rgba(211, 84, 0, 0.05)';
                     tr.style.borderLeft = '3px solid #d35400';
@@ -96,7 +103,7 @@ function renderOpenTable(data, containerId, onEdit) {
                 statusTooltip = `title="Motivo: ${pr.correctionReason || 'Geral'}" style="cursor:help; background: ${statusBg}"`;
             } else if (pr.reqVersion === 'ok' || !pr.reqVersion) {
                 statusText = 'Revisão';
-                statusBg = isSamuel ? '#d35400' : '#30363d'; 
+                statusBg = isAdmin ? '#d35400' : '#30363d'; 
                 statusTooltip = `style="background: ${statusBg}"`;
             } else {
                 statusBg = '#30363d';
@@ -124,21 +131,20 @@ function renderOpenTable(data, containerId, onEdit) {
                     <div style="display: flex; gap: 5px; justify-content: flex-end;">
                         <button class="btn btn-outline edit-btn" style="padding: 0.4rem;" title="Editar"><i data-lucide="edit-3" style="width: 14px;"></i></button>
                         
-                        ${getItem('appUser') === 'Samuel Santos' ? 
-                            `<button class="btn btn-outline" 
-                                style="padding: 0.4rem; border-color: #d35400; color: #e67e22; ${needsCorrection ? 'opacity: 0.5; cursor: not-allowed;' : ''}" 
-                                title="${needsCorrection ? 'Correção já solicitada' : 'Solicitar Correção'}"
-                                onclick="${needsCorrection ? '' : `window.requestCorrection('${pr.id}')`}"
-                                ${needsCorrection ? 'disabled' : ''}>
-                                <i data-lucide="alert-circle" style="width: 14px;"></i>
-                            </button>
-                            <button class="btn btn-outline" 
-                                style="padding: 0.4rem; border-color: #238636; color: #238636;" 
-                                title="Aprovar PR"
-                                onclick="window.approvePr('${pr.id}')">
-                                <i data-lucide="check-circle" style="width: 14px;"></i>
-                            </button>` 
-                            : ''}
+                        <button class="btn btn-outline" data-roles="Admin"
+                            style="padding: 0.4rem; border-color: #d35400; color: #e67e22; ${needsCorrection ? 'opacity: 0.5; cursor: not-allowed;' : ''}" 
+                            title="${needsCorrection ? 'Correção já solicitada' : 'Solicitar Correção'}"
+                            onclick="${needsCorrection ? '' : `window.requestCorrection('${pr.id}')`}"
+                            ${needsCorrection ? 'disabled' : ''}>
+                            <i data-lucide="alert-circle" style="width: 14px;"></i>
+                        </button>
+                        
+                        <button class="btn btn-outline" data-roles="Admin"
+                            style="padding: 0.4rem; border-color: #238636; color: #238636;" 
+                            title="Aprovar PR"
+                            onclick="window.approvePr('${pr.id}')">
+                            <i data-lucide="check-circle" style="width: 14px;"></i>
+                        </button>
 
                         ${(getItem('appUser') === pr.dev && needsCorrection) ? 
                             `<button class="btn btn-outline" 
@@ -149,14 +155,12 @@ function renderOpenTable(data, containerId, onEdit) {
                             </button>` 
                             : ''}
                             
-                        ${(getItem('appUser') === 'Samuel Santos') ?
-                            `<button class="btn btn-outline" 
-                                style="padding: 0.4rem; border-color: #da3633; color: #da3633;" 
-                                title="Arquivar PR"
-                                onclick="window.archivePr('${pr.id}')">
-                                <i data-lucide="trash-2" style="width: 14px;"></i>
-                            </button>`
-                            : ''}
+                        <button class="btn btn-outline" data-roles="Admin"
+                            style="padding: 0.4rem; border-color: #da3633; color: #da3633;" 
+                            title="Arquivar PR"
+                            onclick="window.archivePr('${pr.id}')">
+                            <i data-lucide="trash-2" style="width: 14px;"></i>
+                        </button>
                     </div>
                 </td>`;
             const editBtn = tr.querySelector('.edit-btn');
@@ -225,15 +229,12 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
         sprintTitle.textContent = sprint.name;
         sprintTitle.style.cssText = 'color: var(--text-primary); margin: 0; padding-left: 15px; border-left: 4px solid #8e44ad; font-size: 1.1rem; opacity: 0.9;';
         
-        let completeBtn = '';
-        if (currentUser === 'Samuel Santos' || currentUser === 'Kemilly Alvez') {
-             completeBtn = `
-                <button class="btn btn-outline" style="font-size: 0.75rem; padding: 0.3rem 0.8rem; border-color: #30363d; color: var(--text-secondary);" onclick="window.completeSprint(${sprint.id})">
-                    <i data-lucide="check-circle-2" style="width: 14px; margin-right: 5px;"></i>
-                    Concluir Sprint
-                </button>
-            `;
-        }
+        const completeBtn = `
+            <button class="btn btn-outline" data-roles="Admin,QA" style="font-size: 0.75rem; padding: 0.3rem 0.8rem; border-color: #30363d; color: var(--text-secondary);" onclick="window.completeSprint(${sprint.id})">
+                <i data-lucide="check-circle-2" style="width: 14px; margin-right: 5px;"></i>
+                Concluir Sprint
+            </button>
+        `;
 
         headerContainer.appendChild(sprintTitle);
         if (completeBtn) {
@@ -257,14 +258,11 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
                 `;
             }
 
-            let removeBtn = '';
-            if (currentUser === 'Samuel Santos') {
-                removeBtn = `
-                    <button class="btn" style="background-color: transparent; border: 1px solid #da3633; color: #da3633; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" title="Remover Versão e Resetar Lote" onclick="window.removeVersionFromBatch('${batch.batchId}')">
-                        <i data-lucide="trash-2" style="width: 14px;"></i>
-                    </button>
-                `;
-            }
+            const removeBtn = `
+                <button class="btn" data-roles="Admin" style="background-color: transparent; border: 1px solid #da3633; color: #da3633; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" title="Remover Versão e Resetar Lote" onclick="window.removeVersionFromBatch('${batch.batchId}')">
+                    <i data-lucide="trash-2" style="width: 14px;"></i>
+                </button>
+            `;
 
             const card = document.createElement('div');
             card.className = 'data-card fade-in-row'; // Add animation class
@@ -299,16 +297,13 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
             (batch.pullRequests || []).forEach(pr => {
                 const tr = document.createElement('tr');
                  
-                let prRemoveBtn = '';
-                if (currentUser === 'Samuel Santos') {
-                    prRemoveBtn = `
-                    <button class="btn" style="background: transparent; color: #ff7b72; border: 1px solid #ff7b72; padding: 0.1rem 0.4rem; font-size: 0.7rem; margin-left: 5px;" 
+                const prRemoveBtn = `
+                    <button class="btn" data-roles="Admin" style="background: transparent; color: #ff7b72; border: 1px solid #ff7b72; padding: 0.1rem 0.4rem; font-size: 0.7rem; margin-left: 5px;" 
                         title="Remover este PR desta versão" 
                         onclick="window.removePrFromBatch('${batch.batchId}', '${pr.id}')">
                         <i data-lucide="x" style="width: 12px;"></i>
                     </button>
-                    `;
-                }
+                `;
 
                 tr.innerHTML = `<td><span class="tag">${pr.project || '-'}</span></td><td>${pr.summary || '-'}</td><td>${pr.dev || '-'}</td><td><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
                  tbody.appendChild(tr);
@@ -474,14 +469,12 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                 </a>
             `;
             
-            if (currentUser === 'Samuel Santos') {
-                    deployBtn = `
-                    <button class="btn" style="background-color: #8e44ad; color: white; padding: 0.3rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" onclick="window.confirmDeploy('${batchId}')">
-                        <i data-lucide="rocket" style="width: 14px;"></i>
-                        Liberar STG
-                    </button>
-                `;
-            }
+            deployBtn = `
+                <button class="btn" data-roles="Admin,QA" style="background-color: #8e44ad; color: white; padding: 0.3rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" onclick="window.confirmDeploy('${batchId}')">
+                    <i data-lucide="rocket" style="width: 14px;"></i>
+                    Liberar STG
+                </button>
+            `;
         }
         rightContent += ` 
             <div style="display: flex; align-items: center; gap: 15px;">
@@ -508,9 +501,9 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
         } else {
             leftContent += ` <span style="font-size:0.75rem; margin-left:10px; color:#ff7b72;">(Aguardando: ${majorityDev})</span>`;
         }
-    } else if (hasVersionInfo && currentUser === 'Samuel Santos' && !gitlabIssueLink) {
+    } else if (hasVersionInfo && !gitlabIssueLink) {
             leftContent += `
-                <button class="btn" style="background-color: #6C5CE7; color: white; padding: 0.3rem 0.8rem; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; margin-left: 15px;" onclick="window.createGitLabIssue('${batchId}')">
+                <button class="btn" data-roles="Admin" style="background-color: #6C5CE7; color: white; padding: 0.3rem 0.8rem; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; margin-left: 15px;" onclick="window.createGitLabIssue('${batchId}')">
                     <i data-lucide="gitlab" style="width: 14px;"></i>
                     Criar Chamado
                 </button>`;
@@ -521,10 +514,9 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     card.style.marginBottom = '2rem'; 
     let requestVersionBtn = '';
     
-    const canRequestVersion = currentUser === 'Samuel Santos' || currentUser === 'Kemilly Vitória';
-    if (!hasVersionInfo && !isRequestingVersion && canRequestVersion) {
+    if (!hasVersionInfo && !isRequestingVersion) {
             requestVersionBtn = `
-           <button class="btn btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; margin-left:15px;" onclick="window.requestVersionBatch([${projectPrs.map(p => p.id).join(',')}], '${projectName.replace(/'/g, "\\'")}')">
+           <button class="btn btn-primary" data-roles="Admin,QA" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; margin-left:15px;" onclick="window.requestVersionBatch([${projectPrs.map(p => p.id).join(',')}], '${projectName.replace(/'/g, "\\'")}')">
                 <i data-lucide="package-check" style="width: 14px;"></i>
                 Solicitar Versão
             </button>`;
@@ -532,9 +524,9 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     
     
     let deleteBatchBtn = '';
-    if (batchId && currentUser === 'Samuel Santos') {
+    if (batchId) {
         deleteBatchBtn = `
-            <button class="btn" style="background: transparent; color: #da3633; border: 1px solid #da3633; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" 
+            <button class="btn" data-roles="Admin" style="background: transparent; color: #da3633; border: 1px solid #da3633; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" 
                 title="Deletar este lote completamente" 
                 onclick="window.deleteBatch('${batchId}')">
                 <i data-lucide="trash" style="width: 14px;"></i>
@@ -563,9 +555,9 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     
     projectPrs.forEach(pr => {
         let prRemoveBtn = '';
-        if (batchId && (isRequestingVersion || hasVersionInfo) && currentUser === 'Samuel Santos') {
+        if (batchId && (isRequestingVersion || hasVersionInfo)) {
             prRemoveBtn = `
-                <button class="btn" style="background: transparent; color: #ff7b72; border: 1px solid #ff7b72; padding: 0.1rem 0.4rem; font-size: 0.7rem; margin-left: 5px;" 
+                <button class="btn" data-roles="Admin" style="background: transparent; color: #ff7b72; border: 1px solid #ff7b72; padding: 0.1rem 0.4rem; font-size: 0.7rem; margin-left: 5px;" 
                     title="Remover este PR desta versão" 
                     onclick="window.removePrFromBatch('${batchId}', '${pr.id}')">
                     <i data-lucide="x" style="width: 12px;"></i>
@@ -574,9 +566,9 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
         }
         
         let archiveBtn = '';
-        if (!batchId && (currentUser === 'Samuel Santos')) {
+        if (!batchId) {
             archiveBtn = `
-                <button class="btn" style="background: transparent; color: #da3633; border: 1px solid #da3633; padding: 0.1rem 0.4rem; font-size: 0.7rem; margin-left: 5px;" 
+                <button class="btn" data-roles="Admin" style="background: transparent; color: #da3633; border: 1px solid #da3633; padding: 0.1rem 0.4rem; font-size: 0.7rem; margin-left: 5px;" 
                     title="Arquivar PR" 
                     onclick="window.archivePr('${pr.id}')">
                     <i data-lucide="archive" style="width: 12px;"></i>
