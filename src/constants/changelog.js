@@ -3,7 +3,8 @@ export const ChangelogData = [
         version: "4.1.12",
         date: "2026-02-04",
         changes: [
-            "Correção no texto do chamado criado no GitLab, quando enviava uma tarefa relacionada o texto ficava colado um no outro, agora ele separa por linhas",
+            "Adicionado link para a base de conhecimento no rodapé da aplicação",
+            "Tickets de deploy - Correção na formatação de tarefas relacionadas nos chamados criados no GitLab (separação adequada por linhas)",
         ]
     },
     {
