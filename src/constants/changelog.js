@@ -1,5 +1,12 @@
 export const ChangelogData = [
     {
+        version: "4.1.13",
+        date: "2026-02-06",
+        changes: [
+            "Adicionado checkbox para taguear o PR que não precisa de testes pelo QA",
+        ]
+    },
+    {
         version: "4.1.12",
         date: "2026-02-05",
         changes: [
