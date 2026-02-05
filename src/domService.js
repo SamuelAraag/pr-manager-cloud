@@ -125,7 +125,12 @@ function renderOpenTable(data, containerId, onEdit) {
                 </td>
                 <td style="font-weight: 500; padding-left: 0px;">${pr.summary || '-'}</td>
                 <td>${pr.dev || '-'}</td>
-                <td><span class="status-badge" ${statusTooltip}>${statusText}</span></td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span class="status-badge" ${statusTooltip}>${statusText}</span>
+                        ${pr.noTestingRequired ? '<span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Não requer testes de QA">Sem Teste</span>' : ''}
+                    </div>
+                </td>
                 <td><div style="display: flex; gap: 0.8rem;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 16px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 16px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>
                 <td>
                     <div style="display: flex; gap: 5px; justify-content: flex-end;">
@@ -305,7 +310,7 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
                     </button>
                 `;
 
-                tr.innerHTML = `<td><span class="tag">${pr.project || '-'}</span></td><td>${pr.summary || '-'}</td><td>${pr.dev || '-'}</td><td><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
+                tr.innerHTML = `<td><span class="tag">${pr.project || '-'}</span></td><td>${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td><td>${pr.dev || '-'}</td><td><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
                  tbody.appendChild(tr);
             });
 
@@ -385,7 +390,7 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit) {
             const tbody = table.querySelector('tbody');
             (batch.pullRequests || []).forEach(pr => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td style="padding:0.5rem; color:var(--text-secondary);">${pr.project || '-'}</td><td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}</td><td style="padding:0.5rem; color:var(--text-secondary);">${pr.dev || '-'}</td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>`;
+                tr.innerHTML = `<td style="padding:0.5rem; color:var(--text-secondary);">${pr.project || '-'}</td><td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td><td style="padding:0.5rem; color:var(--text-secondary);">${pr.dev || '-'}</td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>`;
                 tbody.appendChild(tr);
             });
 
@@ -588,7 +593,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                     <span class="tag">${mainJiraId}</span>
                 </div>
             </td>
-            <td style="font-weight: 500;">${pr.summary || '-'}</td>
+            <td style="font-weight: 500;">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td>
             <td>${pr.dev || '-'}</td>
             <td><span class="status-badge" style="background: #8e44ad">Mergeado</span></td>
             <td style="font-size: 0.8rem; color: var(--text-secondary);">${pr.rollback || '-'}</td>

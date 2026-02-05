@@ -479,7 +479,6 @@ function openEditModal(pr) {
         const links = pr.linksRelatedTask.split(';').filter(link => link.trim() !== '');
         links.forEach(linkData => {
             let [summary, url] = linkData.split('|');
-            // If only one part exists, it's the legacy URL
             if (!url) {
                 url = summary;
                 summary = '';
@@ -490,6 +489,11 @@ function openEditModal(pr) {
     
     updateSummaryLabel();
 
+    const noTestingCheckbox = document.getElementById('noTestingRequired');
+    if (noTestingCheckbox) {
+        noTestingCheckbox.checked = !!pr.noTestingRequired;
+    }
+
     const appUser = LocalStorage.getItem('appUser');
     const isApproved = !!pr.approved;
 
@@ -498,6 +502,10 @@ function openEditModal(pr) {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = isApproved;
     });
+
+    if (noTestingCheckbox) {
+        noTestingCheckbox.disabled = isApproved;
+    }
 
     const relatedInputs = document.querySelectorAll('.related-task-input');
     relatedInputs.forEach(input => input.disabled = isApproved);
@@ -535,6 +543,12 @@ function openAddModal() {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = false;
     });
+
+    const noTestingCheckbox = document.getElementById('noTestingRequired');
+    if (noTestingCheckbox) {
+        noTestingCheckbox.checked = false;
+        noTestingCheckbox.disabled = false;
+    }
 
     const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
     if (addRelatedBtn) addRelatedBtn.disabled = false;
@@ -608,7 +622,6 @@ function addRelatedTaskInput(url = '', summary = '') {
     summaryInput.value = summary;
     summaryInput.style.flex = '1.5';
     
-    // Use the class defined in CSS for consistency
     urlInput.classList.add('related-task-input');
     summaryInput.classList.add('related-task-input');
     
@@ -881,6 +894,7 @@ prForm.addEventListener('submit', async (e) => {
             prLink: document.getElementById('prLink').value || '',
             taskLink: document.getElementById('taskLink').value || '',
             teamsLink: document.getElementById('teamsLink').value || '',
+            noTestingRequired: document.getElementById('noTestingRequired').checked,
             linksRelatedTask: Array.from(document.querySelectorAll('.related-task-group'))
                 .map(group => {
                     const url = group.querySelector('.related-task-input-url').value.trim();
