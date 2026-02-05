@@ -483,6 +483,12 @@ function openEditModal(pr) {
     
     updateSummaryLabel();
 
+    // Set noTestingRequired checkbox
+    const noTestingCheckbox = document.getElementById('noTestingRequired');
+    if (noTestingCheckbox) {
+        noTestingCheckbox.checked = !!pr.noTestingRequired;
+    }
+
     const appUser = LocalStorage.getItem('appUser');
     const isApproved = !!pr.approved;
 
@@ -491,6 +497,11 @@ function openEditModal(pr) {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = isApproved;
     });
+
+    // Also disable noTestingRequired checkbox when approved
+    if (noTestingCheckbox) {
+        noTestingCheckbox.disabled = isApproved;
+    }
 
     const relatedInputs = document.querySelectorAll('.related-task-input');
     relatedInputs.forEach(input => input.disabled = isApproved);
@@ -528,6 +539,13 @@ function openAddModal() {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = false;
     });
+
+    // Reset noTestingRequired checkbox
+    const noTestingCheckbox = document.getElementById('noTestingRequired');
+    if (noTestingCheckbox) {
+        noTestingCheckbox.checked = false;
+        noTestingCheckbox.disabled = false;
+    }
 
     const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
     if (addRelatedBtn) addRelatedBtn.disabled = false;
@@ -874,6 +892,7 @@ prForm.addEventListener('submit', async (e) => {
             prLink: document.getElementById('prLink').value || '',
             taskLink: document.getElementById('taskLink').value || '',
             teamsLink: document.getElementById('teamsLink').value || '',
+            noTestingRequired: document.getElementById('noTestingRequired').checked,
             linksRelatedTask: Array.from(document.querySelectorAll('.related-task-group'))
                 .map(group => {
                     const url = group.querySelector('.related-task-input-url').value.trim();
