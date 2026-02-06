@@ -1,5 +1,12 @@
 export const ChangelogData = [
     {
+        version: "4.2.13",
+        date: "2026-02-06",
+        changes: [
+            "Atualização automática do status do PR para 'liberado para STG'",
+        ]
+    },
+    {
         version: "4.1.13",
         date: "2026-02-06",
         changes: [
