@@ -1,6 +1,6 @@
 export const ChangelogData = [
     {
-        version: "5.2.13",
+        version: "5.3.15",
         date: "2026-02-07",
         changes: [
             "Incluído imagem do desenvolvedor ao PR",
