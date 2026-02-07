@@ -48,7 +48,7 @@ async function fetchSprints() {
       throw new Error(`Falha ao buscar sprints: ${response.statusText}`);
 
     const data = await response.json();
-    console.log("Dados recebidos - Sprints:", data);
+    console.log("Sprints:", data);
 
     return data;
   } catch (error) {
@@ -74,7 +74,7 @@ async function fetchUsers() {
     }
 
     const users = await response.json();
-    console.log("Usuários recebidos:", users);
+    console.log("Usuários:", users);
     return users;
   } catch (error) {
     console.error("Falha ao buscar usuários:", error);

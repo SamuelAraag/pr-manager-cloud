@@ -33,6 +33,18 @@ const clear = () => {
     }
 };
 
+const clearSession = () => {
+    try {
+        removeItem('token');
+        removeItem('appUser');
+        removeItem('appUserId');
+        removeItem('githubToken');
+        removeItem('previousUser');
+    } catch (error) {
+        console.error("Erro ao limpar o localStorage:", error);
+    }
+}
+
 const init = () => {
     try {
         const testKey = '__test__';
@@ -58,4 +70,4 @@ const getUserInfo = () => {
     };
 };
 
-export { setItem, getItem, removeItem, clear, init, getUserInfo };
+export { setItem, getItem, removeItem, clear, init, getUserInfo, clearSession };

@@ -7,10 +7,11 @@ import { EffectService } from './effectService.js';
 import { ApiConstants } from './constants/apiConstants.js';
 import { CURRENT_VERSION } from './constants/changelog.js';
 import { extractJiraId } from './utils.js';
-import { PERMISSIONS, ROLES } from './constants/roles.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
+
+let pollingInterval = null;
 const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez'];
 
 async function loadUsers() {
@@ -18,7 +19,7 @@ async function loadUsers() {
         const users = await API.fetchUsers();
         if (users && users.length > 0) {
             availableUsers = users;
-            console.log('Usuários carregados:', availableUsers);
+            console.log('Usuários:', availableUsers);
             return true;
         } else {
             console.warn('Nenhum usuário encontrado na API, usando lista padrão');
@@ -185,22 +186,19 @@ window.addEventListener('keydown', (e) => {
             return;
         }
 
+
         godModeInput.value = '';
         godModeInput.focus();
     } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === 'l') {
         e.preventDefault();
         
-        const token = LocalStorage.getItem('token');
-        if (token) {
-            EffectService.triggerScanLine();
-            LocalStorage.removeItem('token');
-            LocalStorage.removeItem('previousUser');
-            
-            if (AuthService.isAdmin()) {
-                LocalStorage.removeItem('appUser');
-                showProfileSelection();
-            }
-        }
+        EffectService.triggerScanLine();
+
+        stopPolling();
+        LocalStorage.clearSession();
+        
+        showProfileSelection();
+        DOM.showToast('Deslogando usuário!', 'success');
     }
 });
 
@@ -228,6 +226,14 @@ if (godModeInput) {
                     
                     // Apply role-based visibility
                     AuthService.applyRoleBasedVisibility();
+
+                    // If login successful, close profile screen if open
+                    if (profileScreen) {
+                        profileScreen.style.display = 'none';
+                        document.body.classList.remove('no-scroll');
+                    }
+
+                    startPolling();
                 }
             } catch (error) {
                 console.error('Erro no God Mode:', error);
@@ -272,14 +278,29 @@ async function init() {
         
         const token = LocalStorage.getItem('githubToken');
         await loadData();
+        startPolling();
     }
+}
 
-    // Start polling service
-    setInterval(() => {
+function startPolling() {
+    if (pollingInterval) return;
+
+    console.log('Iniciando polling...');
+    pollingInterval = setInterval(() => {
         if (LocalStorage.getItem('appUser')) {
             loadData(true);
+        } else {
+            stopPolling();
         }
     }, ApiConstants.POLLING_INTERVAL);
+}
+
+function stopPolling() {
+    if (pollingInterval) {
+        console.log('Parando polling...');
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+    }
 }
 
 
@@ -359,6 +380,7 @@ async function handleLogin(item, password) {
         await loadData(true);
         
         AuthService.applyRoleBasedVisibility();
+        startPolling();
         
     } catch (error) {
         console.error('Erro no login:', error);
@@ -366,6 +388,28 @@ async function handleLogin(item, password) {
     } finally {
         DOM.showLoading(false);
     }
+}
+
+function handleLogout() {
+    // Confirm before logout to prevent accidental clicks
+    if (!confirm('Tem certeza que deseja deslogar?')) {
+        return;
+    }
+    
+    // Clear all credentials and tokens
+    LocalStorage.removeItem('token');
+    LocalStorage.removeItem('appUser');
+    LocalStorage.removeItem('appUserId');
+    LocalStorage.removeItem('githubToken');
+    LocalStorage.removeItem('previousUser');
+    
+    stopPolling();
+
+    // Show profile selection screen
+    showProfileSelection();
+    
+    // Show confirmation toast
+    DOM.showToast('Usuário deslogado!', 'success');
 }
 
 function showProfileSelection() {
@@ -432,6 +476,14 @@ function updateUserDisplay(userName) {
 }
 
 async function loadData(skipLoading = false) {
+    // Authentication gate: prevent API calls if user is not logged in
+    const token = LocalStorage.getItem('token');
+    const appUser = LocalStorage.getItem('appUser');
+    
+    if (!token || !appUser) {
+        return;
+    }
+    
     if (!skipLoading) {
         DOM.showLoading(true);
     }
@@ -657,6 +709,8 @@ function addRelatedTaskInput(url = '', summary = '') {
 }
 
 document.getElementById('changeUserBtn').addEventListener('click', showProfileSelection);
+document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+
 
 document.getElementById('newSprintBtn').addEventListener('click', async () => {
     const sprintName = prompt('Informe o nome da nova Sprint (ex: 28):', 'Sprint ');
