@@ -339,7 +339,7 @@ table {
     background-color: rgba(88, 166, 255, 0.1);
     color: var(--accent-color);
     font-weight: 700;
-    padding-top: 1.5rem;
+    padding-top: 0.5rem;
     padding-bottom: 0.5rem;
     padding-left: 1rem;
     border-bottom: 2px solid var(--border-color);
@@ -359,7 +359,7 @@ table {
 
 th {
     text-align: left;
-    padding: 1rem;
+    padding: 10px;
     background: rgba(48, 54, 61, 0.2);
     color: var(--text-secondary);
     font-size: 0.75rem;

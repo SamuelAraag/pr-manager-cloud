@@ -1,5 +1,12 @@
 export const ChangelogData = [
     {
+        version: "5.1.15",
+        date: "2026-02-07",
+        changes: [
+            "Removido a coluna de 'Projeto' e adicionado o número da task Jira ao lado esquerdo do resumo",
+        ]
+    },
+    {
         version: "5.3.15",
         date: "2026-02-07",
         changes: [
