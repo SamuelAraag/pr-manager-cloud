@@ -391,24 +391,14 @@ async function handleLogin(item, password) {
 }
 
 function handleLogout() {
-    // Confirm before logout to prevent accidental clicks
     if (!confirm('Tem certeza que deseja deslogar?')) {
         return;
     }
     
-    // Clear all credentials and tokens
-    LocalStorage.removeItem('token');
-    LocalStorage.removeItem('appUser');
-    LocalStorage.removeItem('appUserId');
-    LocalStorage.removeItem('githubToken');
-    LocalStorage.removeItem('previousUser');
-    
+    LocalStorage.clearSession();
     stopPolling();
-
-    // Show profile selection screen
     showProfileSelection();
     
-    // Show confirmation toast
     DOM.showToast('Usuário deslogado!', 'success');
 }
 

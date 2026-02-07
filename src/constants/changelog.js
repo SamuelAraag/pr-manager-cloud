@@ -5,6 +5,7 @@ export const ChangelogData = [
         changes: [
             "Incluído imagem do desenvolvedor ao PR",
             "Incluído botão de sair",
+            "Inserido um destaque na base do último link clicado, Chat Teams, Task Jira ou Pull Request"
         ]
     },
     {

@@ -398,8 +398,33 @@ tr:hover {
     text-decoration: none;
 }
 
+
 .link-icon:hover {
     text-decoration: underline;
+}
+
+/* Visited Link Highlight */
+.visited-link {
+    position: relative;
+    color: #fff !important;
+    text-shadow: 0 0 10px var(--accent-color);
+}
+
+.visited-link::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--accent-color);
+    box-shadow: 0 0 10px var(--accent-color);
+    animation: expandWidth 0.3s ease;
+}
+
+@keyframes expandWidth {
+    from { width: 0; }
+    to { width: 100%; }
 }
 
 /* Modal */

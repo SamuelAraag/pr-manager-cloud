@@ -40,6 +40,7 @@ const clearSession = () => {
         removeItem('appUserId');
         removeItem('githubToken');
         removeItem('previousUser');
+        removeItem('lastClickedLink');
     } catch (error) {
         console.error("Erro ao limpar o localStorage:", error);
     }
