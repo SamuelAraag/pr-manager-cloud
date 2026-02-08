@@ -623,7 +623,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                 <div style="display: flex; align-items: center; gap: 8px;">
                     ${expandBtn}
                     <span class="tag">${mainJiraId}</span>
-                    ${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}
+                    ${pr.summary || '-'}
                 </div>
             </td>
             <td>
@@ -632,7 +632,12 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                     ${pr.dev || '-'}
                 </div>
             </td>
-            <td><span class="status-badge" style="background: #8e44ad">Mergeado</span></td>
+            <td>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <span class="status-badge" style="background: #8e44ad">Mergeado</span>
+                    ${pr.noTestingRequired ? '<span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Não requer testes de QA">Sem Teste</span>' : ''}
+                </div>
+            </td>
             <td style="font-size: 0.8rem; color: var(--text-secondary);">${pr.rollback || '-'}</td>
             <td>
                 <div style="display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
