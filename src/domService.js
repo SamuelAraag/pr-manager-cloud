@@ -14,6 +14,20 @@ const getProfileImage = (userName) => {
     return profileImages[userName] || 'src/assets/profiles/default-profile.png';
 };
 
+// Check if link is the last clicked one
+const getLinkAttrs = (uniqueId, extraClass = '') => {
+    const lastId = localStorage.getItem('lastClickedLink');
+    const isLast = lastId === uniqueId;
+    return ` onclick="window.trackLinkClick(this, '${uniqueId}')" class="${extraClass}${isLast ? ' visited-link' : ''}" `;
+};
+
+// Global tracker
+window.trackLinkClick = (element, uniqueId) => {
+    localStorage.setItem('lastClickedLink', uniqueId);
+    document.querySelectorAll('.visited-link').forEach(el => el.classList.remove('visited-link'));
+    element.classList.add('visited-link');
+};
+
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -147,7 +161,7 @@ function renderOpenTable(data, containerId, onEdit) {
                         ${pr.noTestingRequired ? '<span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Não requer testes de QA">Sem Teste</span>' : ''}
                     </div>
                 </td>
-                <td><div style="display: flex; gap: 0.8rem;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 16px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 16px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>
+                <td><div style="display: flex; gap: 0.8rem;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 16px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 16px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>
                 <td>
                     <div style="display: flex; gap: 5px; justify-content: flex-end;">
                         <button class="btn btn-outline edit-btn" style="padding: 0.4rem;" title="Editar"><i data-lucide="edit-3" style="width: 14px;"></i></button>
@@ -273,7 +287,7 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
             let gitlabLink = '';
             if (batch.gitlabIssueLink) {
                 gitlabLink = `
-                    <a href="${batch.gitlabIssueLink}" target="_blank" class="btn" style="background-color: #30363d; color: var(--text-secondary); padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; border: 1px solid #444; border-radius: 4px;">
+                    <a href="${batch.gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-testing-' + batch.batchId, 'btn')} style="background-color: #30363d; color: var(--text-secondary); padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; border: 1px solid #444; border-radius: 4px;">
                         <i data-lucide="gitlab" style="width: 14px;"></i>
                         Ver Chamado
                     </a>
@@ -314,7 +328,7 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
             const tableContainer = document.createElement('div');
             tableContainer.className = 'table-container';
             const table = document.createElement('table');
-            table.innerHTML = `<thead><tr><th>Projeto</th><th>Resumo</th><th>Dev</th><th>Links</th></tr></thead><tbody></tbody>`;
+            table.innerHTML = `<thead><tr><th>Resumo</th><th>Dev</th><th>Links</th></tr></thead><tbody></tbody>`;
             const tbody = table.querySelector('tbody');
             (batch.pullRequests || []).forEach(pr => {
                 const tr = document.createElement('tr');
@@ -327,8 +341,9 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
                     </button>
                 `;
 
-                tr.innerHTML = `<td><span class="tag">${pr.project || '-'}</span></td><td>${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td><td><div style="display: flex; align-items: center; gap: 8px;"><img src="${getProfileImage(pr.dev)}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" title="${pr.dev}">${pr.dev || '-'}</div></td><td><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
-                 tbody.appendChild(tr);
+                const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
+                tr.innerHTML = `<td><div style="display: flex; align-items: center; gap: 8px;"><span class="tag">${mainJiraId}</span> ${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</div></td><td><div style="display: flex; align-items: center; gap: 8px;"><img src="${getProfileImage(pr.dev)}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" title="${pr.dev}">${pr.dev || '-'}</div></td><td><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
+                tbody.appendChild(tr);
             });
 
             tableContainer.appendChild(table);
@@ -367,7 +382,7 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit) {
             let gitlabLink = '';
             if (batch.gitlabIssueLink) {
                  gitlabLink = `
-                    <a href="${batch.gitlabIssueLink}" target="_blank" style="color: var(--text-secondary); font-size: 0.75rem; text-decoration: none; opacity: 0.8;">
+                    <a href="${batch.gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-history-' + batch.batchId, '')} style="color: var(--text-secondary); font-size: 0.75rem; text-decoration: none; opacity: 0.8;">
                         <i data-lucide="gitlab" style="width: 12px;"></i> Issue
                     </a>
                 `;
@@ -407,7 +422,7 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit) {
             const tbody = table.querySelector('tbody');
             (batch.pullRequests || []).forEach(pr => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td style="padding:0.5rem; color:var(--text-secondary);">${pr.project || '-'}</td><td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td><td style="padding:0.5rem; color:var(--text-secondary);"><div style="display: flex; align-items: center; gap: 8px;"><img src="${getProfileImage(pr.dev)}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" title="${pr.dev}">${pr.dev || '-'}</div></td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>`;
+                tr.innerHTML = `<td style="padding:0.5rem; color:var(--text-secondary);">${pr.project || '-'}</td><td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td><td style="padding:0.5rem; color:var(--text-secondary);"><div style="display: flex; align-items: center; gap: 8px;"><img src="${getProfileImage(pr.dev)}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" title="${pr.dev}">${pr.dev || '-'}</div></td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>`;
                 tbody.appendChild(tr);
             });
 
@@ -485,7 +500,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
         let gitlabLink = '';
         if (gitlabIssueLink) {
                 gitlabLink = `
-                <a href="${gitlabIssueLink}" target="_blank" class="btn" style="background-color: #FC6D26; color: white; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; border-radius: 4px;">
+                <a href="${gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-approved-' + uniqueKey, 'btn')} style="background-color: #FC6D26; color: white; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; border-radius: 4px;">
                     <i data-lucide="gitlab" style="width: 14px;"></i>
                     Ver Chamado
                 </a>
@@ -572,7 +587,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     const tableContainer = document.createElement('div');
     tableContainer.className = 'table-container';
     const table = document.createElement('table');
-    table.innerHTML = `<thead><tr><th>Projeto</th><th>Resumo</th><th>Dev</th><th>Status</th><th>Rollback</th><th>Links</th></tr></thead><tbody></tbody>`;
+    table.innerHTML = `<thead><tr><th>Resumo</th><th>Dev</th><th>Status</th><th>Rollback</th><th>Links</th></tr></thead><tbody></tbody>`;
     const tbody = table.querySelector('tbody');
     
     projectPrs.forEach(pr => {
@@ -608,22 +623,27 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                 <div style="display: flex; align-items: center; gap: 8px;">
                     ${expandBtn}
                     <span class="tag">${mainJiraId}</span>
+                    ${pr.summary || '-'}
                 </div>
             </td>
-            <td style="font-weight: 500;">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td>
             <td>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <img src="${getProfileImage(pr.dev)}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" title="${pr.dev}">
                     ${pr.dev || '-'}
                 </div>
             </td>
-            <td><span class="status-badge" style="background: #8e44ad">Mergeado</span></td>
+            <td>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <span class="status-badge" style="background: #8e44ad">Mergeado</span>
+                    ${pr.noTestingRequired ? '<span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Não requer testes de QA">Sem Teste</span>' : ''}
+                </div>
+            </td>
             <td style="font-size: 0.8rem; color: var(--text-secondary);">${pr.rollback || '-'}</td>
             <td>
                 <div style="display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
-                    ${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" class="link-icon" title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}
-                    ${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}
-                    ${pr.prLink ? `<a href="${pr.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}
+                    ${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}
+                    ${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}
+                    ${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}
                     ${renderRelatedLinks(pr.linksRelatedTask)}
                     ${prRemoveBtn}
                     ${archiveBtn}
@@ -671,7 +691,7 @@ function renderRelatedTasksList(linksString, projectTag = 'DF-e') {
 
             return `
                 <div style="margin-bottom: 8px; display: flex; align-items: center;">
-                    <a href="${link}" target="_blank" style="color: var(--text-primary); text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; transition: all 0.2s ease;" onmouseover="this.style.color='#bc85ff'" onmouseout="this.style.color='var(--text-primary)'">
+                    <a href="${link}" target="_blank" ${getLinkAttrs('related-list-' + link, '')} style="color: var(--text-primary); text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; transition: all 0.2s ease;" onmouseover="this.style.color='#bc85ff'" onmouseout="this.style.color='var(--text-primary)'">
                         <i data-lucide="corner-down-right" style="width: 14px; height: 14px; color: #bc85ff;"></i>
                         ${tagHtml}
                         <span>${summary}</span>
@@ -703,7 +723,7 @@ function renderRelatedLinks(linksString) {
             const cleanLink = link.trim();
             if (!cleanLink.startsWith('http')) return '';
             
-            return `<a href="${cleanLink}" target="_blank" class="link-icon" title="${summary || 'Tarefa Vinculada'}" style="color: #bc85ff; position: relative;">
+            return `<a href="${cleanLink}" target="_blank" ${getLinkAttrs('related-' + cleanLink, 'link-icon')} title="${summary || 'Tarefa Vinculada'}" style="color: #bc85ff; position: relative;">
                 <i data-lucide="link" style="width: 14px;"></i>
             </a>`;
         }).join('');
