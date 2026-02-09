@@ -1,5 +1,13 @@
 export const ChangelogData = [
     {
+        version: "5.4.18",
+        date: "2026-02-09",
+        changes: [
+            "Automação na atualização da task do JIRA, quando uma versão é liberada para teste, o status da task é atualizado para 'Versão STG Liberada'",
+            "Ajuste na quantidade de PRs em aberto refletindo apenas os PRs que não foram aprovados e que não foram liberados para STG",
+        ]
+    },
+    {
         version: "5.3.17",
         date: "2026-02-09",
         changes: [

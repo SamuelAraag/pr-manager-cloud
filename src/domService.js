@@ -465,8 +465,8 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit) {
     
     const totalApprovedBadge = document.getElementById('totalApprovedPrs');
     if (totalApprovedBadge) {
-        totalApprovedBadge.textContent = approvedPrs.length;
-        totalApprovedBadge.style.display = approvedPrs.length > 0 ? 'inline-block' : 'none';
+        totalApprovedBadge.textContent = pendingBatches.length;
+        totalApprovedBadge.style.display = pendingBatches.length > 0 ? 'inline-block' : 'none';
     }
     
     const backlogByProject = backlogPrs.reduce((acc, pr) => {

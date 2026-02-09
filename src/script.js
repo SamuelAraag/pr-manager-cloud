@@ -858,6 +858,8 @@ function openSetupModal() {
         if (config) {
             ghTokenInput.value = config.githubToken || '';
             document.getElementById('glTokenInput').value = config.gitlabToken || '';
+            document.getElementById('jiraEmailInput').value = config.jiraUserEmail || '';
+            document.getElementById('jiraTokenInput').value = config.jiraToken || '';
         } else {
             ghTokenInput.value = LocalStorage.getItem('githubToken') || '';
             document.getElementById('glTokenInput').value = LocalStorage.getItem('gitlabToken') || '';
@@ -876,6 +878,8 @@ function openSetupModal() {
 document.getElementById('saveConfigBtn').addEventListener('click', async () => {
     const ghToken = ghTokenInput.value.trim();
     const glToken = document.getElementById('glTokenInput').value.trim();
+    const jiraEmail = document.getElementById('jiraEmailInput').value.trim();
+    const jiraToken = document.getElementById('jiraTokenInput').value.trim();
     const secretPass = document.getElementById('secretPasswordInput').value.trim();
     
     if (!ghToken || !glToken) {
@@ -892,6 +896,8 @@ document.getElementById('saveConfigBtn').addEventListener('click', async () => {
         await API.saveAutomationConfig({
             githubToken: ghToken,
             gitlabToken: glToken,
+            jiraUserEmail: jiraEmail,
+            jiraToken: jiraToken,
             secretPassword: secretPass
         });
 
