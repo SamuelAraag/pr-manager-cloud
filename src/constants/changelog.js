@@ -1,5 +1,12 @@
 export const ChangelogData = [
     {
+        version: "5.3.17",
+        date: "2026-02-09",
+        changes: [
+            "Ordenação dos Pull Requests por Nome do projeto e versão na tabela de versões liberadas para teste",
+        ]
+    },
+    {
         version: "5.3.16",
         date: "2026-02-07",
         changes: [

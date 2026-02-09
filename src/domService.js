@@ -248,6 +248,26 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
         
         if (deployedBatches.length === 0) return;
 
+        const sortedBatches = deployedBatches.sort((a, b) => {
+            const projectCompare = (a.project || '').localeCompare(b.project || ''); //project name first
+            if (projectCompare !== 0) return projectCompare;
+            
+            const versionA = a.version || '0.0.0.0';
+            const versionB = b.version || '0.0.0.0';
+            
+            const partsA = versionA.split('.').map(Number);
+            const partsB = versionB.split('.').map(Number);
+            
+            for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+                const partA = partsA[i] || 0;
+                const partB = partsB[i] || 0;
+                if (partA !== partB) {
+                    return partB - partA; //version descending order
+                }
+            }
+            return 0;
+        });
+
         const headerContainer = document.createElement('div');
         headerContainer.className = 'fade-in-row';
         headerContainer.style.animationDelay = `${animationDelay}ms`;
@@ -282,8 +302,7 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
 
         container.appendChild(headerContainer);
 
-        // Render Deployed Version Batches within Sprint
-        deployedBatches.forEach(batch => {
+        sortedBatches.forEach(batch => {
             let gitlabLink = '';
             if (batch.gitlabIssueLink) {
                 gitlabLink = `
@@ -301,8 +320,8 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
             `;
 
             const card = document.createElement('div');
-            card.className = 'data-card fade-in-row'; // Add animation class
-            card.style.animationDelay = `${animationDelay}ms`; // Set delay
+            card.className = 'data-card fade-in-row';
+            card.style.animationDelay = `${animationDelay}ms`;
             animationDelay += 50;
             card.style.marginBottom = '1.5rem';
             card.style.borderLeft = '4px solid #8e44ad';
