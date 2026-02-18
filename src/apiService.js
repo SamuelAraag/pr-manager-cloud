@@ -497,6 +497,39 @@ async function archivePR(prId) {
   }
 }
 
+async function cancelVersionRequest(batchId) {
+  const url = `${ApiConstants.BASE_URL}/VersionBatches/cancel-request/${batchId}`;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: getBackendHeaders(),
+    });
+    if (!response.ok)
+      throw new Error(`Falha ao cancelar solicitação: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    console.error("Erro ao cancelar solicitação:", error);
+    throw error;
+  }
+}
+
+async function cancelVersionRequestByPrIds(prIds) {
+  const url = `${ApiConstants.BASE_URL}/VersionBatches/cancel-request-by-ids`;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: getBackendHeaders(),
+      body: JSON.stringify(prIds),
+    });
+    if (!response.ok)
+      throw new Error(`Falha ao cancelar solicitação por IDs: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    console.error("Erro ao cancelar solicitação por IDs:", error);
+    throw error;
+  }
+}
+
 export {
   fetchPRs,
   fetchSprints,
@@ -514,6 +547,8 @@ export {
   removeVersionFromBatch,
   removePrFromBatch,
   deleteBatch,
+  cancelVersionRequest,
+  cancelVersionRequestByPrIds,
   completeSprint,
   createSprint,
   updateBatch,

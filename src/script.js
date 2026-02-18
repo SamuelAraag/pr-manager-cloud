@@ -1144,6 +1144,40 @@ window.removePrFromBatch = async (batchId, prId) => {
     }
 };
 
+window.cancelVersionRequestByPrIds = async (prIds) => {
+    if (!prIds || !prIds.length) return;
+    
+    if (confirm(`Deseja CANCELAR a solicitação de versão para estes ${prIds.length} PRs? \nEles voltarão para a lista de 'Aprovados'.`)) {
+        try {
+            DOM.showLoading(true);
+            await API.cancelVersionRequestByPrIds(prIds);
+            DOM.showToast('Solicitação cancelada com sucesso!');
+            await loadData(true);
+        } catch (error) {
+            console.error('Erro ao cancelar solicitação por IDs:', error);
+            DOM.showToast('Erro ao cancelar solicitação: ' + error.message, 'error');
+        } finally {
+            DOM.showLoading(false);
+        }
+    }
+};
+
+window.cancelVersionRequest = async (batchId) => {
+    if (confirm(`Deseja CANCELAR a solicitação de versão? \nOs PRs voltarão para a lista de 'Aprovados' e sairão deste lote.`)) {
+        try {
+            DOM.showLoading(true);
+            await API.cancelVersionRequest(batchId);
+            DOM.showToast('Solicitação cancelada com sucesso!');
+            await loadData(true);
+        } catch (error) {
+            console.error('Erro ao cancelar solicitação:', error);
+            DOM.showToast('Erro ao cancelar solicitação: ' + error.message, 'error');
+        } finally {
+            DOM.showLoading(false);
+        }
+    }
+};
+
 window.deleteBatch = async (batchId) => {
     if (confirm(`ATENÇÃO: Deseja DELETAR este lote completamente?\nTodos os PRs voltarão para o status 'Aprovado' e o lote será removido.`)) {
         try {

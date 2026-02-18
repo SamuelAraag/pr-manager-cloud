@@ -1,5 +1,14 @@
 export const ChangelogData = [
     {
+        version: "5.4.19",
+        date: "2026-02-18",
+        changes: [
+            "Adicionado botão para cancelar solicitação de versão, retornando os PRs para a lista de aprovados",
+            "Implementado cancelamento de solicitações de versão órfãs (sem lote associado)",
+            "Permissão para administradores cancelarem qualquer solicitação de versão, mesmo já integradas"
+        ]
+    },
+    {
         version: "5.4.18",
         date: "2026-02-09",
         changes: [
