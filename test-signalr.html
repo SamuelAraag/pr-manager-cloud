@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RabbitMQ + SignalR Test</title>
+    <!-- Incluindo SignalR do CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #messages { border: 1px solid #ccc; padding: 10px; min-height: 200px; max-height: 400px; overflow-y: auto; background: #f9f9f9; }
+        .message { border-bottom: 1px solid #eee; padding: 5px 0; }
+        .timestamp { font-size: 0.8em; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>Teste de Notificação em Tempo Real (SignalR)</h1>
+    <p>Este cliente está conectado ao Hub. Altere um PR no Swagger ou na aplicação para ver a notificação aqui.</p>
+    
+    <div id="status">Desconectado</div>
+    <div id="messages"></div>
+
+    <script>
+        const statusDiv = document.getElementById("status");
+        const messagesDiv = document.getElementById("messages");
+
+        // 1. Criar a conexão
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("http://localhost:5231/notificationHub")
+            .withAutomaticReconnect()
+            .build();
+
+        // 2. Definir o que acontece quando recebe mensagem "ReceiveNotification"
+        connection.on("ReceiveNotification", (message) => {
+            console.log("Notificação recebida:", message);
+            
+            const msgEl = document.createElement("div");
+            msgEl.className = "message";
+            msgEl.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> RabbitMQ Diz: <strong>${message}</strong>`;
+            
+            messagesDiv.prepend(msgEl);
+        });
+
+        // 3. Iniciar conexão
+        async function start() {
+            try {
+                await connection.start();
+                statusDiv.innerHTML = "<span style='color:green'>Conectado! Aguardando mensagens...</span>";
+                console.log("SignalR Connected.");
+            } catch (err) {
+                statusDiv.innerHTML = "<span style='color:red'>Erro ao conectar: " + err + "</span>";
+                console.error(err);
+                setTimeout(start, 5000);
+            }
+        }
+
+        start();
+    </script>
+</body>
+</html>

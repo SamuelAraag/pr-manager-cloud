@@ -582,26 +582,87 @@ kbd {
 }
 
 /* Success/Error Toasts */
-.toast {
+.toast-container {
     position: fixed;
     bottom: 2rem;
     right: 2rem;
-    padding: 1rem 2rem;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    pointer-events: none; /* Allow clicking through container */
+}
+
+.toast {
+    pointer-events: auto;
+    position: relative;
+    padding: 1rem 1.2rem;
     border-radius: 8px;
     color: white;
     font-weight: 500;
-    display: none;
-    animation: slideIn 0.3s ease-out;
-    z-index: 2000;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    min-width: 320px;
+    max-width: 450px;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 0.9rem;
+    line-height: 1.4;
 }
 
-.toast-success { background: var(--success-color); }
-.toast-warning { background: var(--warning-color); }
-.toast-error { background: var(--danger-color); }
+.toast-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+}
 
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: block;
+    font-size: 0.95rem;
+}
+
+.toast-message {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: white;
+    opacity: 0.6;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 8px;
+    transition: opacity 0.2s;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
+.toast-success { background: rgba(35, 134, 54, 0.95); border-left: 4px solid #3fb950; }
+.toast-warning { background: rgba(210, 153, 34, 0.95); border-left: 4px solid #f0b840; color: #fff; }
+.toast-error { background: rgba(218, 54, 51, 0.95); border-left: 4px solid #f85149; }
+.toast-info { background: rgba(31, 111, 235, 0.95); border-left: 4px solid #58a6ff; }
+
+@keyframes slideInRight {
+    from { transform: translateX(120%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    to { transform: translateX(120%); opacity: 0; }
 }
 
 footer {

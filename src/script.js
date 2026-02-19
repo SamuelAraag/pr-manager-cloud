@@ -7,6 +7,7 @@ import { EffectService } from './effectService.js';
 import { ApiConstants } from './constants/apiConstants.js';
 import { CURRENT_VERSION } from './constants/changelog.js';
 import { extractJiraId } from './utils.js';
+import { connectSignalR } from './notificationService.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -276,9 +277,10 @@ async function init() {
     } else {
         updateUserDisplay(appUser);
         
-        const token = LocalStorage.getItem('githubToken');
         await loadData();
+        DOM.loadPendingToasts();
         startPolling();
+        connectSignalR();
     }
 }
 
@@ -381,6 +383,7 @@ async function handleLogin(item, password) {
         
         AuthService.applyRoleBasedVisibility();
         startPolling();
+        connectSignalR();
         
     } catch (error) {
         console.error('Erro no login:', error);
@@ -487,6 +490,7 @@ async function loadData(skipLoading = false) {
         
         if (prResult && batches && sprints) {
             currentData.prs = prResult.prs;
+            currentData.batches = batches;
             currentData.sprints = sprints;
             DOM.renderTable(prResult.prs, batches, sprints, openEditModal);
         } else {
@@ -738,10 +742,18 @@ window.approvePr = async (prId) => {
 
     try {
         DOM.showLoading(true);
-        await API.approvePR(prId, parseInt(appUserId));
+        const updatedPR = await API.approvePR(prId, parseInt(appUserId));
         
         DOM.showToast('PR Aprovado com sucesso!');
-        await loadData(true);
+        
+        // Local update
+        const index = currentData.prs.findIndex(p => p.id == prId);
+        if (index !== -1 && updatedPR) {
+            currentData.prs[index] = updatedPR;
+            DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
+        } else {
+             await loadData(true);
+        }
         
         const prModal = document.getElementById('prModal');
         if (prModal && prModal.style.display === 'flex') {
@@ -764,10 +776,19 @@ window.requestCorrection = async (prId) => {
 
     try {
         DOM.showLoading(true);
-        await API.requestCorrection(prId);
+        const updatedPR = await API.requestCorrection(prId);
         
         DOM.showToast('Correção solicitada com sucesso!');
-        await loadData(true);
+        
+         // Local update
+        const index = currentData.prs.findIndex(p => p.id == prId);
+        if (index !== -1 && updatedPR) {
+            currentData.prs[index] = updatedPR;
+             DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
+        } else {
+            await loadData(true);
+        }
+
     } catch (error) {
         console.error('Erro ao solicitar correção:', error);
         DOM.showToast('Erro ao solicitar correção: ' + error.message, 'error');
@@ -785,10 +806,19 @@ window.markPrFixed = async (prId) => {
 
     try {
         DOM.showLoading(true);
-        await API.markPrFixed(prId);
+        const updatedPR = await API.markPrFixed(prId);
         
         DOM.showToast('PR marcado como corrigido!');
-        await loadData(true);
+        
+        // Local update
+        const index = currentData.prs.findIndex(p => p.id == prId);
+        if (index !== -1 && updatedPR) {
+            currentData.prs[index] = updatedPR;
+            DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
+        } else {
+            await loadData(true);
+        }
+
     } catch (error) {
         console.error('Erro ao marcar corrigido:', error);
         DOM.showToast('Erro: ' + error.message, 'error');
@@ -809,7 +839,11 @@ window.archivePr = async (prId) => {
         await API.archivePR(prId);
         
         DOM.showToast('PR arquivado com sucesso!');
-        await loadData(true);
+        
+        // Local update - remove from list
+        currentData.prs = currentData.prs.filter(p => p.id != prId);
+        DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
+
     } catch (error) {
         console.error('Erro ao arquivar:', error);
         DOM.showToast('Erro ao arquivar: ' + error.message, 'error');
@@ -959,13 +993,24 @@ prForm.addEventListener('submit', async (e) => {
         
         if (prIdInput) {
             savedPR = await API.updatePR(prIdInput, prData);
-            DOM.showToast('PR atualizado com sucesso!');
+            // DOM.showToast('PR atualizado com sucesso!');
+            
+            // Local update
+            const index = currentData.prs.findIndex(p => p.id == prIdInput);
+            if (index !== -1 && savedPR) {
+                currentData.prs[index] = savedPR;
+            }
         } else {
             savedPR = await API.createPR(prData);
-            DOM.showToast('PR criado com sucesso!');
+            // DOM.showToast('PR criado com sucesso!');
+            
+            // Local update
+            if (savedPR) {
+                currentData.prs.push(savedPR);
+            }
         }
         
-        await loadData(true);
+        DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
         
         prModal.style.display = 'none';
         prForm.reset();
