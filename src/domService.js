@@ -578,7 +578,6 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
             </button>`;
     }
     
-    
     let deleteBatchBtn = '';
     if (batchId) {
         deleteBatchBtn = `
@@ -586,12 +585,38 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                 title="Deletar este lote completamente" 
                 onclick="window.deleteBatch('${batchId}')">
                 <i data-lucide="trash" style="width: 14px;"></i>
-                Deletar Lote
+            </button>
+        `;
+    }
+
+    let cancelRequestBtn = '';
+    const isAdmin = AuthService.isAdmin();
+    if (batchId && (isAdmin || (!hasVersionInfo && !gitlabIssueLink))) {
+        cancelRequestBtn = `
+            <button class="btn" data-roles="Admin,QA" style="background: transparent; color: #e67e22; border: 1px solid #e67e22; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" 
+                title="Cancelar Solicitação (Retornar PRs)" 
+                onclick="window.cancelVersionRequest('${batchId}')">
+                <i data-lucide="x-circle" style="width: 14px;"></i>
+                Cancelar
+            </button>
+        `;
+    }
+    else if (!batchId && isRequestingVersion && projectPrs && projectPrs.length > 0) {
+        const prIds = projectPrs.map(p => p.id).join(',');
+        const prIdsArrayString = JSON.stringify(projectPrs.map(p => p.id));
+        
+        cancelRequestBtn = `
+            <button class="btn" data-roles="Admin,QA" style="background: transparent; color: #e67e22; border: 1px solid #e67e22; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" 
+                title="Cancelar Solicitação (Retornar PRs)" 
+                onclick='window.cancelVersionRequestByPrIds(${prIdsArrayString})'>
+                <i data-lucide="x-circle" style="width: 14px;"></i>
+                Cancelar
             </button>
         `;
     }
     
     rightContent += requestVersionBtn;
+    rightContent += cancelRequestBtn;
     rightContent += deleteBatchBtn;
 
     const headerDiv = document.createElement('div');
