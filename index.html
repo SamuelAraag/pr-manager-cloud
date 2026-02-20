@@ -64,6 +64,25 @@
                     <i data-lucide="settings"></i>
                 </button>
 
+                <div id="notificationBellWrapper" style="position: relative; display: none;">
+                    <button id="notificationBellBtn" class="btn btn-outline" title="Notificacoes"
+                        style="position: relative;">
+                        <i data-lucide="bell"></i>
+                        <span id="notificationBadge"
+                            style="display: none; position: absolute; top: -5px; right: -5px; background: #f85149; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; font-weight: 700; align-items: center; justify-content: center; pointer-events: none;">0</span>
+                    </button>
+                    <div id="notificationPanel" class="notification-panel" style="display: none;">
+                        <div class="notification-panel-header">
+                            <span>Notificacoes</span>
+                            <button id="clearNotificationsBtn" class="btn"
+                                style="background: transparent; color: var(--text-secondary); font-size: 0.75rem; padding: 0.2rem 0.5rem; border: 1px solid var(--border-color);">Limpar</button>
+                        </div>
+                        <div id="notificationList" class="notification-list">
+                            <p class="notification-empty">Nenhuma notificacao</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="currentUserDisplayRight" class="current-user-avatar dev-only" title="Mudar Usuário"
                     style="width: 100px; height: 100px; font-size: 0.6rem;">--</div>
 

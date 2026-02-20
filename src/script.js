@@ -4,7 +4,6 @@ import * as DOM from './domService.js';
 import * as AuthService from './authService.js';
 import { GitLabService } from './automationService.js';
 import { EffectService } from './effectService.js';
-import { ApiConstants } from './constants/apiConstants.js';
 import { CURRENT_VERSION } from './constants/changelog.js';
 import { extractJiraId } from './utils.js';
 import { connectSignalR } from './notificationService.js';
@@ -12,25 +11,7 @@ import { connectSignalR } from './notificationService.js';
 let currentData = { prs: [] };
 let availableUsers = [];
 
-let pollingInterval = null;
 const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez'];
-
-async function loadUsers() {
-    try {
-        const users = await API.fetchUsers();
-        if (users && users.length > 0) {
-            availableUsers = users;
-            console.log('Usuários:', availableUsers);
-            return true;
-        } else {
-            console.warn('Nenhum usuário encontrado na API, usando lista padrão');
-            return false;
-        }
-    } catch (error) {
-        console.error('Erro ao carregar usuários:', error);
-        return false;
-    }
-}
 
 function renderProfileSelection() {
     const profilesGrid = document.querySelector('.profiles-grid');
@@ -195,11 +176,10 @@ window.addEventListener('keydown', (e) => {
         
         EffectService.triggerScanLine();
 
-        stopPolling();
         LocalStorage.clearSession();
         
         showProfileSelection();
-        DOM.showToast('Deslogando usuário!', 'success');
+        DOM.showToast('Deslogando usuário!');
     }
 });
 
@@ -233,8 +213,6 @@ if (godModeInput) {
                         profileScreen.style.display = 'none';
                         document.body.classList.remove('no-scroll');
                     }
-
-                    startPolling();
                 }
             } catch (error) {
                 console.error('Erro no God Mode:', error);
@@ -266,7 +244,7 @@ async function init() {
         versionEl.textContent = CURRENT_VERSION;
     }
     
-    //TODO: Implementar oadUsers
+    //TODO: Implementar loadUsers
     // await loadUsers();
     renderProfileSelection();
     populateDevList();
@@ -279,32 +257,9 @@ async function init() {
         
         await loadData();
         DOM.loadPendingToasts();
-        startPolling();
         connectSignalR();
     }
 }
-
-function startPolling() {
-    if (pollingInterval) return;
-
-    console.log('Iniciando polling...');
-    pollingInterval = setInterval(() => {
-        if (LocalStorage.getItem('appUser')) {
-            loadData(true);
-        } else {
-            stopPolling();
-        }
-    }, ApiConstants.POLLING_INTERVAL);
-}
-
-function stopPolling() {
-    if (pollingInterval) {
-        console.log('Parando polling...');
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-    }
-}
-
 
 function attachProfileListeners() {
     document.querySelectorAll('.profile-item').forEach(item => {
@@ -329,21 +284,21 @@ function attachProfileListeners() {
         }
 
         item.addEventListener('click', () => {
-             document.querySelectorAll('.profile-item.active').forEach(activeItem => {
-                 if (activeItem !== item) {
-                     activeItem.classList.remove('active');
-                     const activeInput = activeItem.querySelector('.profile-login-input');
-                     if(activeInput) activeInput.value = '';
-                 }
-             });
+            document.querySelectorAll('.profile-item.active').forEach(activeItem => {
+                if (activeItem !== item) {
+                    activeItem.classList.remove('active');
+                    const activeInput = activeItem.querySelector('.profile-login-input');
+                    if(activeInput) activeInput.value = '';
+                }
+            });
 
-             item.classList.toggle('active');
-             
-             if(item.classList.contains('active')) {
-                 setTimeout(() => {
-                     if(input) input.focus();
-                 }, 100);
-             }
+            item.classList.toggle('active');
+            
+            if(item.classList.contains('active')) {
+                setTimeout(() => {
+                    if(input) input.focus();
+                }, 100);
+            }
         });
     });
 }
@@ -382,7 +337,6 @@ async function handleLogin(item, password) {
         await loadData(true);
         
         AuthService.applyRoleBasedVisibility();
-        startPolling();
         connectSignalR();
         
     } catch (error) {
@@ -399,10 +353,9 @@ function handleLogout() {
     }
     
     LocalStorage.clearSession();
-    stopPolling();
     showProfileSelection();
     
-    DOM.showToast('Usuário deslogado!', 'success');
+    DOM.showToast('Usuário deslogado!');
 }
 
 function showProfileSelection() {
@@ -469,16 +422,11 @@ function updateUserDisplay(userName) {
 }
 
 async function loadData(skipLoading = false) {
-    // Authentication gate: prevent API calls if user is not logged in
     const token = LocalStorage.getItem('token');
     const appUser = LocalStorage.getItem('appUser');
     
     if (!token || !appUser) {
         return;
-    }
-    
-    if (!skipLoading) {
-        DOM.showLoading(true);
     }
     
     try {
@@ -504,6 +452,18 @@ async function loadData(skipLoading = false) {
             DOM.showLoading(false);
         }
     }
+}
+
+function refreshOpenPrs(animate = false) {
+    const openPrs = currentData.prs.filter(p => !p.approved);
+    const totalOpenBadge = document.getElementById('totalOpenPrs');
+    if (totalOpenBadge) {
+        totalOpenBadge.textContent = openPrs.length;
+        totalOpenBadge.style.display = openPrs.length > 0 ? 'inline-block' : 'none';
+    }
+    DOM.renderOpenTable(openPrs, 'openPrTableBody', openEditModal, animate);
+    if (window.lucide) window.lucide.createIcons();
+    if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
 }
 
 function openEditModal(pr) {
@@ -741,7 +701,6 @@ window.approvePr = async (prId) => {
     }
 
     try {
-        DOM.showLoading(true);
         const updatedPR = await API.approvePR(prId, parseInt(appUserId));
         
         DOM.showToast('PR Aprovado com sucesso!');
@@ -750,10 +709,10 @@ window.approvePr = async (prId) => {
         const index = currentData.prs.findIndex(p => p.id == prId);
         if (index !== -1 && updatedPR) {
             currentData.prs[index] = updatedPR;
-            DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
-        } else {
-             await loadData(true);
+        } else if (updatedPR) {
+            currentData.prs.push(updatedPR);
         }
+        refreshOpenPrs();
         
         const prModal = document.getElementById('prModal');
         if (prModal && prModal.style.display === 'flex') {
@@ -762,8 +721,6 @@ window.approvePr = async (prId) => {
     } catch (error) {
         console.error('Erro ao aprovar:', error);
         DOM.showToast('Erro ao aprovar: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
     }
 };
 
@@ -775,25 +732,19 @@ window.requestCorrection = async (prId) => {
     }
 
     try {
-        DOM.showLoading(true);
         const updatedPR = await API.requestCorrection(prId);
         
         DOM.showToast('Correção solicitada com sucesso!');
         
-         // Local update
         const index = currentData.prs.findIndex(p => p.id == prId);
         if (index !== -1 && updatedPR) {
             currentData.prs[index] = updatedPR;
-             DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
-        } else {
-            await loadData(true);
         }
+        refreshOpenPrs();
 
     } catch (error) {
         console.error('Erro ao solicitar correção:', error);
         DOM.showToast('Erro ao solicitar correção: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
     }
 };
 
@@ -805,25 +756,19 @@ window.markPrFixed = async (prId) => {
     }
 
     try {
-        DOM.showLoading(true);
         const updatedPR = await API.markPrFixed(prId);
         
         DOM.showToast('PR marcado como corrigido!');
         
-        // Local update
         const index = currentData.prs.findIndex(p => p.id == prId);
         if (index !== -1 && updatedPR) {
             currentData.prs[index] = updatedPR;
-            DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
-        } else {
-            await loadData(true);
         }
+        refreshOpenPrs();
 
     } catch (error) {
         console.error('Erro ao marcar corrigido:', error);
         DOM.showToast('Erro: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
     }
 };
 
@@ -835,20 +780,16 @@ window.archivePr = async (prId) => {
     }
 
     try {
-        DOM.showLoading(true);
         await API.archivePR(prId);
         
         DOM.showToast('PR arquivado com sucesso!');
         
-        // Local update - remove from list
         currentData.prs = currentData.prs.filter(p => p.id != prId);
-        DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
+        refreshOpenPrs();
 
     } catch (error) {
         console.error('Erro ao arquivar:', error);
         DOM.showToast('Erro ao arquivar: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
     }
 };
 
@@ -878,7 +819,7 @@ devInput.addEventListener('change', (e) => {
                     availableUsers.find(u => u.name === e.target.value);
     
     if (e.target.value && !isValid) {
-        DOM.showToast('Desenvolvedor inválido. Escolha um da lista.', 'error');
+        DOM.showToast('Desenvolvedor inválido. Escolha um da lista.', 'warning');
         e.target.value = '';
     }
 });
@@ -906,8 +847,6 @@ function openSetupModal() {
         setupModal.style.display = 'flex';
     });
 }
-
-// ...
 
 document.getElementById('saveConfigBtn').addEventListener('click', async () => {
     const ghToken = ghTokenInput.value.trim();
@@ -956,7 +895,7 @@ prForm.addEventListener('submit', async (e) => {
     const devName = devInputForForm.value;
 
     if (!validDevs.includes(devName) && !availableUsers.find(u => u.name === devName)) {
-        DOM.showToast('Por favor, selecione um desenvolvedor válido da lista.', 'error');
+        DOM.showToast('Por favor, selecione um desenvolvedor válido da lista.', 'warning');
         devInputForForm.focus();
         return;
     }
@@ -967,7 +906,7 @@ prForm.addEventListener('submit', async (e) => {
         const devId = getUserIdByName(devName);
         
         if (!devId) {
-            DOM.showToast('Erro: Desenvolvedor não encontrado', 'error');
+            DOM.showToast('Atenção: Desenvolvedor não encontrado', 'warning');
             return;
         }
         
@@ -1002,15 +941,14 @@ prForm.addEventListener('submit', async (e) => {
             }
         } else {
             savedPR = await API.createPR(prData);
-            // DOM.showToast('PR criado com sucesso!');
+            DOM.showToast('PR criado com sucesso!');
             
-            // Local update
             if (savedPR) {
                 currentData.prs.push(savedPR);
             }
         }
         
-        DOM.renderTable(currentData.prs, currentData.batches, currentData.sprints, openEditModal, false);
+        refreshOpenPrs();
         
         prModal.style.display = 'none';
         prForm.reset();
@@ -1021,7 +959,6 @@ prForm.addEventListener('submit', async (e) => {
         DOM.showLoading(false);
     }
 });
-
 
 window.saveGroupVersion = async (batchId) => {
     const elVersion = document.getElementById(`v_ver_${batchId}`);
