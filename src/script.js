@@ -7,11 +7,20 @@ import { EffectService } from './effectService.js';
 import { CURRENT_VERSION } from './constants/changelog.js';
 import { extractJiraId } from './utils.js';
 import { connectSignalR } from './notificationService.js';
+import { isLocalDev } from './constants/apiConstants.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
 
 const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez'];
+
+function applyDevMode() {
+    if (!isLocalDev()) return;
+    const banner = document.getElementById('devModeBanner');
+    const tag    = document.getElementById('devModeTag');
+    if (banner) banner.style.display = 'block';
+    if (tag)    tag.style.display    = 'inline-block';
+}
 
 function renderProfileSelection() {
     const profilesGrid = document.querySelector('.profiles-grid');
@@ -35,12 +44,13 @@ function renderProfileSelection() {
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
             'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
         };
-        
-        const imageSrc = user.profileImage || defaultImages[user.name] || 'src/assets/profiles/default-profile.png';
+
+        let displayName = user.name;
+        let imageSrc    = user.profileImage || defaultImages[user.name] || 'src/assets/profiles/default-profile.png';
         
         profileItem.innerHTML = `
             <img class="avatar" src="${imageSrc}">
-            <span>${user.name}</span>
+            <span>${displayName}</span>
             <div class="profile-login-container">
                 <input type="password" class="profile-login-input">
                 <button class="profile-login-btn">OK</button>
@@ -246,6 +256,7 @@ async function init() {
     
     //TODO: Implementar loadUsers
     // await loadUsers();
+    applyDevMode();
     renderProfileSelection();
     populateDevList();
     
