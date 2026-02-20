@@ -874,4 +874,4 @@ function showLoading(show) {
     if (dbHist) dbHist.style.display = contentDisplay;
 }
 
-export { showToast, renderTable, showLoading, loadPendingToasts };
+export { showToast, renderTable, renderOpenTable, showLoading, loadPendingToasts };

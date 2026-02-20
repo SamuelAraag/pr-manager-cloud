@@ -1,5 +1,14 @@
 export const ChangelogData = [
     {
+        version: "6.5.20",
+        date: "2026-02-19",
+        changes: [
+            "Implementado atualizações de PRs em tempo real via Toast em tela",
+            "O polling que era usado para atualizar as informações em tela foi substituído pelo SignalR",
+            "Implementado sistema de notificações",
+        ]
+    },
+    {
         version: "5.4.19",
         date: "2026-02-18",
         changes: [
