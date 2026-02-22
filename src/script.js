@@ -7,7 +7,7 @@ import { EffectService } from './effectService.js';
 import { CURRENT_VERSION } from './constants/changelog.js';
 import { extractJiraId } from './utils.js';
 import { connectSignalR } from './notificationService.js';
-import { isLocalDev } from './constants/apiConstants.js';
+import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/apiConstants.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -47,6 +47,11 @@ function renderProfileSelection() {
 
         let displayName = user.name;
         let imageSrc    = user.profileImage || defaultImages[user.name] || 'src/assets/profiles/default-profile.png';
+
+        if (DEMO_MODE && DEMO_USERS[user.name]) {
+            displayName = DEMO_USERS[user.name].name;
+            imageSrc    = DEMO_USERS[user.name].image;
+        }
         
         profileItem.innerHTML = `
             <img class="avatar" src="${imageSrc}">
@@ -378,14 +383,17 @@ function showProfileSelection() {
 }
 
 function updateUserDisplay(userName) {
-    const profileImages = {
-        'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
-        'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
-        'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
-        'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
-    };
-
-    const imageSrc = profileImages[userName] || 'src/assets/profiles/default-profile.png';
+    const imageSrc = (() => {
+        const profileImages = {
+            'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
+            'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
+            'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
+            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
+        };
+        const realImage = profileImages[userName] || 'src/assets/profiles/default-profile.png';
+        if (DEMO_MODE && DEMO_USERS[userName]) return DEMO_USERS[userName].image;
+        return realImage;
+    })();
     const isAdmin = AuthService.isAdmin();
 
     const updateDisplay = (display) => {
@@ -480,7 +488,7 @@ function refreshOpenPrs(animate = false) {
 function openEditModal(pr) {
     document.getElementById('modalTitle').textContent = 'Editar Pull Request';
     document.getElementById('prId').value = pr.id;
-    document.getElementById('project').value = pr.project || 'DF-e';
+    document.getElementById('project').value = getDemoProject(pr.project) || 'Projeto Alpha';
     document.getElementById('dev').value = pr.dev || '';
     document.getElementById('summary').value = pr.summary || '';
     document.getElementById('prLink').value = pr.prLink || '';

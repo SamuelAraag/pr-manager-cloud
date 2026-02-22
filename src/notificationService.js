@@ -1,5 +1,5 @@
 import { extractJiraId } from './utils.js';
-import { ApiConstants } from './constants/apiConstants.js';
+import { ApiConstants, getDemoProject, getDemoName } from './constants/apiConstants.js';
 
 const STORAGE_KEY = 'pr_notifications';
 const UNREAD_KEY  = 'pr_notifications_unread';
@@ -78,14 +78,14 @@ function renderNotificationList() {
                     <div class="notification-item-icon ${n.type}">
                         <i data-lucide="${ICONS[n.type] || 'info'}" style="width:13px; height:13px;"></i>
                     </div>
-                    <span class="notification-item-title">PR - ${n.project}</span>
+                    <span class="notification-item-title">PR - ${getDemoProject(n.project)}</span>
                 </div>
                 <span class="notification-item-time">${n.time}</span>
             </div>
+            ${jiraLine}
             <div class="notification-item-action">
                 <span class="notification-item-msg">${n.msg}</span>
             </div>
-            ${jiraLine}
         ${closeTag}`;
     }).join('');
 
@@ -165,45 +165,70 @@ export async function connectSignalR(onMessageReceived) {
     }
 
     const hubUrl = ApiConstants.BASE_URL.replace('/api', '/notificationHub');
+    const rawUserId = localStorage.getItem('appUserId');
+    const userId = rawUserId ? JSON.parse(rawUserId) : '';
+    const hubUrlWithUser = userId ? `${hubUrl}?userId=${userId}` : hubUrl;
 
     connection = new signalR.HubConnectionBuilder()
-        .withUrl(hubUrl)
+        .withUrl(hubUrlWithUser)
         .withAutomaticReconnect([0, 2000, 10000, 30000])
         .build();
 
     connection.on("ReceiveNotification", (messageJson) => {
         try {
-            const data = JSON.parse(messageJson);
+            const envelope = JSON.parse(messageJson);
+
+            const data = envelope.Pr || envelope;
+            const actionType = envelope.ActionType || '';
 
             const project = data.Project || '';
             const jiraId  = extractJiraId(data.TaskLink);
             const prLink  = data.PrLink || '';
-            let msg  = data.Summary;
+            const dev     = getDemoName(data.Dev || '');
+            let msg  = 'Atualizacao recebida';
             let type = 'info';
 
-            if (data.Status === 'Archived') {
-                type = 'warning';
-                msg  = `PR arquivado`;
-            } else if (data.DeployedToStg) {
-                type = 'success';
-                msg  = `Deploy em Staging (v${data.Version})`;
-            } else if (data.Approved && data.ReqVersion === 'pending') {
-                type = 'info';
-                msg  = `Versao solicitada por ${data.ApprovedBy}`;
-            } else if (data.Approved) {
-                type = 'success';
-                msg  = `Aprovado por ${data.ApprovedBy}`;
-            } else if (data.NeedsCorrection) {
-                type = 'warning';
-                msg  = `Correcao solicitada`;
-            } else if (data.Status === 'Open' && !data.Approved && !data.NeedsCorrection && !data.DeployedToStg) {
-                type = 'info';
-                msg  = `Novo PR adicionado`;
-            } else {
-                msg = `Atualizado`;
+            switch (actionType) {
+                case 'Created':
+                    type = 'info';
+                    msg  = `${dev}: Novo PR criado`;
+                    break;
+                case 'Updated':
+                    type = 'info';
+                    msg  = `${dev}: PR atualizado`;
+                    break;
+                case 'Approved':
+                    type = 'success';
+                    msg  = `Aprovado por: ${getDemoName(data.ApprovedBy) || dev}`;
+                    break;
+                case 'RequestedCorrection':
+                    type = 'warning';
+                    msg  = data.CorrectionReason
+                        ? `Correção solicitada: ${data.CorrectionReason}`
+                        : `Correção solicitada`;
+                    break;
+                case 'MarkedAsFixed':
+                    type = 'success';
+                    msg  = `${dev}: PR marcado como corrigido`;
+                    break;
+                case 'DeployedToStaging':
+                    type = 'success';
+                    msg  = `Deployado em STG${data.Version ? ` - v${data.Version}` : ''}`;
+                    break;
+                case 'MarkedAsDone':
+                    type = 'success';
+                    msg  = `PR concluido`;
+                    break;
+                case 'Archived':
+                    type = 'warning';
+                    msg  = `PR arquivado`;
+                    break;
+                default:
+                    type = 'info';
+                    msg  = `${dev}: PR atualizado`;
             }
 
-            const summary = data.Summary || '';
+            const summary = envelope.Pr.Summary;
             pushNotification({ msg, type, project, jiraId, summary, prLink });
 
             if (onMessageReceived) {
@@ -212,7 +237,7 @@ export async function connectSignalR(onMessageReceived) {
 
         } catch (e) {
             console.error("Error parsing notification:", e);
-            pushNotification("Atualizacao recebida", 'info', 'PR Manager');
+            pushNotification({ msg: 'Atualizacao recebida', type: 'info', project: 'PR Manager', jiraId: '', summary: '', prLink: '' });
             if (onMessageReceived) onMessageReceived();
         }
     });

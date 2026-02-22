@@ -526,7 +526,8 @@ tr:hover {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding-left: 30px;
+    padding-left: 0;
+    margin-top: 4px;
 }
 
 .notification-jira-tag {
@@ -542,7 +543,8 @@ tr:hover {
 }
 
 .notification-item-action {
-    padding: 2px 0 3px 30px;
+    padding: 2px 0 3px 0;
+    margin-top: 2px;
 }
 
 .notification-item-msg {
@@ -555,8 +557,8 @@ tr:hover {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding-left: 30px;
-    margin-top: 2px;
+    padding-left: 0;
+    margin-top: 4px;
 }
 
 .notification-item-summary {
