@@ -4,31 +4,22 @@ import * as DOM from './domService.js';
 import * as AuthService from './authService.js';
 import { GitLabService } from './automationService.js';
 import { EffectService } from './effectService.js';
-import { ApiConstants } from './constants/apiConstants.js';
 import { CURRENT_VERSION } from './constants/changelog.js';
 import { extractJiraId } from './utils.js';
+import { connectSignalR } from './notificationService.js';
+import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/apiConstants.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
 
-let pollingInterval = null;
 const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez'];
 
-async function loadUsers() {
-    try {
-        const users = await API.fetchUsers();
-        if (users && users.length > 0) {
-            availableUsers = users;
-            console.log('Usuários:', availableUsers);
-            return true;
-        } else {
-            console.warn('Nenhum usuário encontrado na API, usando lista padrão');
-            return false;
-        }
-    } catch (error) {
-        console.error('Erro ao carregar usuários:', error);
-        return false;
-    }
+function applyDevMode() {
+    if (!isLocalDev()) return;
+    const banner = document.getElementById('devModeBanner');
+    const tag    = document.getElementById('devModeTag');
+    if (banner) banner.style.display = 'block';
+    if (tag)    tag.style.display    = 'inline-block';
 }
 
 function renderProfileSelection() {
@@ -53,12 +44,18 @@ function renderProfileSelection() {
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
             'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
         };
-        
-        const imageSrc = user.profileImage || defaultImages[user.name] || 'src/assets/profiles/default-profile.png';
+
+        let displayName = user.name;
+        let imageSrc    = user.profileImage || defaultImages[user.name] || 'src/assets/profiles/default-profile.png';
+
+        if (DEMO_MODE && DEMO_USERS[user.name]) {
+            displayName = DEMO_USERS[user.name].name;
+            imageSrc    = DEMO_USERS[user.name].image;
+        }
         
         profileItem.innerHTML = `
             <img class="avatar" src="${imageSrc}">
-            <span>${user.name}</span>
+            <span>${displayName}</span>
             <div class="profile-login-container">
                 <input type="password" class="profile-login-input">
                 <button class="profile-login-btn">OK</button>
@@ -194,11 +191,10 @@ window.addEventListener('keydown', (e) => {
         
         EffectService.triggerScanLine();
 
-        stopPolling();
         LocalStorage.clearSession();
         
         showProfileSelection();
-        DOM.showToast('Deslogando usuário!', 'success');
+        DOM.showToast('Deslogando usuário!');
     }
 });
 
@@ -232,8 +228,6 @@ if (godModeInput) {
                         profileScreen.style.display = 'none';
                         document.body.classList.remove('no-scroll');
                     }
-
-                    startPolling();
                 }
             } catch (error) {
                 console.error('Erro no God Mode:', error);
@@ -265,8 +259,9 @@ async function init() {
         versionEl.textContent = CURRENT_VERSION;
     }
     
-    //TODO: Implementar oadUsers
+    //TODO: Implementar loadUsers
     // await loadUsers();
+    applyDevMode();
     renderProfileSelection();
     populateDevList();
     
@@ -276,33 +271,11 @@ async function init() {
     } else {
         updateUserDisplay(appUser);
         
-        const token = LocalStorage.getItem('githubToken');
         await loadData();
-        startPolling();
+        DOM.loadPendingToasts();
+        connectSignalR();
     }
 }
-
-function startPolling() {
-    if (pollingInterval) return;
-
-    console.log('Iniciando polling...');
-    pollingInterval = setInterval(() => {
-        if (LocalStorage.getItem('appUser')) {
-            loadData(true);
-        } else {
-            stopPolling();
-        }
-    }, ApiConstants.POLLING_INTERVAL);
-}
-
-function stopPolling() {
-    if (pollingInterval) {
-        console.log('Parando polling...');
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-    }
-}
-
 
 function attachProfileListeners() {
     document.querySelectorAll('.profile-item').forEach(item => {
@@ -327,21 +300,21 @@ function attachProfileListeners() {
         }
 
         item.addEventListener('click', () => {
-             document.querySelectorAll('.profile-item.active').forEach(activeItem => {
-                 if (activeItem !== item) {
-                     activeItem.classList.remove('active');
-                     const activeInput = activeItem.querySelector('.profile-login-input');
-                     if(activeInput) activeInput.value = '';
-                 }
-             });
+            document.querySelectorAll('.profile-item.active').forEach(activeItem => {
+                if (activeItem !== item) {
+                    activeItem.classList.remove('active');
+                    const activeInput = activeItem.querySelector('.profile-login-input');
+                    if(activeInput) activeInput.value = '';
+                }
+            });
 
-             item.classList.toggle('active');
-             
-             if(item.classList.contains('active')) {
-                 setTimeout(() => {
-                     if(input) input.focus();
-                 }, 100);
-             }
+            item.classList.toggle('active');
+            
+            if(item.classList.contains('active')) {
+                setTimeout(() => {
+                    if(input) input.focus();
+                }, 100);
+            }
         });
     });
 }
@@ -380,7 +353,7 @@ async function handleLogin(item, password) {
         await loadData(true);
         
         AuthService.applyRoleBasedVisibility();
-        startPolling();
+        connectSignalR();
         
     } catch (error) {
         console.error('Erro no login:', error);
@@ -396,10 +369,9 @@ function handleLogout() {
     }
     
     LocalStorage.clearSession();
-    stopPolling();
     showProfileSelection();
     
-    DOM.showToast('Usuário deslogado!', 'success');
+    DOM.showToast('Usuário deslogado!');
 }
 
 function showProfileSelection() {
@@ -411,14 +383,17 @@ function showProfileSelection() {
 }
 
 function updateUserDisplay(userName) {
-    const profileImages = {
-        'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
-        'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
-        'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
-        'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
-    };
-
-    const imageSrc = profileImages[userName] || 'src/assets/profiles/default-profile.png';
+    const imageSrc = (() => {
+        const profileImages = {
+            'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
+            'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
+            'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
+            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
+        };
+        const realImage = profileImages[userName] || 'src/assets/profiles/default-profile.png';
+        if (DEMO_MODE && DEMO_USERS[userName]) return DEMO_USERS[userName].image;
+        return realImage;
+    })();
     const isAdmin = AuthService.isAdmin();
 
     const updateDisplay = (display) => {
@@ -466,16 +441,11 @@ function updateUserDisplay(userName) {
 }
 
 async function loadData(skipLoading = false) {
-    // Authentication gate: prevent API calls if user is not logged in
     const token = LocalStorage.getItem('token');
     const appUser = LocalStorage.getItem('appUser');
     
     if (!token || !appUser) {
         return;
-    }
-    
-    if (!skipLoading) {
-        DOM.showLoading(true);
     }
     
     try {
@@ -487,6 +457,7 @@ async function loadData(skipLoading = false) {
         
         if (prResult && batches && sprints) {
             currentData.prs = prResult.prs;
+            currentData.batches = batches;
             currentData.sprints = sprints;
             DOM.renderTable(prResult.prs, batches, sprints, openEditModal);
         } else {
@@ -502,10 +473,22 @@ async function loadData(skipLoading = false) {
     }
 }
 
+function refreshOpenPrs(animate = false) {
+    const openPrs = currentData.prs.filter(p => !p.approved);
+    const totalOpenBadge = document.getElementById('totalOpenPrs');
+    if (totalOpenBadge) {
+        totalOpenBadge.textContent = openPrs.length;
+        totalOpenBadge.style.display = openPrs.length > 0 ? 'inline-block' : 'none';
+    }
+    DOM.renderOpenTable(openPrs, 'openPrTableBody', openEditModal, animate);
+    if (window.lucide) window.lucide.createIcons();
+    if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
+}
+
 function openEditModal(pr) {
     document.getElementById('modalTitle').textContent = 'Editar Pull Request';
     document.getElementById('prId').value = pr.id;
-    document.getElementById('project').value = pr.project || 'DF-e';
+    document.getElementById('project').value = getDemoProject(pr.project) || 'Projeto Alpha';
     document.getElementById('dev').value = pr.dev || '';
     document.getElementById('summary').value = pr.summary || '';
     document.getElementById('prLink').value = pr.prLink || '';
@@ -737,11 +720,18 @@ window.approvePr = async (prId) => {
     }
 
     try {
-        DOM.showLoading(true);
-        await API.approvePR(prId, parseInt(appUserId));
+        const updatedPR = await API.approvePR(prId, parseInt(appUserId));
         
         DOM.showToast('PR Aprovado com sucesso!');
-        await loadData(true);
+        
+        // Local update
+        const index = currentData.prs.findIndex(p => p.id == prId);
+        if (index !== -1 && updatedPR) {
+            currentData.prs[index] = updatedPR;
+        } else if (updatedPR) {
+            currentData.prs.push(updatedPR);
+        }
+        refreshOpenPrs();
         
         const prModal = document.getElementById('prModal');
         if (prModal && prModal.style.display === 'flex') {
@@ -750,8 +740,6 @@ window.approvePr = async (prId) => {
     } catch (error) {
         console.error('Erro ao aprovar:', error);
         DOM.showToast('Erro ao aprovar: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
     }
 };
 
@@ -763,16 +751,19 @@ window.requestCorrection = async (prId) => {
     }
 
     try {
-        DOM.showLoading(true);
-        await API.requestCorrection(prId);
+        const updatedPR = await API.requestCorrection(prId);
         
         DOM.showToast('Correção solicitada com sucesso!');
-        await loadData(true);
+        
+        const index = currentData.prs.findIndex(p => p.id == prId);
+        if (index !== -1 && updatedPR) {
+            currentData.prs[index] = updatedPR;
+        }
+        refreshOpenPrs();
+
     } catch (error) {
         console.error('Erro ao solicitar correção:', error);
         DOM.showToast('Erro ao solicitar correção: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
     }
 };
 
@@ -784,16 +775,19 @@ window.markPrFixed = async (prId) => {
     }
 
     try {
-        DOM.showLoading(true);
-        await API.markPrFixed(prId);
+        const updatedPR = await API.markPrFixed(prId);
         
         DOM.showToast('PR marcado como corrigido!');
-        await loadData(true);
+        
+        const index = currentData.prs.findIndex(p => p.id == prId);
+        if (index !== -1 && updatedPR) {
+            currentData.prs[index] = updatedPR;
+        }
+        refreshOpenPrs();
+
     } catch (error) {
         console.error('Erro ao marcar corrigido:', error);
         DOM.showToast('Erro: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
     }
 };
 
@@ -805,16 +799,16 @@ window.archivePr = async (prId) => {
     }
 
     try {
-        DOM.showLoading(true);
         await API.archivePR(prId);
         
         DOM.showToast('PR arquivado com sucesso!');
-        await loadData(true);
+        
+        currentData.prs = currentData.prs.filter(p => p.id != prId);
+        refreshOpenPrs();
+
     } catch (error) {
         console.error('Erro ao arquivar:', error);
         DOM.showToast('Erro ao arquivar: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
     }
 };
 
@@ -844,7 +838,7 @@ devInput.addEventListener('change', (e) => {
                     availableUsers.find(u => u.name === e.target.value);
     
     if (e.target.value && !isValid) {
-        DOM.showToast('Desenvolvedor inválido. Escolha um da lista.', 'error');
+        DOM.showToast('Desenvolvedor inválido. Escolha um da lista.', 'warning');
         e.target.value = '';
     }
 });
@@ -872,8 +866,6 @@ function openSetupModal() {
         setupModal.style.display = 'flex';
     });
 }
-
-// ...
 
 document.getElementById('saveConfigBtn').addEventListener('click', async () => {
     const ghToken = ghTokenInput.value.trim();
@@ -922,7 +914,7 @@ prForm.addEventListener('submit', async (e) => {
     const devName = devInputForForm.value;
 
     if (!validDevs.includes(devName) && !availableUsers.find(u => u.name === devName)) {
-        DOM.showToast('Por favor, selecione um desenvolvedor válido da lista.', 'error');
+        DOM.showToast('Por favor, selecione um desenvolvedor válido da lista.', 'warning');
         devInputForForm.focus();
         return;
     }
@@ -933,7 +925,7 @@ prForm.addEventListener('submit', async (e) => {
         const devId = getUserIdByName(devName);
         
         if (!devId) {
-            DOM.showToast('Erro: Desenvolvedor não encontrado', 'error');
+            DOM.showToast('Atenção: Desenvolvedor não encontrado', 'warning');
             return;
         }
         
@@ -959,13 +951,23 @@ prForm.addEventListener('submit', async (e) => {
         
         if (prIdInput) {
             savedPR = await API.updatePR(prIdInput, prData);
-            DOM.showToast('PR atualizado com sucesso!');
+            // DOM.showToast('PR atualizado com sucesso!');
+            
+            // Local update
+            const index = currentData.prs.findIndex(p => p.id == prIdInput);
+            if (index !== -1 && savedPR) {
+                currentData.prs[index] = savedPR;
+            }
         } else {
             savedPR = await API.createPR(prData);
             DOM.showToast('PR criado com sucesso!');
+            
+            if (savedPR) {
+                currentData.prs.push(savedPR);
+            }
         }
         
-        await loadData(true);
+        refreshOpenPrs();
         
         prModal.style.display = 'none';
         prForm.reset();
@@ -976,7 +978,6 @@ prForm.addEventListener('submit', async (e) => {
         DOM.showLoading(false);
     }
 });
-
 
 window.saveGroupVersion = async (batchId) => {
     const elVersion = document.getElementById(`v_ver_${batchId}`);

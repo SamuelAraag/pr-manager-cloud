@@ -1,8 +1,9 @@
 import { getItem } from './localStorageService.js';
 import { extractJiraId } from './utils.js';
 import * as AuthService from './authService.js';
-import { PERMISSIONS } from './constants/roles.js';
+import { DEMO_MODE, DEMO_USERS, getDemoProject, getDemoName } from './constants/apiConstants.js';
 
+const TOAST_STORAGE_KEY = 'pr_manager_toasts';
 
 const getProfileImage = (userName) => {
     const profileImages = {
@@ -12,6 +13,11 @@ const getProfileImage = (userName) => {
         'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
     };
     return profileImages[userName] || 'src/assets/profiles/default-profile.png';
+};
+
+const getDemoImage = (devName) => {
+    if (DEMO_MODE && DEMO_USERS[devName]) return DEMO_USERS[devName].image;
+    return getProfileImage(devName);
 };
 
 // Check if link is the last clicked one
@@ -28,18 +34,97 @@ window.trackLinkClick = (element, uniqueId) => {
     element.classList.add('visited-link');
 };
 
-function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = `toast toast-${type}`;
-    toast.style.display = 'block';
-
-    setTimeout(() => {
-        toast.style.display = 'none';
-    }, 3000);
+function getStoredToasts() {
+    try {
+        return JSON.parse(sessionStorage.getItem(TOAST_STORAGE_KEY) || '[]');
+    } catch { return []; }
 }
 
-function renderTable(prs, batches, sprints, onEdit) {
+function saveToastToStorage(toastObj) {
+    const toasts = getStoredToasts();
+    toasts.push(toastObj);
+    sessionStorage.setItem(TOAST_STORAGE_KEY, JSON.stringify(toasts));
+}
+
+function removeToast(element, id) {
+    if (element && element.parentElement) {
+        element.remove();
+    }
+    let toasts = getStoredToasts();
+    toasts = toasts.filter(t => t.id !== id);
+    sessionStorage.setItem(TOAST_STORAGE_KEY, JSON.stringify(toasts));
+}
+
+function loadPendingToasts() {
+    const toasts = getStoredToasts();
+    const now = Date.now();
+    const validToasts = toasts.filter(t => (now - t.timestamp) < 10000);
+    
+    if (validToasts.length !== toasts.length) {
+        sessionStorage.setItem(TOAST_STORAGE_KEY, JSON.stringify(validToasts));
+    }
+
+    validToasts.forEach(t => {
+        showToast(t.message, t.type, t.title, true); 
+    });
+}
+
+function showToast(message, type = 'success', title = '', isRestored = false) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toastId = isRestored ? null : (Date.now().toString() + Math.random().toString().substr(2, 5));
+
+    if (!title) {
+        if (type === 'success') title = 'Sucesso';
+        if (type === 'error') title = 'Erro';
+        if (type === 'warning') title = 'Atenção';
+        if (type === 'info') title = 'Informação';
+    }
+
+    if (!isRestored && toastId) {
+        saveToastToStorage({ id: toastId, message, type, title, timestamp: Date.now() });
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    if (toastId) toast.dataset.id = toastId;
+    
+    let iconName = 'check-circle';
+    if (type === 'error') iconName = 'alert-circle';
+    if (type === 'warning') iconName = 'alert-triangle';
+    if (type === 'info') iconName = 'info';
+
+    toast.innerHTML = `
+        <div class="toast-icon"><i data-lucide="${iconName}" width="20"></i></div>
+        <div class="toast-content">
+            <span class="toast-title">${title}</span>
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close">&times;</button>
+    `;
+
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        if (toastId) removeToast(toast, toastId);
+        else toast.remove();
+    });
+
+    container.appendChild(toast);
+
+    if (window.lucide) window.lucide.createIcons();
+
+    setTimeout(() => {
+        if (document.body.contains(toast)) {
+            toast.style.animation = 'slideOutRight 0.5s forwards';
+            setTimeout(() => {
+                if (toastId) removeToast(toast, toastId);
+                else if (toast.parentElement) toast.remove();
+            }, 500);
+        }
+    }, 5000);
+}
+
+function renderTable(prs, batches, sprints, onEdit, animate = true) {
     const openPrs = prs.filter(p => !p.approved);
     
     const approvedTotal = prs.filter(p => p.approved);
@@ -54,22 +139,21 @@ function renderTable(prs, batches, sprints, onEdit) {
         totalOpenBadge.style.display = openPrs.length > 0 ? 'inline-block' : 'none';
     }
 
-    renderOpenTable(openPrs, 'openPrTableBody', onEdit);
-    renderApprovedTables(approvedPending, batches, 'dashboardApproved', onEdit);
-    renderTestingTable(activeSprints, 'dashboardTesting', onEdit);
-    renderHistoryTable(inactiveSprints, 'dashboardHistory', onEdit);
+    renderOpenTable(openPrs, 'openPrTableBody', onEdit, animate);
+    renderApprovedTables(approvedPending, batches, 'dashboardApproved', onEdit, animate);
+    renderTestingTable(activeSprints, 'dashboardTesting', onEdit, animate);
+    renderHistoryTable(inactiveSprints, 'dashboardHistory', onEdit, animate);
 
     if (window.lucide) {
         window.lucide.createIcons();
     }
     
-    // Apply role-based visibility to dynamically rendered elements
     if (AuthService && AuthService.applyRoleBasedVisibility) {
         AuthService.applyRoleBasedVisibility();
     }
 }
 
-function renderOpenTable(data, containerId, onEdit) {
+function renderOpenTable(data, containerId, onEdit, animate = true) {
     const body = document.getElementById(containerId);
     if (!body) return;
     body.innerHTML = '';
@@ -78,7 +162,7 @@ function renderOpenTable(data, containerId, onEdit) {
         return;
     }
     const grouped = data.reduce((acc, pr) => {
-        const project = pr.project || 'Outros';
+        const project = getDemoProject(pr.project) || 'Outros';
         if (!acc[project]) acc[project] = [];
         acc[project].push(pr);
         return acc;
@@ -91,18 +175,18 @@ function renderOpenTable(data, containerId, onEdit) {
         const projectPrs = grouped[projectName];
         const headerContent = `${projectName} (${projectPrs.length})`;
         const headerRow = document.createElement('tr');
-        headerRow.className = 'group-header fade-in-row';
-        headerRow.style.animationDelay = `${animationDelay}ms`;
-        animationDelay += 50;
+        headerRow.className = animate ? 'group-header fade-in-row' : 'group-header';
+        if(animate) headerRow.style.animationDelay = `${animationDelay}ms`;
+        if(animate) animationDelay += 50;
 
         headerRow.innerHTML = `<td colspan="6"><div style="display:flex; justify-content:space-between; align-items:center;"><div style="font-weight: 600;">${headerContent}</div></div></td>`;
         body.appendChild(headerRow);
         
         projectPrs.forEach((pr) => {
             const tr = document.createElement('tr');
-            tr.className = 'fade-in-row';
-            tr.style.animationDelay = `${animationDelay}ms`;
-            animationDelay += 50;
+            tr.className = animate ? 'fade-in-row' : '';
+            if(animate) tr.style.animationDelay = `${animationDelay}ms`;
+            if(animate) animationDelay += 50;
 
             const needsCorrection = !!pr.needsCorrection;
             const currentUser = getItem('appUser');
@@ -151,8 +235,8 @@ function renderOpenTable(data, containerId, onEdit) {
                 <td style="font-weight: 500; padding-left: 0px;">${pr.summary || '-'}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <img src="${getProfileImage(pr.dev)}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" title="${pr.dev}">
-                        ${pr.dev || '-'}
+                        <img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">
+                        ${getDemoName(pr.dev) || '-'}
                     </div>
                 </td>
                 <td>
@@ -215,7 +299,7 @@ function renderOpenTable(data, containerId, onEdit) {
 }
 
 
-function renderTestingTable(activeSprints, containerId, onEdit) {
+function renderTestingTable(activeSprints, containerId, onEdit, animate = true) {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
@@ -269,9 +353,9 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
         });
 
         const headerContainer = document.createElement('div');
-        headerContainer.className = 'fade-in-row';
-        headerContainer.style.animationDelay = `${animationDelay}ms`;
-        animationDelay += 50;
+        headerContainer.className = animate ? 'fade-in-row' : '';
+        if(animate) headerContainer.style.animationDelay = `${animationDelay}ms`;
+        if(animate) animationDelay += 50;
 
         headerContainer.style.display = 'flex';
         headerContainer.style.justifyContent = 'space-between';
@@ -320,9 +404,9 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
             `;
 
             const card = document.createElement('div');
-            card.className = 'data-card fade-in-row';
-            card.style.animationDelay = `${animationDelay}ms`;
-            animationDelay += 50;
+            card.className = animate ? 'data-card fade-in-row' : 'data-card';
+            if(animate) card.style.animationDelay = `${animationDelay}ms`;
+            if(animate) animationDelay += 50;
             card.style.marginBottom = '1.5rem';
             card.style.borderLeft = '4px solid #8e44ad';
             
@@ -335,7 +419,7 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
             
             headerDiv.innerHTML = `
                 <div style="display:flex; align-items:center;">
-                    <span style="font-weight: 600; font-size: 1.1rem;">${batch.project} (${(batch.pullRequests || []).length})</span>
+                    <span style="font-weight: 600; font-size: 1.1rem;">${getDemoProject(batch.project)} (${(batch.pullRequests || []).length})</span>
                     <span class="tag" style="background:#8e44ad; color:white; margin-left: 10px;">v${batch.version}</span>
                 </div>
                 <div style="display:flex; align-items:center;">
@@ -361,7 +445,7 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
                 `;
 
                 const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
-                tr.innerHTML = `<td><div style="display: flex; align-items: center; gap: 8px;"><span class="tag">${mainJiraId}</span> ${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</div></td><td><div style="display: flex; align-items: center; gap: 8px;"><img src="${getProfileImage(pr.dev)}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" title="${pr.dev}">${pr.dev || '-'}</div></td><td><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
+                tr.innerHTML = `<td><div style="display: flex; align-items: center; gap: 8px;"><span class="tag">${mainJiraId}</span> ${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</div></td><td><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
                 tbody.appendChild(tr);
             });
 
@@ -373,7 +457,7 @@ function renderTestingTable(activeSprints, containerId, onEdit) {
     });
 }
 
-function renderHistoryTable(inactiveSprints, containerId, onEdit) {
+function renderHistoryTable(inactiveSprints, containerId, onEdit, animate = true) {
     // Renders the COMPLETED sprints (History)
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -391,9 +475,9 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit) {
         const sprintHeader = document.createElement('h4');
         sprintHeader.textContent = sprint.name;
         sprintHeader.style.cssText = 'color: var(--text-secondary); margin: 2rem 0 1rem 0; padding-left: 10px; border-left: 3px solid #555; font-size: 1rem; opacity: 0.7;';
-        sprintHeader.className = 'fade-in-row'; // Add animation class
-        sprintHeader.style.animationDelay = `${animationDelay}ms`; // Set delay
-        animationDelay += 50;
+        if(animate) sprintHeader.className = 'fade-in-row'; // Add animation class
+        if(animate) sprintHeader.style.animationDelay = `${animationDelay}ms`; // Set delay
+        if(animate) animationDelay += 50;
         
         container.appendChild(sprintHeader);
 
@@ -408,9 +492,9 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit) {
             }
 
             const card = document.createElement('div');
-            card.className = 'data-card fade-in-row'; // Add animation class to card
-            card.style.animationDelay = `${animationDelay}ms`; // Set delay
-            animationDelay += 50;
+            card.className = animate ? 'data-card fade-in-row' : 'data-card'; // Add animation class to card
+            if(animate) card.style.animationDelay = `${animationDelay}ms`; // Set delay
+            if(animate) animationDelay += 50;
 
             card.style.marginBottom = '1rem';
             card.style.border = '1px solid #30363d'; // Simple border, no color
@@ -426,8 +510,7 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit) {
             headerDiv.style.background = '#21262d';
             
             headerDiv.innerHTML = `
-                <div style="display:flex; align-items:center; gap: 10px;">
-                    <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-secondary);">${batch.project}</span>
+                    <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-secondary);">${getDemoProject(batch.project)}</span>
                     <span class="tag" style="background:#555; color:#ccc; font-size:0.7rem;">v${batch.version}</span>
                 </div>
                 <div>${gitlabLink}</div>
@@ -441,7 +524,7 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit) {
             const tbody = table.querySelector('tbody');
             (batch.pullRequests || []).forEach(pr => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td style="padding:0.5rem; color:var(--text-secondary);">${pr.project || '-'}</td><td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td><td style="padding:0.5rem; color:var(--text-secondary);"><div style="display: flex; align-items: center; gap: 8px;"><img src="${getProfileImage(pr.dev)}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" title="${pr.dev}">${pr.dev || '-'}</div></td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>`;
+                tr.innerHTML = `<td style="padding:0.5rem; color:var(--text-secondary);">${getDemoProject(pr.project) || '-'}</td><td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td><td style="padding:0.5rem; color:var(--text-secondary);"><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>`;
                 tbody.appendChild(tr);
             });
 
@@ -453,7 +536,7 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit) {
     });
 }
 
-function renderApprovedTables(approvedPrs, batches, containerId, onEdit) {
+function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate = true) {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
@@ -470,7 +553,7 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit) {
     }
     
     const backlogByProject = backlogPrs.reduce((acc, pr) => {
-        const p = pr.project || 'Outros';
+        const p = getDemoProject(pr.project) || 'Outros';
         if (!acc[p]) acc[p] = [];
         acc[p].push(pr);
         return acc;
@@ -480,19 +563,19 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit) {
 
     const currentUser = getItem('appUser');
     pendingBatches.forEach(batch => {
-        const card = createApprovedCard(batch.project, batch.pullRequests, currentUser, batch.batchId, batch.gitlabIssueLink);
-        card.classList.add('fade-in-row');
-        card.style.animationDelay = `${animationDelay}ms`;
-        animationDelay += 50;
+        const card = createApprovedCard(getDemoProject(batch.project), batch.pullRequests, currentUser, batch.batchId, batch.gitlabIssueLink);
+        if(animate) card.classList.add('fade-in-row');
+        if(animate) card.style.animationDelay = `${animationDelay}ms`;
+        if(animate) animationDelay += 50;
         container.appendChild(card);
     });
 
     Object.keys(backlogByProject).sort().forEach(projectName => {
         const projectPrs = backlogByProject[projectName];
         const card = createApprovedCard(projectName, projectPrs, currentUser, null);
-        card.classList.add('fade-in-row');
-        card.style.animationDelay = `${animationDelay}ms`;
-        animationDelay += 50;
+        if(animate) card.classList.add('fade-in-row');
+        if(animate) card.style.animationDelay = `${animationDelay}ms`;
+        if(animate) animationDelay += 50;
         container.appendChild(card);
     });
 
@@ -672,8 +755,8 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
             </td>
             <td>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <img src="${getProfileImage(pr.dev)}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 50%;" title="${pr.dev}">
-                    ${pr.dev || '-'}
+                    <img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">
+                    ${getDemoName(pr.dev) || '-'}
                 </div>
             </td>
             <td>
@@ -795,4 +878,4 @@ function showLoading(show) {
     if (dbHist) dbHist.style.display = contentDisplay;
 }
 
-export { showToast, renderTable, showLoading };
+export { showToast, renderTable, renderOpenTable, showLoading, loadPendingToasts };
