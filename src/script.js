@@ -274,6 +274,13 @@ async function init() {
         await loadData();
         DOM.loadPendingToasts();
         connectSignalR();
+
+        // React to real-time SignalR events — reload data when any PR changes
+        let _signalRDebounce = null;
+        document.addEventListener('signalr:notification', () => {
+            clearTimeout(_signalRDebounce);
+            _signalRDebounce = setTimeout(() => loadData(true), 500);
+        });
     }
 }
 

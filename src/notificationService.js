@@ -169,8 +169,15 @@ export async function connectSignalR(onMessageReceived) {
     const userId = rawUserId ? JSON.parse(rawUserId) : '';
     const hubUrlWithUser = userId ? `${hubUrl}?userId=${userId}` : hubUrl;
 
+    // Cloudflare free tunnels block WebSocket upgrades (close code 1006).
+    // Force LongPolling when not on localhost so SignalR works behind the tunnel.
+    const isLocal = hubUrl.includes('localhost') || hubUrl.includes('127.0.0.1');
+    const transport = isLocal
+        ? signalR.HttpTransportType.WebSockets
+        : signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling;
+
     connection = new signalR.HubConnectionBuilder()
-        .withUrl(hubUrlWithUser)
+        .withUrl(hubUrlWithUser, { transport })
         .withAutomaticReconnect([0, 2000, 10000, 30000])
         .build();
 
@@ -231,14 +238,13 @@ export async function connectSignalR(onMessageReceived) {
             const summary = envelope.Pr.Summary;
             pushNotification({ msg, type, project, jiraId, summary, prLink });
 
-            if (onMessageReceived) {
-                setTimeout(onMessageReceived, 500);
-            }
+            // Dispatch a CustomEvent so any module can react without tight coupling
+            document.dispatchEvent(new CustomEvent('signalr:notification', { detail: { actionType } }));
 
         } catch (e) {
             console.error("Error parsing notification:", e);
             pushNotification({ msg: 'Atualizacao recebida', type: 'info', project: 'PR Manager', jiraId: '', summary: '', prLink: '' });
-            if (onMessageReceived) onMessageReceived();
+            document.dispatchEvent(new CustomEvent('signalr:notification', { detail: { actionType: 'unknown' } }));
         }
     });
 
