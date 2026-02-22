@@ -169,17 +169,11 @@ export async function connectSignalR(onMessageReceived) {
     const userId = rawUserId ? JSON.parse(rawUserId) : '';
     const hubUrlWithUser = userId ? `${hubUrl}?userId=${userId}` : hubUrl;
 
-    // Cloudflare free tunnels block WebSocket upgrades (close code 1006).
-    // Force LongPolling when not on localhost so SignalR works behind the tunnel.
-    const isLocal = hubUrl.includes('localhost') || hubUrl.includes('127.0.0.1');
-    const transport = isLocal
-        ? signalR.HttpTransportType.WebSockets
-        : signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling;
-
     connection = new signalR.HubConnectionBuilder()
-        .withUrl(hubUrlWithUser, { transport })
-        .withAutomaticReconnect([0, 2000, 10000, 30000])
+        .withUrl(hubUrlWithUser)
+        .withAutomaticReconnect([0, 2000, 5000, 10000, 30000, 60000])
         .build();
+
 
     connection.on("ReceiveNotification", (messageJson) => {
         try {
@@ -235,7 +229,7 @@ export async function connectSignalR(onMessageReceived) {
                     msg  = `${dev}: PR atualizado`;
             }
 
-            const summary = envelope.Pr.Summary;
+            const summary = envelope.Pr?.Summary ?? '';
             pushNotification({ msg, type, project, jiraId, summary, prLink });
 
             // Dispatch a CustomEvent so any module can react without tight coupling
