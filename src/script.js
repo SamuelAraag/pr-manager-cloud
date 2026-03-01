@@ -12,7 +12,7 @@ import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/a
 let currentData = { prs: [] };
 let availableUsers = [];
 
-const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez'];
+const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez', 'Fabio Cabral'];
 
 function applyDevMode() {
     if (!isLocalDev()) return;
@@ -42,7 +42,8 @@ function renderProfileSelection() {
             'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
             'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
-            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
+            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
+            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg'
         };
 
         let displayName = user.name;
@@ -98,7 +99,8 @@ function getUserIdByName(userName) {
         'Itallo Cerqueira': 2,
         'Marcos Paulo': 3,
         'Samuel Santos': 4,
-        'Kemilly Alvez': 5
+        'Kemilly Alvez': 5,
+        'Fabio Cabral': 6
     };
     return devMap[userName] || null;
 }
@@ -230,7 +232,6 @@ if (godModeInput) {
                     }
                 }
             } catch (error) {
-                console.error('Erro no God Mode:', error);
                 DOM.showToast('Senha incorreta!', 'error');
             } finally {
                 DOM.showLoading(false);
@@ -395,7 +396,8 @@ function updateUserDisplay(userName) {
             'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
             'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
-            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
+            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
+            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg'
         };
         const realImage = profileImages[userName] || 'src/assets/profiles/default-profile.png';
         if (DEMO_MODE && DEMO_USERS[userName]) return DEMO_USERS[userName].image;

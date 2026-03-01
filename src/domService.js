@@ -10,7 +10,8 @@ const getProfileImage = (userName) => {
         'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
         'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
         'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
-        'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
+        'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
+        'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg'
     };
     return profileImages[userName] || 'src/assets/profiles/default-profile.png';
 };
