@@ -66,7 +66,7 @@
                 </button>
 
                 <button id="setupBtn" data-roles="Admin" class="btn btn-outline admin-only" title="Configurar Token (S)"
-                    style="border-color: #da3633; color: #f85149;">
+                    style="border-color: #da3633; color: #f85149; display: none;">
                     <i data-lucide="settings"></i>
                 </button>
 
@@ -208,6 +208,8 @@
         </div>
     </div>
 
+
+    </div>
     <!-- Setup Modal (Token) -->
     <div id="setupModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px;">
@@ -232,15 +234,14 @@
                 <input type="password" id="jiraTokenInput" placeholder="Jira API Token...">
             </div>
             <div class="form-group" style="margin-bottom: 1rem;">
-                <label>****</label>
+                <label>Super Admin Password</label>
                 <input type="password" id="secretPasswordInput" placeholder="****">
             </div>
             <button id="saveConfigBtn" class="btn btn-primary"
                 style="width: 100%; margin-top: 1rem; justify-content: center;">Salvar</button>
         </div>
     </div>
-    </div>
-
+    
     <!-- Add/Edit PR Modal -->
     <div id="prModal" class="modal-overlay">
         <div class="modal-content">

@@ -242,7 +242,8 @@ if (godModeInput) {
 
 function closeAllModals() {
     prModal.style.display = 'none';
-    setupModal.style.display = 'none';
+    if (setupModal) setupModal.style.display = 'none';
+
     if (shortcutsModal) shortcutsModal.style.display = 'none';
     
     if (LocalStorage.getItem('appUser')) {
@@ -591,7 +592,10 @@ function openAddModal() {
 }
 
 document.getElementById('addPrBtn').addEventListener('click', openAddModal);
-document.getElementById('setupBtn').addEventListener('click', openSetupModal);
+if (document.getElementById('setupBtn')) {
+    document.getElementById('setupBtn').addEventListener('click', openSetupModal);
+}
+
 document.getElementById('addRelatedTaskBtn').addEventListener('click', () => addRelatedTaskInput());
 
 const taskLinkInput = document.getElementById('taskLink');
@@ -857,63 +861,63 @@ document.querySelectorAll('.close-btn, .close-modal').forEach(btn => {
 });
 
 function openSetupModal() {
+    if (!AuthService.isAdmin()) {
+        console.log('Ação restrita a administradores.');
+        return;
+    }
+
     API.getAutomationConfig().then(config => {
         if (config) {
-            ghTokenInput.value = config.githubToken || '';
-            document.getElementById('glTokenInput').value = config.gitlabToken || '';
-            document.getElementById('jiraEmailInput').value = config.jiraUserEmail || '';
-            document.getElementById('jiraTokenInput').value = config.jiraToken || '';
-        } else {
-            ghTokenInput.value = LocalStorage.getItem('githubToken') || '';
-            document.getElementById('glTokenInput').value = LocalStorage.getItem('gitlabToken') || '';
+            if (ghTokenInput) ghTokenInput.value = config.githubToken || '';
+            if (document.getElementById('glTokenInput')) document.getElementById('glTokenInput').value = config.gitlabToken || '';
+            if (document.getElementById('jiraEmailInput')) document.getElementById('jiraEmailInput').value = config.jiraUserEmail || '';
+            if (document.getElementById('jiraTokenInput')) document.getElementById('jiraTokenInput').value = config.jiraToken || '';
         }
     }).catch(err => {
         console.error('Erro ao buscar config:', err);
-        ghTokenInput.value = LocalStorage.getItem('githubToken') || '';
-        document.getElementById('glTokenInput').value = LocalStorage.getItem('gitlabToken') || '';
     }).finally(() => {
-        setupModal.style.display = 'flex';
+        if (setupModal) setupModal.style.display = 'flex';
     });
 }
 
-document.getElementById('saveConfigBtn').addEventListener('click', async () => {
-    const ghToken = ghTokenInput.value.trim();
-    const glToken = document.getElementById('glTokenInput').value.trim();
-    const jiraEmail = document.getElementById('jiraEmailInput').value.trim();
-    const jiraToken = document.getElementById('jiraTokenInput').value.trim();
-    const secretPass = document.getElementById('secretPasswordInput').value.trim();
-    
-    if (!ghToken || !glToken) {
-        alert('Por favor, insira os tokens necessários.');
-        return;
-    }
-
-    if (!confirm('Deseja realmente salvar essas configurações?')) {
-        return;
-    }
-
-    try {
-        DOM.showLoading(true);
-        await API.saveAutomationConfig({
-            githubToken: ghToken,
-            gitlabToken: glToken,
-            jiraUserEmail: jiraEmail,
-            jiraToken: jiraToken,
-            secretPassword: secretPass
-        });
-
-        LocalStorage.setItem('githubToken', ghToken);
-        if (glToken) LocalStorage.setItem('gitlabToken', glToken);
+const saveConfigBtn = document.getElementById('saveConfigBtn');
+if (saveConfigBtn) {
+    saveConfigBtn.addEventListener('click', async () => {
+        const ghToken = ghTokenInput ? ghTokenInput.value.trim() : '';
+        const glToken = document.getElementById('glTokenInput') ? document.getElementById('glTokenInput').value.trim() : '';
+        const jiraEmail = document.getElementById('jiraEmailInput') ? document.getElementById('jiraEmailInput').value.trim() : '';
+        const jiraToken = document.getElementById('jiraTokenInput') ? document.getElementById('jiraTokenInput').value.trim() : '';
+        const secretPass = document.getElementById('secretPasswordInput') ? document.getElementById('secretPasswordInput').value.trim() : '';
         
-        DOM.showToast('Configurações salvas com sucesso!');
-        setupModal.style.display = 'none';
-        loadData();
-    } catch (error) {
-        DOM.showToast('Erro ao salvar configurações: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
-    }
-});
+        if (!ghToken || !glToken) {
+            alert('Por favor, insira os tokens necessários.');
+            return;
+        }
+
+        if (!confirm('Deseja realmente salvar essas configurações?')) {
+            return;
+        }
+
+        try {
+            DOM.showLoading(true);
+            await API.saveAutomationConfig({
+                githubToken: ghToken,
+                gitlabToken: glToken,
+                jiraUserEmail: jiraEmail,
+                jiraToken: jiraToken,
+                secretPassword: secretPass
+            });
+
+            DOM.showToast('Configurações salvas com sucesso!');
+            if (setupModal) setupModal.style.display = 'none';
+            loadData();
+        } catch (error) {
+            DOM.showToast('Erro ao salvar configurações: ' + error.message, 'error');
+        } finally {
+            DOM.showLoading(false);
+        }
+    });
+}
 
 prForm.addEventListener('submit', async (e) => {
     e.preventDefault();
