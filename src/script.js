@@ -39,7 +39,7 @@ function renderProfileSelection() {
         profileItem.setAttribute('data-user-id', user.id);
         
         const defaultImages = {
-            'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
+            'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
             'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
             'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
@@ -392,7 +392,7 @@ function showProfileSelection() {
 function updateUserDisplay(userName) {
     const imageSrc = (() => {
         const profileImages = {
-            'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
+            'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
             'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
             'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'

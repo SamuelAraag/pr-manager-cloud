@@ -7,7 +7,7 @@ const TOAST_STORAGE_KEY = 'pr_manager_toasts';
 
 const getProfileImage = (userName) => {
     const profileImages = {
-        'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.jpeg',
+        'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
         'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
         'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
         'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
