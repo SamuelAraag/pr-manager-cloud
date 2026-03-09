@@ -12,7 +12,7 @@ import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/a
 let currentData = { prs: [] };
 let availableUsers = [];
 
-const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez'];
+const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez', 'Fabio Cabral'];
 
 function applyDevMode() {
     if (!isLocalDev()) return;
@@ -42,7 +42,8 @@ function renderProfileSelection() {
             'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
             'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
-            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
+            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
+            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg'
         };
 
         let displayName = user.name;
@@ -98,7 +99,8 @@ function getUserIdByName(userName) {
         'Itallo Cerqueira': 2,
         'Marcos Paulo': 3,
         'Samuel Santos': 4,
-        'Kemilly Alvez': 5
+        'Kemilly Alvez': 5,
+        'Fabio Cabral': 6
     };
     return devMap[userName] || null;
 }
@@ -230,7 +232,6 @@ if (godModeInput) {
                     }
                 }
             } catch (error) {
-                console.error('Erro no God Mode:', error);
                 DOM.showToast('Senha incorreta!', 'error');
             } finally {
                 DOM.showLoading(false);
@@ -241,7 +242,8 @@ if (godModeInput) {
 
 function closeAllModals() {
     prModal.style.display = 'none';
-    setupModal.style.display = 'none';
+    if (setupModal) setupModal.style.display = 'none';
+
     if (shortcutsModal) shortcutsModal.style.display = 'none';
     
     if (LocalStorage.getItem('appUser')) {
@@ -395,7 +397,8 @@ function updateUserDisplay(userName) {
             'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
             'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
-            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png'
+            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
+            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg'
         };
         const realImage = profileImages[userName] || 'src/assets/profiles/default-profile.png';
         if (DEMO_MODE && DEMO_USERS[userName]) return DEMO_USERS[userName].image;
@@ -589,7 +592,10 @@ function openAddModal() {
 }
 
 document.getElementById('addPrBtn').addEventListener('click', openAddModal);
-document.getElementById('setupBtn').addEventListener('click', openSetupModal);
+if (document.getElementById('setupBtn')) {
+    document.getElementById('setupBtn').addEventListener('click', openSetupModal);
+}
+
 document.getElementById('addRelatedTaskBtn').addEventListener('click', () => addRelatedTaskInput());
 
 const taskLinkInput = document.getElementById('taskLink');
@@ -855,63 +861,63 @@ document.querySelectorAll('.close-btn, .close-modal').forEach(btn => {
 });
 
 function openSetupModal() {
+    if (!AuthService.isAdmin()) {
+        console.log('Ação restrita a administradores.');
+        return;
+    }
+
     API.getAutomationConfig().then(config => {
         if (config) {
-            ghTokenInput.value = config.githubToken || '';
-            document.getElementById('glTokenInput').value = config.gitlabToken || '';
-            document.getElementById('jiraEmailInput').value = config.jiraUserEmail || '';
-            document.getElementById('jiraTokenInput').value = config.jiraToken || '';
-        } else {
-            ghTokenInput.value = LocalStorage.getItem('githubToken') || '';
-            document.getElementById('glTokenInput').value = LocalStorage.getItem('gitlabToken') || '';
+            if (ghTokenInput) ghTokenInput.value = config.githubToken || '';
+            if (document.getElementById('glTokenInput')) document.getElementById('glTokenInput').value = config.gitlabToken || '';
+            if (document.getElementById('jiraEmailInput')) document.getElementById('jiraEmailInput').value = config.jiraUserEmail || '';
+            if (document.getElementById('jiraTokenInput')) document.getElementById('jiraTokenInput').value = config.jiraToken || '';
         }
     }).catch(err => {
         console.error('Erro ao buscar config:', err);
-        ghTokenInput.value = LocalStorage.getItem('githubToken') || '';
-        document.getElementById('glTokenInput').value = LocalStorage.getItem('gitlabToken') || '';
     }).finally(() => {
-        setupModal.style.display = 'flex';
+        if (setupModal) setupModal.style.display = 'flex';
     });
 }
 
-document.getElementById('saveConfigBtn').addEventListener('click', async () => {
-    const ghToken = ghTokenInput.value.trim();
-    const glToken = document.getElementById('glTokenInput').value.trim();
-    const jiraEmail = document.getElementById('jiraEmailInput').value.trim();
-    const jiraToken = document.getElementById('jiraTokenInput').value.trim();
-    const secretPass = document.getElementById('secretPasswordInput').value.trim();
-    
-    if (!ghToken || !glToken) {
-        alert('Por favor, insira os tokens necessários.');
-        return;
-    }
-
-    if (!confirm('Deseja realmente salvar essas configurações?')) {
-        return;
-    }
-
-    try {
-        DOM.showLoading(true);
-        await API.saveAutomationConfig({
-            githubToken: ghToken,
-            gitlabToken: glToken,
-            jiraUserEmail: jiraEmail,
-            jiraToken: jiraToken,
-            secretPassword: secretPass
-        });
-
-        LocalStorage.setItem('githubToken', ghToken);
-        if (glToken) LocalStorage.setItem('gitlabToken', glToken);
+const saveConfigBtn = document.getElementById('saveConfigBtn');
+if (saveConfigBtn) {
+    saveConfigBtn.addEventListener('click', async () => {
+        const ghToken = ghTokenInput ? ghTokenInput.value.trim() : '';
+        const glToken = document.getElementById('glTokenInput') ? document.getElementById('glTokenInput').value.trim() : '';
+        const jiraEmail = document.getElementById('jiraEmailInput') ? document.getElementById('jiraEmailInput').value.trim() : '';
+        const jiraToken = document.getElementById('jiraTokenInput') ? document.getElementById('jiraTokenInput').value.trim() : '';
+        const secretPass = document.getElementById('secretPasswordInput') ? document.getElementById('secretPasswordInput').value.trim() : '';
         
-        DOM.showToast('Configurações salvas com sucesso!');
-        setupModal.style.display = 'none';
-        loadData();
-    } catch (error) {
-        DOM.showToast('Erro ao salvar configurações: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
-    }
-});
+        if (!ghToken || !glToken) {
+            alert('Por favor, insira os tokens necessários.');
+            return;
+        }
+
+        if (!confirm('Deseja realmente salvar essas configurações?')) {
+            return;
+        }
+
+        try {
+            DOM.showLoading(true);
+            await API.saveAutomationConfig({
+                githubToken: ghToken,
+                gitlabToken: glToken,
+                jiraUserEmail: jiraEmail,
+                jiraToken: jiraToken,
+                secretPassword: secretPass
+            });
+
+            DOM.showToast('Configurações salvas com sucesso!');
+            if (setupModal) setupModal.style.display = 'none';
+            loadData();
+        } catch (error) {
+            DOM.showToast('Erro ao salvar configurações: ' + error.message, 'error');
+        } finally {
+            DOM.showLoading(false);
+        }
+    });
+}
 
 prForm.addEventListener('submit', async (e) => {
     e.preventDefault();
