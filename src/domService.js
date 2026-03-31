@@ -393,7 +393,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
             if (batch.gitlabIssueLink) {
                 gitlabLink = `
                     <a href="${batch.gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-testing-' + batch.batchId, 'btn')} style="background-color: #30363d; color: var(--text-secondary); padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; border: 1px solid #444; border-radius: 4px;">
-                        <i data-lucide="gitlab" style="width: 14px;"></i>
+                        <img src="src/assets/icons/gitlab-logo-simple-thin-svgrepo-com.svg" style="height: 32px; filter: brightness(0) invert(0.6);">
                         Ver Chamado
                     </a>
                 `;
@@ -487,8 +487,8 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit, animate = true
             let gitlabLink = '';
             if (batch.gitlabIssueLink) {
                  gitlabLink = `
-                    <a href="${batch.gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-history-' + batch.batchId, '')} style="color: var(--text-secondary); font-size: 0.75rem; text-decoration: none; opacity: 0.8;">
-                        <i data-lucide="gitlab" style="width: 12px;"></i> Issue
+                    <a href="${batch.gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-history-' + batch.batchId, '')} style="color: var(--text-secondary); font-size: 0.75rem; text-decoration: none; opacity: 0.8; display: inline-flex; align-items: center; gap: 4px;">
+                        <img src="src/assets/icons/gitlab-logo-simple-thin-svgrepo-com.svg" style="width: 12px; height: 12px; filter: brightness(0) invert(0.6);"> Issue
                     </a>
                 `;
             }
@@ -604,14 +604,14 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
         let gitlabLink = '';
         if (gitlabIssueLink) {
                 gitlabLink = `
-                <a href="${gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-approved-' + uniqueKey, 'btn')} style="background-color: #FC6D26; color: white; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; border-radius: 4px;">
-                    <i data-lucide="gitlab" style="width: 14px;"></i>
+                <a href="${gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-approved-' + uniqueKey, 'btn')} style="height: 32px; background-color: #FC6D26; color: white; padding: 0 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; border-radius: 4px; line-height: 1;">
+                    <img src="src/assets/icons/gitlab-logo-simple-thin-svgrepo-com.svg" style="height: 60%; width: auto; display: block; object-fit: contain; filter: brightness(0) invert(1);">
                     Ver Chamado
                 </a>
             `;
             
             deployBtn = `
-                <button class="btn" data-roles="Admin,QA" style="background-color: #8e44ad; color: white; padding: 0.3rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px;" onclick="window.confirmDeploy('${batchId}')">
+                <button class="btn" data-roles="Admin,QA" style="background-color: #8e44ad; color: white; height: 32px; padding: 0 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px; line-height: 1;" onclick="window.confirmDeploy('${batchId}')">
                     <i data-lucide="rocket" style="width: 14px;"></i>
                     Liberar STG
                 </button>
@@ -644,10 +644,10 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
         }
     } else if (hasVersionInfo && !gitlabIssueLink) {
             leftContent += `
-                <button class="btn" data-roles="Admin" style="background-color: #6C5CE7; color: white; padding: 0.3rem 0.8rem; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; margin-left: 15px;" onclick="window.createGitLabIssue('${batchId}')">
-                    <i data-lucide="gitlab" style="width: 14px;"></i>
+                <button class="btn" data-roles="Admin" style="background-color: #6C5CE7; color: white; height: 32px; padding: 0 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px; line-height: 1;" onclick="window.createGitLabIssue('${batchId}')">
+                    <img src="src/assets/icons/gitlab-logo-simple-thin-svgrepo-com.svg" style="width: 14px; height: 14px; display: block; object-fit: contain; filter: brightness(0) invert(1);">
                     Criar Chamado
-                </button>`;
+                </button>`
     }
 
     const card = document.createElement('div');
@@ -880,4 +880,4 @@ function showLoading(show) {
     if (dbHist) dbHist.style.display = contentDisplay;
 }
 
-export { showToast, renderTable, renderOpenTable, showLoading, loadPendingToasts };
+export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts };

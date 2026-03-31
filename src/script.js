@@ -30,6 +30,19 @@ function applyDevMode() {
     if (tag)    tag.style.display    = 'inline-block';
 }
 
+function applyDemoProjectsToSelect() {
+    if (!DEMO_MODE) return;
+    const projectSelect = document.getElementById('project');
+    if (!projectSelect) return;
+
+    Array.from(projectSelect.options).forEach(option => {
+        const demoName = getDemoProject(option.value);
+        if (demoName !== option.value) {
+            option.textContent = demoName;
+        }
+    });
+}
+
 function renderProfileSelection() {
     const profilesGrid = document.querySelector('.profiles-grid');
     if (!profilesGrid) return;
@@ -274,6 +287,7 @@ async function init() {
     //TODO: Implementar loadUsers
     // await loadUsers();
     applyDevMode();
+    applyDemoProjectsToSelect();
     renderProfileSelection();
     populateDevList();
     
@@ -287,11 +301,15 @@ async function init() {
         DOM.loadPendingToasts();
         connectSignalR();
 
-        // React to real-time SignalR events — reload data when any PR changes
+        // React to real-time SignalR events — update PR sections without re-rendering the whole dashboard
         let _signalRDebounce = null;
         document.addEventListener('signalr:notification', () => {
             clearTimeout(_signalRDebounce);
-            _signalRDebounce = setTimeout(() => loadData(true), 500);
+            _signalRDebounce = setTimeout(() => {
+                loadPrTablesData(true).catch((error) => {
+                    console.error('Erro ao atualizar tabelas de PR via SignalR:', error);
+                });
+            }, 500);
         });
     }
 }
@@ -461,6 +479,33 @@ function updateUserDisplay(userName) {
     }
 }
 
+async function loadPrTablesData(animate = false) {
+    const prResult = await API.fetchPRs();
+    if (!prResult || !Array.isArray(prResult.prs)) {
+        throw new Error('Falha ao carregar PRs');
+    }
+    currentData.prs = prResult.prs;
+    refreshOpenPrs(animate);
+
+    const batches = await API.fetchBatches();
+    if (!Array.isArray(batches)) {
+        throw new Error('Falha ao carregar lotes');
+    }
+    currentData.batches = batches;
+    refreshApprovedPrs(animate);
+}
+
+function refreshTestingAndHistory(animate = false) {
+    if (!Array.isArray(currentData.sprints)) return;
+
+    const activeSprints = currentData.sprints.filter(s => s.isActive);
+    const inactiveSprints = currentData.sprints.filter(s => !s.isActive);
+    DOM.renderTestingTable(activeSprints, 'dashboardTesting', openEditModal, animate);
+    DOM.renderHistoryTable(inactiveSprints, 'dashboardHistory', openEditModal, animate);
+    if (window.lucide) window.lucide.createIcons();
+    if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
+}
+
 async function loadData(skipLoading = false) {
     const token = LocalStorage.getItem('token');
     const appUser = LocalStorage.getItem('appUser');
@@ -470,20 +515,15 @@ async function loadData(skipLoading = false) {
     }
     
     try {
-        const [prResult, batches, sprints] = await Promise.all([
-            API.fetchPRs(),
-            API.fetchBatches(),
-            API.fetchSprints()
-        ]);
-        
-        if (prResult && batches && sprints) {
-            currentData.prs = prResult.prs;
-            currentData.batches = batches;
-            currentData.sprints = sprints;
-            DOM.renderTable(prResult.prs, batches, sprints, openEditModal);
-        } else {
-            DOM.showToast('Erro ao carregar dados da API', 'error');
+        // Sequential boot: open PRs first, then approved PRs
+        await loadPrTablesData(false);
+
+        const sprints = await API.fetchSprints();
+        if (!Array.isArray(sprints)) {
+            throw new Error('Falha ao carregar sprints');
         }
+        currentData.sprints = sprints;
+        refreshTestingAndHistory(false);
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
         DOM.showToast('Erro ao carregar dados da API', 'error');
@@ -506,10 +546,19 @@ function refreshOpenPrs(animate = false) {
     if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
 }
 
+function refreshApprovedPrs(animate = false) {
+    if (!Array.isArray(currentData.batches)) return;
+
+    const approvedPending = currentData.prs.filter(p => p.approved && !p.deployedToStg);
+    DOM.renderApprovedTables(approvedPending, currentData.batches, 'dashboardApproved', openEditModal, animate);
+    if (window.lucide) window.lucide.createIcons();
+    if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
+}
+
 function openEditModal(pr) {
     document.getElementById('modalTitle').textContent = 'Editar Pull Request';
     document.getElementById('prId').value = pr.id;
-    document.getElementById('project').value = getDemoProject(pr.project) || 'Projeto Alpha';
+    document.getElementById('project').value = pr.project || '';
     document.getElementById('dev').value = pr.dev || '';
     document.getElementById('summary').value = pr.summary || '';
     document.getElementById('prLink').value = pr.prLink || '';
@@ -756,6 +805,7 @@ window.approvePr = async (prId) => {
             currentData.prs.push(updatedPR);
         }
         refreshOpenPrs();
+        refreshApprovedPrs();
         
         const prModal = document.getElementById('prModal');
         if (prModal && prModal.style.display === 'flex') {

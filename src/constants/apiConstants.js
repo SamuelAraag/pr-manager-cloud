@@ -10,26 +10,31 @@ export function isLocalDev() {
 export const DEMO_MODE = false;
 
 export const DEMO_USERS = {
-    'Itallo Cerqueira': { name: 'Chaves', image: 'https://i.pravatar.cc/150?img=8' },
-    'Rodrigo Barbosa':  { name: 'Julia', image: 'https://i.pravatar.cc/150?img=5' },
-    'Kemilly Alvez':    { name: 'Julian', image: 'https://i.pravatar.cc/150?img=12' },
-    'Marcos Paulo':     { name: 'Raquel', image: 'https://i.pravatar.cc/150?img=27' },
+    'Itallo Cerqueira': { name: 'Anakin', image: 'https://i.pravatar.cc/150?img=8' },
+    'Rodrigo Barbosa':  { name: 'Neytiri', image: 'https://i.pravatar.cc/150?img=16' },
+    'Kemilly Alvez':    { name: 'Dijkstra', image: 'https://i.pravatar.cc/150?img=12' },
+    'Marcos Paulo':     { name: 'Penny', image: 'https://i.pravatar.cc/150?img=27' },
+    'Fabio Cabral':     { name: 'Morpheus', image: 'https://i.pravatar.cc/150?img=33' }
 };
 
 export const DEMO_PROJECTS = {
     'DF-e': 'Projeto Alpha',
     'DF-e Eventos': 'Projeto Beta',
-    'NF-e': 'Projeto Gamma',
-    'PR Manager': 'Manager App',
+    'CT-e Buscador': 'Buscador Pro',
+    'CT-e Conversor': 'Conversor Ultra',
+    'NF-e Buscador': 'Sefaz Link',
+    'NF-e Conversor': 'Doc Transformer',
+    'NFS-e Buscador': 'Service Finder',
+    'NFS-e Conversor': 'Service Handler',
+    'NF-e Buscador InvoiSys': 'InvoiSys Tracker',
+    'Classification': 'Classificador AI',
 };
 
 export function getDemoProject(projectName) {
     if (!DEMO_MODE || !projectName) return projectName;
     if (DEMO_PROJECTS[projectName]) return DEMO_PROJECTS[projectName];
     
-    const genericName = `Projeto ${projectName.substring(0, 3).toUpperCase()}`;
-    DEMO_PROJECTS[projectName] = genericName;
-    return genericName;
+    return projectName;
 }
 
 export function getDemoName(devName) {
