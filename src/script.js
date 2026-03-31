@@ -12,7 +12,15 @@ import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/a
 let currentData = { prs: [] };
 let availableUsers = [];
 
-const validDevs = ['Rodrigo Barbosa', 'Itallo Cerqueira', 'Marcos Paulo', 'Samuel Santos', 'Kemilly Alvez', 'Fabio Cabral'];
+const validDevs = [
+    'Rodrigo Barbosa', 
+    'Itallo Cerqueira', 
+    'Marcos Paulo', 
+    'Samuel Santos', 
+    'Kemilly Alvez', 
+    'Fabio Cabral', 
+    'Silmara Silva'
+];
 
 function applyDevMode() {
     if (!isLocalDev()) return;
@@ -43,7 +51,8 @@ function renderProfileSelection() {
             'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
             'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
-            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg'
+            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg',
+            'Silmara Silva': 'src/assets/profiles/silmara-silva.png'
         };
 
         let displayName = user.name;
@@ -94,13 +103,14 @@ function getUserIdByName(userName) {
         return user ? user.id : null;
     }
     // Fallback to hardcoded mapping
-    const devMap = {
+        const devMap = {
         'Rodrigo Barbosa': 1,
         'Itallo Cerqueira': 2,
         'Marcos Paulo': 3,
         'Samuel Santos': 4,
         'Kemilly Alvez': 5,
-        'Fabio Cabral': 6
+        'Fabio Cabral': 6,
+        'Silmara Silva': 7
     };
     return devMap[userName] || null;
 }
@@ -398,7 +408,8 @@ function updateUserDisplay(userName) {
             'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
             'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
             'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
-            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg'
+            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg',
+            'Silmara Silva': 'src/assets/profiles/silmara-silva.png'
         };
         const realImage = profileImages[userName] || 'src/assets/profiles/default-profile.png';
         if (DEMO_MODE && DEMO_USERS[userName]) return DEMO_USERS[userName].image;

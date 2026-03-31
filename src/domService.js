@@ -11,7 +11,8 @@ const getProfileImage = (userName) => {
         'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
         'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
         'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
-        'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg'
+        'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg',
+        'Silmara Silva': 'src/assets/profiles/silmara-silva.png'
     };
     return profileImages[userName] || 'src/assets/profiles/default-profile.png';
 };
