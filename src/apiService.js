@@ -156,14 +156,22 @@ async function requestCorrection(prId) {
   }
 }
 
-async function requestVersionBatch(prIds) {
+async function requestVersionBatch(prIds, requestedVersionDevId, requestedVersionDevName) {
   const url = `${ApiConstants.BASE_URL}/VersionBatches/request-version`;
 
   try {
+    if (!requestedVersionDevId || !requestedVersionDevName) {
+      throw new Error("As informações do desenvolvedor para gerar versão são obrigatórios.");
+    }
+
     const response = await fetch(url, {
       method: "POST",
       headers: getBackendHeaders(),
-      body: JSON.stringify({ prIds: prIds }),
+      body: JSON.stringify({
+        prIds: prIds,
+        requestedVersionDevId,
+        requestedVersionDevName,
+      }),
     });
 
     if (!response.ok) {

@@ -131,6 +131,10 @@ function getUserIdByName(userName) {
 const prModal = document.getElementById('prModal');
 const setupModal = document.getElementById('setupModal');
 const shortcutsModal = document.getElementById('shortcutsModal');
+const requestVersionModal = document.getElementById('requestVersionModal');
+const requestVersionDevSelect = document.getElementById('requestVersionDevSelect');
+const requestVersionModalDescription = document.getElementById('requestVersionModalDescription');
+const confirmRequestVersionModalBtn = document.getElementById('confirmRequestVersionModalBtn');
 const prForm = document.getElementById('prForm');
 const ghTokenInput = document.getElementById('ghTokenInput');
 const profileScreen = document.getElementById('profileScreen');
@@ -138,6 +142,7 @@ const currentUserDisplay = document.getElementById('currentUserDisplay');
 const currentUserDisplayRight = document.getElementById('currentUserDisplayRight');
 const godModeContainer = document.getElementById('godModeContainer');
 const godModeInput = document.getElementById('godModeInput');
+let pendingVersionRequestContext = null;
 
 if (currentUserDisplay) currentUserDisplay.addEventListener('click', showProfileSelection);
 if (currentUserDisplayRight) currentUserDisplayRight.addEventListener('click', showProfileSelection);
@@ -266,8 +271,9 @@ if (godModeInput) {
 function closeAllModals() {
     prModal.style.display = 'none';
     if (setupModal) setupModal.style.display = 'none';
-
     if (shortcutsModal) shortcutsModal.style.display = 'none';
+    if (requestVersionModal) requestVersionModal.style.display = 'none';
+    pendingVersionRequestContext = null;
     
     if (LocalStorage.getItem('appUser')) {
         profileScreen.style.display = 'none';
@@ -284,8 +290,7 @@ async function init() {
         versionEl.textContent = CURRENT_VERSION;
     }
     
-    //TODO: Implementar loadUsers
-    // await loadUsers();
+    await loadUsers();
     applyDevMode();
     applyDemoProjectsToSelect();
     renderProfileSelection();
@@ -479,6 +484,111 @@ function updateUserDisplay(userName) {
     }
 }
 
+function getVersionAssignableUsers() {
+    const usersToShow = availableUsers.length > 0
+        ? availableUsers
+        : validDevs.map((name, index) => ({ id: index + 1, name, role: 'Dev' }));
+
+    return usersToShow.filter(user => {
+        const normalizedRole = (user.role || '').toLowerCase();
+        return normalizedRole === 'dev' || validDevs.includes(user.name);
+    });
+}
+
+async function loadUsers() {
+    if (!LocalStorage.getItem('token')) return;
+
+    try {
+        const users = await API.fetchUsers();
+        if (Array.isArray(users) && users.length > 0) {
+            availableUsers = users;
+            renderProfileSelection();
+            populateDevList();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar usuários:', error);
+    }
+}
+
+function populateRequestVersionDevSelect(selectedDevId = '') {
+    if (!requestVersionDevSelect) return;
+
+    const assignableUsers = getVersionAssignableUsers();
+    requestVersionDevSelect.innerHTML = '<option value="">Selecione um dev</option>';
+
+    assignableUsers.forEach(user => {
+        const option = document.createElement('option');
+        option.value = String(user.id);
+        option.textContent = user.name;
+        if (String(selectedDevId) === String(user.id)) {
+            option.selected = true;
+        }
+        requestVersionDevSelect.appendChild(option);
+    });
+}
+
+function openRequestVersionModal(prIds, projectName) {
+    pendingVersionRequestContext = {
+        prIds,
+        projectName: projectName || 'este projeto'
+    };
+
+    const currentUserId = LocalStorage.getItem('appUserId');
+    populateRequestVersionDevSelect(currentUserId || '');
+
+    if (requestVersionModalDescription) {
+        requestVersionModalDescription.textContent = `Selecione o dev que vai preencher a versão, número da release, link do pipeline e rollback do lote "${pendingVersionRequestContext.projectName}".`;
+    }
+
+    if (requestVersionModal) {
+        requestVersionModal.style.display = 'flex';
+    }
+}
+
+async function confirmRequestVersionSelection() {
+    if (!pendingVersionRequestContext) return;
+
+    const selectedDevId = requestVersionDevSelect?.value;
+    if (!selectedDevId) {
+        DOM.showToast('Selecione um dev para solicitar a versão.', 'warning');
+        requestVersionDevSelect?.focus();
+        return;
+    }
+
+    const selectedDev = getVersionAssignableUsers()
+        .find(user => String(user.id) === String(selectedDevId));
+
+    if (!selectedDev) {
+        DOM.showToast('Dev selecionado não encontrado.', 'error');
+        return;
+    }
+
+    const { prIds, projectName } = pendingVersionRequestContext;
+
+    if (!confirm(`Solicitar versão para ${prIds.length} PRs aprovados de "${projectName}" e direcionar para ${selectedDev.name}?`)) {
+        return;
+    }
+
+    try {
+        DOM.showLoading(true);
+
+        await API.requestVersionBatch(prIds, selectedDev.id, selectedDev.name);
+
+        if (requestVersionModal) {
+            requestVersionModal.style.display = 'none';
+        }
+        pendingVersionRequestContext = null;
+
+        DOM.showToast(`Versão solicitada para ${selectedDev.name}!`);
+        await loadData(true);
+    } catch (error) {
+        console.error('Erro ao solicitar versão:', error);
+        DOM.showToast('Erro ao solicitar versão: ' + error.message, 'error');
+    } finally {
+        DOM.showLoading(false);
+    }
+}
+
 async function loadPrTablesData(animate = false) {
     const prResult = await API.fetchPRs();
     if (!prResult || !Array.isArray(prResult.prs)) {
@@ -515,6 +625,8 @@ async function loadData(skipLoading = false) {
     }
     
     try {
+        await loadUsers();
+
         // Sequential boot: open PRs first, then approved PRs
         await loadPrTablesData(false);
 
@@ -921,6 +1033,10 @@ document.querySelectorAll('.close-btn, .close-modal').forEach(btn => {
     btn.addEventListener('click', closeAllModals);
 });
 
+if (confirmRequestVersionModalBtn) {
+    confirmRequestVersionModalBtn.addEventListener('click', confirmRequestVersionSelection);
+}
+
 function openSetupModal() {
     if (!AuthService.isAdmin()) {
         console.log('Ação restrita a administradores.');
@@ -1130,22 +1246,7 @@ window.requestVersionBatch = async (prIds, projectName) => {
     if (!projectName) projectName = 'este projeto';
     
     console.log('Solicitando versão para IDs:', prIds);
-
-    if (confirm(`Solicitar versão para ${prIds.length} PRs aprovados de "${projectName}"?`)) {
-        try {
-            DOM.showLoading(true);
-            
-            await API.requestVersionBatch(prIds);
-            
-            DOM.showToast('Versão solicitada com sucesso!');
-            await loadData(true);
-        } catch (error) {
-            console.error('Erro ao solicitar versão:', error);
-            DOM.showToast('Erro ao solicitar versão: ' + error.message, 'error');
-        } finally {
-            DOM.showLoading(false);
-        }
-    }
+    openRequestVersionModal(prIds, projectName);
 };
 
 window.fetchBatches = async () => {

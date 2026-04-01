@@ -212,6 +212,30 @@
         </div>
     </div>
 
+    <div id="requestVersionModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>Solicitar Versão</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <p id="requestVersionModalDescription" style="color: var(--text-secondary); font-size: 0.95rem;">
+                    Selecione o dev que vai preencher os dados da versão deste lote.
+                </p>
+                <div class="form-group full-width">
+                    <label for="requestVersionDevSelect">Dev responsável</label>
+                    <select id="requestVersionDevSelect">
+                        <option value="">Selecione um dev</option>
+                    </select>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                    <button id="cancelRequestVersionModalBtn" class="btn btn-outline close-modal" type="button">Cancelar</button>
+                    <button id="confirmRequestVersionModalBtn" class="btn btn-primary" type="button">Solicitar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     </div>
     <!-- Setup Modal (Token) -->
