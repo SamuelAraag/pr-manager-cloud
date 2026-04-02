@@ -1069,3 +1069,228 @@ footer p {
     background: rgba(88, 166, 255, 0.05);
     transform: translateX(5px);
 }
+
+/* Standalone Module Page */
+.module-shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 24px 64px;
+}
+
+.module-page-header {
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+.module-eyebrow {
+    color: var(--accent-color);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+}
+
+.module-title {
+    margin: 0 0 0.8rem;
+    font-size: 3rem;
+    line-height: 0.95;
+}
+
+.module-subtitle {
+    max-width: 680px;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.module-panel {
+    padding: 24px;
+    margin-bottom: 28px;
+}
+
+.module-panel-header,
+.module-section-head,
+.module-card-top,
+.module-card-row,
+.module-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.module-panel-header {
+    margin-bottom: 18px;
+}
+
+.module-panel-header h2,
+.module-section-head h2,
+.module-card h3 {
+    margin: 0;
+}
+
+.module-panel-header p,
+.module-card-top p {
+    color: var(--text-secondary);
+}
+
+.module-badge,
+.module-count,
+.module-tag {
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.module-badge,
+.module-count {
+    color: var(--accent-color);
+}
+
+.module-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.module-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.module-field span {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.module-field input,
+.module-field select {
+    width: 100%;
+    min-height: 46px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: rgba(48, 54, 61, 0.25);
+    color: var(--text-primary);
+    padding: 0.85rem 0.95rem;
+    outline: none;
+}
+
+.module-field input:focus,
+.module-field select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 4px rgba(88, 166, 255, 0.12);
+}
+
+.module-form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 4px;
+}
+
+.module-toolbar {
+    margin-bottom: 1rem;
+}
+
+.module-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.module-section-head {
+    margin-bottom: 18px;
+}
+
+.module-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+}
+
+.module-card {
+    padding: 20px;
+}
+
+.module-card-top {
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.module-card-top p {
+    margin-top: 6px;
+    font-size: 0.9rem;
+    word-break: break-word;
+}
+
+.module-card-row {
+    padding: 10px 0;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+}
+
+.module-card-row strong {
+    color: var(--text-primary);
+}
+
+.module-card-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    margin-top: 16px;
+}
+
+.module-tag-prod {
+    background: rgba(35, 134, 54, 0.18);
+    color: #3fb950;
+}
+
+.module-tag-stg {
+    background: rgba(240, 184, 64, 0.18);
+    color: #f0b840;
+}
+
+.module-tag-dev {
+    background: rgba(88, 166, 255, 0.18);
+    color: var(--accent-color);
+}
+
+.module-card-ok {
+    border-color: rgba(35, 134, 54, 0.5);
+}
+
+.module-card-warn {
+    border-color: rgba(240, 184, 64, 0.5);
+}
+
+.module-card-offline {
+    border-color: rgba(139, 148, 158, 0.5);
+}
+
+.module-btn-danger {
+    color: var(--danger-color);
+    border-color: rgba(218, 54, 51, 0.5);
+}
+
+@media (max-width: 860px) {
+    .module-panel-header,
+    .module-section-head,
+    .module-toolbar-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .module-title {
+        font-size: 2.3rem;
+    }
+
+    .module-form {
+        grid-template-columns: 1fr;
+    }
+}

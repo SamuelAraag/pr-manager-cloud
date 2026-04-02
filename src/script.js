@@ -866,7 +866,18 @@ function addRelatedTaskInput(url = '', summary = '') {
     }
 }
 
-document.getElementById('changeUserBtn').addEventListener('click', showProfileSelection);
+const monitorStatusBtn = document.getElementById('monitorStatusBtn');
+if (monitorStatusBtn) {
+    monitorStatusBtn.addEventListener('click', () => {
+        window.location.href = 'monitor-status.html';
+    });
+}
+
+const changeUserBtn = document.getElementById('changeUserBtn');
+if (changeUserBtn) {
+    changeUserBtn.addEventListener('click', showProfileSelection);
+}
+
 document.getElementById('logoutBtn').addEventListener('click', handleLogout);
 
 
