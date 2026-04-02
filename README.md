@@ -42,6 +42,7 @@ O **PR Manager** é uma aplicação web que centraliza o controle de Pull Reques
   - PRs Aprovados (agrupados por projeto)
   - Versões em Teste (STG)
   - Histórico de Sprints
+- Módulo de **Monitor de Status** com cards de disponibilidade de aplicações
 - Links diretos para PR, Task (Jira) e Teams
 - Atalhos de teclado para agilidade
 - Interface moderna e responsiva
