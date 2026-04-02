@@ -538,6 +538,124 @@ async function cancelVersionRequestByPrIds(prIds) {
   }
 }
 
+async function fetchMonitorStatusApps() {
+  const url = `${ApiConstants.BASE_URL}/MonitorStatusApps`;
+
+  try {
+    const response = await fetch(url, {
+      headers: getBackendHeaders(),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return [];
+      }
+      throw new Error(`Erro ao buscar aplicações: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Falha ao buscar aplicações monitoradas:", error);
+    throw error;
+  }
+}
+
+async function createMonitorStatusApp(appData) {
+  const url = `${ApiConstants.BASE_URL}/MonitorStatusApps`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: getBackendHeaders(),
+      body: JSON.stringify(appData),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(
+        `Erro ao criar aplicação: ${errorBody.message || response.statusText}`,
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Falha ao criar aplicação monitorada:", error);
+    throw error;
+  }
+}
+
+async function updateMonitorStatusApp(appId, appData) {
+  const url = `${ApiConstants.BASE_URL}/MonitorStatusApps/${appId}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: getBackendHeaders(),
+      body: JSON.stringify(appData),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(
+        `Erro ao atualizar aplicação: ${errorBody.message || response.statusText}`,
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Falha ao atualizar aplicação monitorada:", error);
+    throw error;
+  }
+}
+
+async function deleteMonitorStatusApp(appId) {
+  const url = `${ApiConstants.BASE_URL}/MonitorStatusApps/${appId}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: getBackendHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(
+        `Erro ao remover aplicação: ${errorBody.message || response.statusText}`,
+      );
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Falha ao remover aplicação monitorada:", error);
+    throw error;
+  }
+}
+
+async function checkMonitorStatusApp(appId) {
+  const url = `${ApiConstants.BASE_URL}/MonitorStatusApps/${appId}/check`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getBackendHeaders(),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(
+        `Erro ao verificar aplicação: ${errorBody.message || response.statusText}`,
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Falha ao verificar aplicação monitorada:", error);
+    throw error;
+  }
+}
+
 export {
   fetchPRs,
   fetchSprints,
@@ -565,4 +683,9 @@ export {
   adminLogin,
   login,
   archivePR,
+  fetchMonitorStatusApps,
+  createMonitorStatusApp,
+  updateMonitorStatusApp,
+  deleteMonitorStatusApp,
+  checkMonitorStatusApp,
 };
