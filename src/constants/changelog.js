@@ -1,6 +1,6 @@
 export const ChangelogData = [
     {
-        version: "6.6.0",
+        version: "6.6.20",
         date: "2026-04-01",
         changes: [
             "Implementado módulo Monitor de Status com página dedicada e navegação no cabeçalho da aplicação",
