@@ -1,5 +1,14 @@
 export const ChangelogData = [
     {
+        version: "6.6.20",
+        date: "2026-04-01",
+        changes: [
+            "Implementado módulo Monitor de Status com página dedicada e navegação no cabeçalho da aplicação",
+            "Adicionado CRUD de aplicações monitoradas com integração frontend/backend e controle administrativo no backend",
+            "Incluída checagem periódica de disponibilidade HTTP das aplicações, com destaque visual para indisponibilidade e skeleton loading nos cards"
+        ]
+    },
+    {
         version: "6.5.20",
         date: "2026-02-22",
         changes: [

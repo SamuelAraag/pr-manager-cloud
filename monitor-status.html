@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Aplicações</title>
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="icon" type="image/svg+xml" href="../exemplo/assets/favicon.svg">
+</head>
+
+<body>
+    <div class="container">
+        <header class="module-page-header">
+            <div class="logo-area">
+                <div>
+                    <h1 class="module-title">Monitor de Status</h1>
+                </div>
+            </div>
+            <div class="actions">
+                <a href="index.html" class="btn btn-outline">Voltar</a>
+            </div>
+        </header>
+
+        <section class="module-section-head module-toolbar">
+            <div>
+                <h2>Aplicações cadastradas</h2>
+            </div>
+            <div class="module-toolbar-actions">
+                <span id="appCount" class="tag module-count">0 itens</span>
+                <button id="openAppModalBtn" class="btn btn-primary" type="button" title="Nova Aplicação">
+                    Nova Aplicação
+                </button>
+            </div>
+        </section>
+
+        <section id="appCards" class="module-cards"></section>
+    </div>
+
+    <div id="appModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 720px;">
+            <div class="modal-header">
+                <h2 id="appModalTitle">Cadastro de Aplicação</h2>
+                <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
+            </div>
+
+            <form id="appForm" class="module-form">
+                <input type="hidden" id="appId" value="">
+
+                <label class="module-field">
+                    <span>Nome da aplicação</span>
+                    <input id="appName" type="text" required placeholder="Ex.: API Financeiro">
+                </label>
+
+                <label class="module-field">
+                    <span>Link da aplicação</span>
+                    <input id="appUrl" type="url" required placeholder="https://minha-api.com">
+                </label>
+
+                <label class="module-field">
+                    <span>Ambiente</span>
+                    <select id="appEnvironment" required>
+                        <option value="1">PROD</option>
+                        <option value="3">STG</option>
+                        <option value="2">DEV</option>
+                    </select>
+                </label>
+
+                <div class="module-form-actions">
+                    <button class="btn btn-primary" type="submit">Salvar</button>
+                    <button class="btn btn-outline close-modal" type="button">Cancelar edição</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="src/monitorStatus.js"></script>
+</body>
+
+</html>

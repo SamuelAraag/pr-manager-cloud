@@ -565,7 +565,14 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate
 
     const currentUser = getItem('appUser');
     pendingBatches.forEach(batch => {
-        const card = createApprovedCard(getDemoProject(batch.project), batch.pullRequests, currentUser, batch.batchId, batch.gitlabIssueLink);
+        const card = createApprovedCard(
+            getDemoProject(batch.project),
+            batch.pullRequests,
+            currentUser,
+            batch.batchId,
+            batch.gitlabIssueLink,
+            batch.requestedVersionDevName
+        );
         if(animate) card.classList.add('fade-in-row');
         if(animate) card.style.animationDelay = `${animationDelay}ms`;
         if(animate) animationDelay += 50;
@@ -574,7 +581,7 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate
 
     Object.keys(backlogByProject).sort().forEach(projectName => {
         const projectPrs = backlogByProject[projectName];
-        const card = createApprovedCard(projectName, projectPrs, currentUser, null);
+        const card = createApprovedCard(projectName, projectPrs, currentUser, null, null, null);
         if(animate) card.classList.add('fade-in-row');
         if(animate) card.style.animationDelay = `${animationDelay}ms`;
         if(animate) animationDelay += 50;
@@ -586,7 +593,7 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate
     }
 }
 
-function createApprovedCard(projectName, projectPrs, currentUser, batchId, batchLink = null) {
+function createApprovedCard(projectName, projectPrs, currentUser, batchId, batchLink = null, requestedVersionDevName = null) {
     const isRequestingVersion = projectPrs.some(p => p.versionRequested);
     let headerStyle = '';
     let leftContent = `${projectName} (${projectPrs.length})`;
@@ -627,9 +634,8 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     }
 
     if (isRequestingVersion) {
-        const devCounts = projectPrs.reduce((acc, pr) => { acc[pr.dev] = (acc[pr.dev] || 0) + 1; return acc; }, {});
-        const majorityDev = Object.keys(devCounts).reduce((a, b) => devCounts[a] > devCounts[b] ? a : b);
-        if (currentUser === majorityDev) {
+        const responsibleDev = requestedVersionDevName || '';
+        if (currentUser === responsibleDev) {
             headerStyle = 'background-color: rgba(218, 54, 51, 0.2); border: 1px solid #da3633; color: #ff7b72;'; 
             leftContent += ` <span style="font-size:0.75rem; margin-left:10px; color:#ff7b72;">(Ação Necessária: Versão)</span>`;
             versionInputs = `
@@ -640,7 +646,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                     <button class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size:0.8rem;" onclick="window.saveGroupVersion('${batchId}')">Salvar</button>
                 </div>`;
         } else {
-            leftContent += ` <span style="font-size:0.75rem; margin-left:10px; color:#ff7b72;">(Aguardando: ${majorityDev})</span>`;
+            leftContent += ` <span style="font-size:0.75rem; margin-left:10px; color:#ff7b72;">(Aguardando: ${responsibleDev || 'dev selecionado'})</span>`;
         }
     } else if (hasVersionInfo && !gitlabIssueLink) {
             leftContent += `
