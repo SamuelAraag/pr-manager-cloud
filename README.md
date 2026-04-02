@@ -16,8 +16,8 @@ O **PR Manager** é uma aplicação web que centraliza o controle de Pull Reques
 - Acesso aos links de PR, Task (Jira) e Teams
 
 ### QA (Quality Assurance)
-- **Aprovar PRs** após revisão
 - **Solicitar versão** para deploy em staging
+- **Liberar lotes para staging** quando aplicável
 - **Marcar PRs para correção** com justificativa
 - **Acompanhar versões em teste** (STG)
 - **Validar deploys** em ambiente de staging
@@ -25,6 +25,9 @@ O **PR Manager** é uma aplicação web que centraliza o controle de Pull Reques
 
 ### Administrador
 - **Aprovar PRs** para liberação
+- **Solicitar correções** em PRs
+- **Realizar deploy de PRs para staging**
+- **Arquivar e concluir PRs**
 - **Visualizar métricas** de produtividade da equipe
 - **Acompanhar sprints** e entregas
 - Visão consolidada de todos os projetos
@@ -73,6 +76,8 @@ O **PR Manager** é uma aplicação web que centraliza o controle de Pull Reques
 - Na seção **PRs Aprovados**, clique em **Solicitar Versão**
 - Preencha as informações de versionamento
 - Aguarde o deploy em staging
+
+> Observação: no comportamento atual da aplicação, aprovações e ações administrativas de PR ficam centralizadas no perfil **Administrador**.
 
 ### 3. Atalhos de Teclado
 
