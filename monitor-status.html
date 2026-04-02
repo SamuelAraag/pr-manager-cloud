@@ -27,152 +27,54 @@
                 <h2>Aplicações cadastradas</h2>
             </div>
             <div class="module-toolbar-actions">
-                <span class="tag module-count">3 itens</span>
+                <span id="appCount" class="tag module-count">0 itens</span>
                 <button id="openAppModalBtn" class="btn btn-primary" type="button" title="Nova Aplicação">
                     Nova Aplicação
                 </button>
             </div>
         </section>
 
-        <section class="module-cards">
-            <article class="data-card module-card module-card-ok">
-                <div class="module-card-top">
-                    <div>
-                        <h3>API Financeiro</h3>
-                        <p>https://financeiro.exemplo.com</p>
-                    </div>
-                    <span class="module-tag module-tag-prod">PROD</span>
-                </div>
-
-                <div class="module-card-row">
-                    <span>Status</span>
-                    <strong>Online</strong>
-                </div>
-                <div class="module-card-row">
-                    <span>Última checagem</span>
-                    <strong>há 2 minutos</strong>
-                </div>
-
-                <div class="module-card-actions">
-                    <button class="btn btn-outline" type="button">Editar</button>
-                    <button class="btn btn-outline" type="button">Visualizar</button>
-                    <button class="btn btn-outline module-btn-danger" type="button">Excluir</button>
-                </div>
-            </article>
-
-            <article class="data-card module-card module-card-warn">
-                <div class="module-card-top">
-                    <div>
-                        <h3>Painel Comercial</h3>
-                        <p>https://stg-comercial.exemplo.com</p>
-                    </div>
-                    <span class="module-tag module-tag-stg">STG</span>
-                </div>
-
-                <div class="module-card-row">
-                    <span>Status</span>
-                    <strong>Instável</strong>
-                </div>
-                <div class="module-card-row">
-                    <span>Última checagem</span>
-                    <strong>há 8 minutos</strong>
-                </div>
-
-                <div class="module-card-actions">
-                    <button class="btn btn-outline" type="button">Editar</button>
-                    <button class="btn btn-outline" type="button">Visualizar</button>
-                    <button class="btn btn-outline module-btn-danger" type="button">Excluir</button>
-                </div>
-            </article>
-
-            <article class="data-card module-card module-card-offline">
-                <div class="module-card-top">
-                    <div>
-                        <h3>Portal de Relatórios</h3>
-                        <p>https://relatorios.dev.exemplo.com</p>
-                    </div>
-                    <span class="module-tag module-tag-dev">DEV</span>
-                </div>
-
-                <div class="module-card-row">
-                    <span>Status</span>
-                    <strong>Offline</strong>
-                </div>
-                <div class="module-card-row">
-                    <span>Última checagem</span>
-                    <strong>há 21 minutos</strong>
-                </div>
-
-                <div class="module-card-actions">
-                    <button class="btn btn-outline" type="button">Editar</button>
-                    <button class="btn btn-outline" type="button">Visualizar</button>
-                    <button class="btn btn-outline module-btn-danger" type="button">Excluir</button>
-                </div>
-            </article>
-        </section>
+        <section id="appCards" class="module-cards"></section>
     </div>
 
     <div id="appModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 720px;">
             <div class="modal-header">
-                <h2>Cadastro de Aplicação</h2>
+                <h2 id="appModalTitle">Cadastro de Aplicação</h2>
                 <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
             </div>
 
-            <form class="module-form">
-                <input type="hidden" value="">
+            <form id="appForm" class="module-form">
+                <input type="hidden" id="appId" value="">
 
                 <label class="module-field">
                     <span>Nome da aplicação</span>
-                    <input type="text" placeholder="Ex.: API Financeiro">
+                    <input id="appName" type="text" required placeholder="Ex.: API Financeiro">
                 </label>
 
                 <label class="module-field">
                     <span>Link da aplicação</span>
-                    <input type="url" placeholder="https://minha-api.com">
+                    <input id="appUrl" type="url" required placeholder="https://minha-api.com">
                 </label>
 
                 <label class="module-field">
                     <span>Ambiente</span>
-                    <select>
-                        <option>PROD</option>
-                        <option>STG</option>
-                        <option>DEV</option>
+                    <select id="appEnvironment" required>
+                        <option value="1">PROD</option>
+                        <option value="3">STG</option>
+                        <option value="2">DEV</option>
                     </select>
                 </label>
 
                 <div class="module-form-actions">
-                    <button class="btn btn-primary" type="button">Salvar</button>
+                    <button class="btn btn-primary" type="submit">Salvar</button>
                     <button class="btn btn-outline close-modal" type="button">Cancelar edição</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script>
-        const appModal = document.getElementById('appModal');
-        const openAppModalBtn = document.getElementById('openAppModalBtn');
-
-        if (openAppModalBtn && appModal) {
-            openAppModalBtn.addEventListener('click', () => {
-                appModal.style.display = 'flex';
-            });
-        }
-
-        document.querySelectorAll('#appModal .close-btn, #appModal .close-modal').forEach((button) => {
-            button.addEventListener('click', () => {
-                appModal.style.display = 'none';
-            });
-        });
-
-        if (appModal) {
-            appModal.addEventListener('click', (event) => {
-                if (event.target === appModal) {
-                    appModal.style.display = 'none';
-                }
-            });
-        }
-    </script>
+    <script type="module" src="src/monitorStatus.js"></script>
 </body>
 
 </html>
