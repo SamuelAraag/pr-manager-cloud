@@ -1,0 +1,11 @@
+{
+  "name": "pr-manager-frontend",
+  "private": true,
+  "scripts": {
+    "build:styles": "sass src/styles/styles.scss src/style.css --style=expanded --no-source-map",
+    "watch:styles": "sass --watch src/styles/styles.scss:src/style.css --style=expanded --no-source-map"
+  },
+  "devDependencies": {
+    "sass": "^1.93.2"
+  }
+}

@@ -100,6 +100,25 @@ O **PR Manager** é uma aplicação web que centraliza o controle de Pull Reques
 - **.Net Core** - Lógica da aplicação na parte do Backend
 - **SQL Lite** - Banco de dados
 
+## Estrutura de estilos
+
+O frontend agora está preparado para manter a origem dos estilos em SCSS, preservando `src/style.css` como arquivo final consumido pelas páginas HTML.
+
+Estrutura principal:
+
+- `src/styles/core/_variables.scss`
+- `src/styles/core/_mixins.scss`
+- `src/styles/themes/tema-escuro.scss`
+- `src/styles/themes/tema-claro.scss`
+- `src/styles/bootstrap/bootstrap.scss`
+- `src/styles/styles.scss`
+- `src/styles/_legacy.scss`
+
+Scripts disponíveis:
+
+- `npm run build:styles`
+- `npm run watch:styles`
+
 ## Licença
 
 Este projeto é de uso interno da equipe de desenvolvimento e de total autoria de Samuel Santos (Samuel Araag).

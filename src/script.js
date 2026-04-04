@@ -8,9 +8,12 @@ import { CURRENT_VERSION } from './constants/changelog.js';
 import { extractJiraId } from './utils.js';
 import { connectSignalR } from './notificationService.js';
 import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/apiConstants.js';
+import { initializeTheme } from './themeService.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
+
+initializeTheme('themeToggleBtn');
 
 const validDevs = [
     'Rodrigo Barbosa', 

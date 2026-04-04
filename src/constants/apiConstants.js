@@ -1,6 +1,6 @@
 export const ApiConstants = {
-    //BASE_URL: "https://localhost:7268/api",
-    BASE_URL: "https://ross-targets-eco-political.trycloudflare.com/api",
+    BASE_URL: "https://localhost:7268/api",
+    //BASE_URL: "https://ross-targets-eco-political.trycloudflare.com/api",
 };
 
 export function isLocalDev() {
