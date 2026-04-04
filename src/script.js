@@ -4,7 +4,7 @@ import * as DOM from './domService.js';
 import * as AuthService from './authService.js';
 import { GitLabService } from './automationService.js';
 import { EffectService } from './effectService.js';
-import { CURRENT_VERSION } from './constants/changelog.js';
+import { CURRENT_VERSION } from './modules/changelog/changelog.data.js';
 import { extractJiraId } from './utils.js';
 import { connectSignalR } from './notificationService.js';
 import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/apiConstants.js';
