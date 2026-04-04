@@ -229,12 +229,13 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                 statusTooltip = `title="Motivo: ${pr.correctionReason || 'Geral'}" style="cursor:help; background: ${statusBg}"`;
             } else if (pr.reqVersion === 'ok' || !pr.reqVersion) {
                 statusText = 'Revisão';
-                statusBg = isAdmin ? '#d35400' : '#30363d'; 
-                statusTooltip = `style="background: ${statusBg}"`;
+                statusBg = isAdmin ? '#d35400' : 'var(--bs-secondary-bg-subtle)';
+                const statusColor = isAdmin ? '#ffffff' : 'var(--bs-secondary-color)';
+                statusTooltip = `style="background: ${statusBg}; color: ${statusColor}; border: 1px solid var(--bs-secondary-border-subtle)"`;
             } else {
-                statusBg = '#30363d';
+                statusBg = 'var(--bs-secondary-bg-subtle)';
                 statusText = pr.reqVersion;
-                statusTooltip = `style="background: ${statusBg}"`;
+                statusTooltip = `style="background: ${statusBg}; color: var(--bs-secondary-color); border: 1px solid var(--bs-secondary-border-subtle)"`;
             }
 
 
