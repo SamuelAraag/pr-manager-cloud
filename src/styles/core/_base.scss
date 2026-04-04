@@ -1,1 +1,36 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes statusPulse {
+  0% { box-shadow: 0 0 0 0 var(--pulse-color); }
+  70% { box-shadow: 0 0 0 10px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.status-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  position: relative;
+  vertical-align: middle;
+}
+
+.status-pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--pulse-color);
+  opacity: var(--status-pulse-opacity);
+  animation: statusPulse 2s infinite;
+}
+
+.status-pulse-dot.online { --pulse-color: var(--success-color); background: var(--success-color); }
+.status-pulse-dot.offline { --pulse-color: var(--danger-color); background: var(--danger-color); }
+.status-pulse-dot.neutral { --pulse-color: var(--text-secondary); background: var(--text-secondary); }

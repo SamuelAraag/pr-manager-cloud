@@ -48,7 +48,17 @@ $theme-dark: map.merge(
     "module-status-ok-color": #c8e6c9,
     "module-status-ok-glow": rgba(46, 125, 50, 0.24),
     "module-status-error-color": #ffb3c1,
-    "module-status-error-glow": rgba(217, 4, 41, 0.26)
+    "module-status-error-glow": rgba(217, 4, 41, 0.26),
+    "modal-overlay-bg": rgba(13, 17, 23, 0.85),
+    "modal-content-bg": #0d1117,
+    "modal-content-border": #30363d,
+    "modal-header-border": #21262d,
+    "chart-grid-color": #21262d,
+    "chart-tooltip-bg": #161b22,
+    "chart-footer-bg": #161b22,
+    "chart-text-muted": #8b949e,
+    "chart-text-bright": #c9d1d9,
+    "status-pulse-opacity": 0.4
   )
 );
 

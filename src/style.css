@@ -1,5 +1,61 @@
 @charset "UTF-8";
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes statusPulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--pulse-color);
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.status-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  position: relative;
+  vertical-align: middle;
+}
+
+.status-pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--pulse-color);
+  opacity: var(--status-pulse-opacity);
+  animation: statusPulse 2s infinite;
+}
+
+.status-pulse-dot.online {
+  --pulse-color: var(--success-color);
+  background: var(--success-color);
+}
+
+.status-pulse-dot.offline {
+  --pulse-color: var(--danger-color);
+  background: var(--danger-color);
+}
+
+.status-pulse-dot.neutral {
+  --pulse-color: var(--text-secondary);
+  background: var(--text-secondary);
+}
+
 :root, [data-theme=dark] {
   --bg-color: #121211;
   --card-bg: rgba(26, 26, 26, 0.92);
@@ -45,6 +101,16 @@
   --module-status-ok-glow: rgba(46, 125, 50, 0.24);
   --module-status-error-color: #ffb3c1;
   --module-status-error-glow: rgba(217, 4, 41, 0.26);
+  --modal-overlay-bg: rgba(13, 17, 23, 0.85);
+  --modal-content-bg: #0d1117;
+  --modal-content-border: #30363d;
+  --modal-header-border: #21262d;
+  --chart-grid-color: #21262d;
+  --chart-tooltip-bg: #161b22;
+  --chart-footer-bg: #161b22;
+  --chart-text-muted: #8b949e;
+  --chart-text-bright: #c9d1d9;
+  --status-pulse-opacity: 0.4;
 }
 
 [data-theme=light] {
@@ -92,6 +158,16 @@
   --module-status-ok-glow: rgba(46, 125, 50, 0.14);
   --module-status-error-color: #D90429;
   --module-status-error-glow: rgba(217, 4, 41, 0.12);
+  --modal-overlay-bg: rgba(242, 234, 227, 0.85);
+  --modal-content-bg: #ffffff;
+  --modal-content-border: #dee2e6;
+  --modal-header-border: #ece8e5;
+  --chart-grid-color: #dee2e6;
+  --chart-tooltip-bg: #f8f9fa;
+  --chart-footer-bg: #f8f9fa;
+  --chart-text-muted: #6F6A66;
+  --chart-text-bright: #121211;
+  --status-pulse-opacity: 0.2;
 }
 
 [data-theme=light] .tag {
@@ -2136,6 +2212,11 @@ body {
   --bs-alert-color: var(--danger-color);
   --bs-alert-bg: color-mix(in srgb, var(--danger-color) 14%, transparent);
   --bs-alert-border-color: color-mix(in srgb, var(--danger-color) 30%, transparent);
+}
+
+/* Case we need specific styles for the details modal in the future */
+#detailsModal .modal-content {
+  animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 * {

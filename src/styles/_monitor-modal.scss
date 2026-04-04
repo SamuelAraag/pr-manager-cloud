@@ -1,0 +1,4 @@
+/* Case we need specific styles for the details modal in the future */
+#detailsModal .modal-content {
+  animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
