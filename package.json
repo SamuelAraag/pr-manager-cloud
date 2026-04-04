@@ -2,14 +2,14 @@
   "name": "pr-manager-frontend",
   "private": true,
   "scripts": {
-    "build:styles": "sass --load-path=node_modules src/styles/styles.scss src/style.css --style=expanded --no-source-map",
-    "watch:styles": "sass --load-path=node_modules --watch src/styles/styles.scss:src/style.css --style=expanded --no-source-map",
-    "build:styles:prod": "sass --load-path=node_modules src/styles/styles.scss src/style.min.css --style=compressed --no-source-map"
+    "build:styles": "sass --load-path=node_modules --silence-deprecation=import --quiet-deps src/styles/styles.scss src/style.css --style=expanded --no-source-map",
+    "watch:styles": "sass --load-path=node_modules --silence-deprecation=import --quiet-deps --watch src/styles/styles.scss:src/style.css --style=expanded --no-source-map",
+    "build:styles:prod": "sass --load-path=node_modules --silence-deprecation=import --quiet-deps src/styles/styles.scss src/style.min.css --style=compressed --no-source-map"
   },
   "devDependencies": {
-    "sass": "^1.93.2"
+    "sass": "1.93.2"
   },
   "dependencies": {
-    "bootstrap": "^5.3.8"
+    "bootstrap": "5.3.8"
   }
 }
