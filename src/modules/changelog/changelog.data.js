@@ -1,5 +1,12 @@
 export const ChangelogData = [
     {
+        version: "6.6.22",
+        date: "2026-04-04",
+        changes: [
+            "Implementado modal de detalhes com visualização gráfica de histórico de disponibilidade (Status 200 OK vs Falhas/404)"
+        ]
+    },
+    {
         version: "6.6.21",
         date: "2026-04-04",
         changes: [
