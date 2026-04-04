@@ -541,14 +541,6 @@ tr:hover {
     color: var(--text-primary);
 }
 
-.notification-item-detail {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding-left: 0;
-    margin-top: 4px;
-}
-
 .notification-item-summary {
     font-size: 0.75rem;
     color: var(--text-secondary);

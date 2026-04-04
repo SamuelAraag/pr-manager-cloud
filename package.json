@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "build:styles": "sass --load-path=node_modules src/styles/styles.scss src/style.css --style=expanded --no-source-map",
-    "watch:styles": "sass --load-path=node_modules --watch src/styles/styles.scss:src/style.css --style=expanded --no-source-map"
+    "watch:styles": "sass --load-path=node_modules --watch src/styles/styles.scss:src/style.css --style=expanded --no-source-map",
+    "build:styles:prod": "sass --load-path=node_modules src/styles/styles.scss src/style.min.css --style=compressed --no-source-map"
   },
   "devDependencies": {
     "sass": "^1.93.2"
