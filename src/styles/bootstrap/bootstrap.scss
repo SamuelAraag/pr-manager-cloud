@@ -1,3 +1,8 @@
+// Bootstrap 5.3.8
+// O Bootstrap internamente depende do sistema @import para que as variaveis
+// ficam no escopo global durante o carregamento encadeado. Por isso usamos
+// @import aqui dentro. O aviso de deprecacao referente a este arquivo e
+// suprimido pelo flag --silence-deprecation=import no build script.
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
 @import "bootstrap/scss/variables-dark";

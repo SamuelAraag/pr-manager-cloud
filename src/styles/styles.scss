@@ -4,6 +4,6 @@
 @use "themes/tema-escuro";
 @use "themes/tema-claro";
 
-@import "bootstrap/bootstrap";
-@import "core/bootstrap-theme-bridge";
-@import "legacy";
+@use "bootstrap/bootstrap" as *;
+@use "core/bootstrap-theme-bridge" as *;
+@use "legacy" as *;
