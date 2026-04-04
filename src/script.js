@@ -476,10 +476,10 @@ function updateUserDisplay(userName) {
     if (appTitle) {
         if (isAdmin) {
             appTitle.style.background = 'none';
-            appTitle.style.webkitTextFillColor = '#eb0000';
-            appTitle.style.color = '#eb0000';
+            appTitle.style.webkitTextFillColor = 'var(--accent-color)';
+            appTitle.style.color = 'var(--accent-color)';
         } else {
-            appTitle.style.background = 'linear-gradient(90deg, #58a6ff, #bc85ff)';
+            appTitle.style.background = 'linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 72%, white))';
             appTitle.style.webkitBackgroundClip = 'text';
             appTitle.style.backgroundClip = 'text';
             appTitle.style.webkitTextFillColor = 'transparent';
