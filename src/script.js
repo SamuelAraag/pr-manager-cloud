@@ -869,7 +869,7 @@ function addRelatedTaskInput(url = '', summary = '') {
 const monitorStatusBtn = document.getElementById('monitorStatusBtn');
 if (monitorStatusBtn) {
     monitorStatusBtn.addEventListener('click', () => {
-        window.location.href = 'monitor-status.html';
+        window.location.href = 'monitor-de-status.html';
     });
 }
 
