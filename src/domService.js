@@ -27,12 +27,12 @@ const getTestingViewTheme = () => ({
     accent: 'var(--bs-primary)',
     accentSoft: 'var(--bs-primary-bg-subtle)',
     accentText: 'var(--bs-primary-text-emphasis)',
-    actionBackground: 'var(--bs-secondary-bg-subtle)',
-    actionBorder: 'var(--bs-secondary-border-subtle)',
-    actionText: 'var(--bs-secondary-color)',
-    gitlabBackground: 'var(--bs-secondary-bg-subtle)',
-    gitlabBorder: 'var(--bs-secondary-border-subtle)',
-    gitlabText: 'var(--bs-secondary-color)',
+    actionBackground: 'var(--accent-color)',
+    actionBorder: 'var(--accent-color)',
+    actionText: '#ffffff',
+    gitlabBackground: 'var(--glass-bg)',
+    gitlabBorder: 'var(--border-color)',
+    gitlabText: 'var(--text-primary)',
     gitlabIconFilter: 'var(--theme-icon-muted-filter)',
     cardBackground: 'var(--card-bg)'
 });
@@ -376,11 +376,12 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
         if(animate) headerContainer.style.animationDelay = `${animationDelay}ms`;
         if(animate) animationDelay += 50;
 
+        // configurations of table stg
         headerContainer.style.display = 'flex';
         headerContainer.style.justifyContent = 'space-between';
         headerContainer.style.alignItems = 'center';
         headerContainer.style.marginBottom = '1rem';
-        headerContainer.style.marginTop = '2rem';
+        headerContainer.style.marginTop = '1rem';
         headerContainer.style.borderBottom = `1px solid ${testingTheme.headerBorder}`;
         headerContainer.style.paddingBottom = '0.5rem';
 

@@ -36,7 +36,7 @@ header {
 h1 {
     font-size: 2rem;
     font-weight: 700;
-    background: linear-gradient(90deg, #58a6ff, #bc85ff);
+    background: linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 72%, white));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -415,13 +415,16 @@ tr:hover {
     top: calc(100% + 10px);
     right: 0;
     width: 340px;
-    background: #161b22;
+    background: var(--app-surface-2, var(--card-bg));
     border: 1px solid var(--border-color);
     border-radius: 10px;
     z-index: 1500;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 8px 32px color-mix(in srgb, var(--bg-color) 78%, transparent);
     overflow: hidden;
     animation: panelFadeIn 0.2s ease;
+    color: var(--text-primary);
+    opacity: 1;
+    backdrop-filter: none;
 }
 
 @keyframes panelFadeIn {
@@ -438,9 +441,11 @@ tr:hover {
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--text-primary);
+    background: var(--app-surface-2, var(--card-bg));
 }
 
 .notification-list {
+    background: var(--app-surface-2, var(--card-bg));
     max-height: 360px;
     overflow-y: auto;
 }
@@ -448,13 +453,14 @@ tr:hover {
 .notification-item {
     display: block;
     padding: 0.7rem 1rem;
-    border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+    border-bottom: 1px solid var(--border-color);
     transition: background 0.15s;
     text-decoration: none;
+    color: inherit;
 }
 
 .notification-item:hover {
-    background: rgba(88, 166, 255, 0.05);
+    background: var(--glass-bg);
 }
 
 .notification-item:last-child {
@@ -483,10 +489,10 @@ tr:hover {
     flex-shrink: 0;
 }
 
-.notification-item-icon.success { background: rgba(35, 134, 54, 0.2); color: #3fb950; }
-.notification-item-icon.error   { background: rgba(248, 81, 73, 0.15); color: #f85149; }
-.notification-item-icon.warning { background: rgba(210, 153, 34, 0.15); color: #d29922; }
-.notification-item-icon.info    { background: rgba(88, 166, 255, 0.1);  color: var(--accent-color); }
+.notification-item-icon.success { background: color-mix(in srgb, var(--success-color) 18%, transparent); color: var(--success-color); }
+.notification-item-icon.error   { background: color-mix(in srgb, var(--danger-color) 16%, transparent); color: var(--danger-color); }
+.notification-item-icon.warning { background: color-mix(in srgb, var(--warning-color) 18%, transparent); color: var(--warning-color); }
+.notification-item-icon.info    { background: color-mix(in srgb, var(--accent-color) 14%, transparent); color: var(--accent-color); }
 
 .notification-item-title {
     font-size: 0.8rem;
@@ -499,7 +505,7 @@ tr:hover {
 
 .notification-item-time {
     font-size: 0.68rem;
-    color: #484f58;
+    color: var(--text-secondary);
     white-space: nowrap;
     flex-shrink: 0;
 }
@@ -516,8 +522,8 @@ tr:hover {
     font-size: 0.68rem;
     font-weight: 700;
     color: var(--accent-color);
-    background: rgba(88, 166, 255, 0.1);
-    border: 1px solid rgba(88, 166, 255, 0.25);
+    background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 28%, transparent);
     border-radius: 4px;
     padding: 1px 5px;
     white-space: nowrap;
@@ -535,14 +541,6 @@ tr:hover {
     color: var(--text-primary);
 }
 
-.notification-item-detail {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding-left: 0;
-    margin-top: 4px;
-}
-
 .notification-item-summary {
     font-size: 0.75rem;
     color: var(--text-secondary);
@@ -553,7 +551,7 @@ tr:hover {
 
 .notification-empty {
     text-align: center;
-    color: #484f58;
+    color: var(--text-secondary);
     font-size: 0.82rem;
     padding: 2rem 1rem;
     margin: 0;
@@ -803,10 +801,10 @@ kbd {
     opacity: 1;
 }
 
-.toast-success { background: rgba(35, 134, 54, 0.95); border-left: 4px solid #3fb950; }
-.toast-warning { background: rgba(210, 153, 34, 0.95); border-left: 4px solid #f0b840; color: #fff; }
-.toast-error { background: rgba(218, 54, 51, 0.95); border-left: 4px solid #f85149; }
-.toast-info { background: rgba(31, 111, 235, 0.95); border-left: 4px solid #58a6ff; }
+.toast-success { background: color-mix(in srgb, var(--success-color) 18%, var(--card-bg)); border-left: 4px solid var(--success-color); color: var(--text-primary); }
+.toast-warning { background: color-mix(in srgb, var(--warning-color) 18%, var(--card-bg)); border-left: 4px solid var(--warning-color); color: var(--text-primary); }
+.toast-error { background: color-mix(in srgb, var(--danger-color) 18%, var(--card-bg)); border-left: 4px solid var(--danger-color); color: var(--text-primary); }
+.toast-info { background: color-mix(in srgb, var(--accent-color) 16%, var(--card-bg)); border-left: 4px solid var(--accent-color); color: var(--text-primary); }
 
 @keyframes slideInRight {
     from { transform: translateX(120%); opacity: 0; }

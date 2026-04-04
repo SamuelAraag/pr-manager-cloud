@@ -1,0 +1,144 @@
+body {
+  --bs-body-bg: var(--bg-color);
+  --bs-body-color: var(--text-primary);
+  --bs-border-color: var(--border-color);
+  --bs-secondary-color: var(--text-secondary);
+
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+}
+
+.text-muted,
+.text-secondary,
+.form-text {
+  color: var(--text-secondary) !important;
+}
+
+.card,
+.modal-content,
+.dropdown-menu,
+.offcanvas,
+.popover,
+.toast,
+.accordion-item,
+.list-group-item {
+  --bs-card-bg: var(--card-bg);
+  --bs-card-color: var(--text-primary);
+  --bs-card-border-color: var(--border-color);
+  --bs-modal-bg: var(--card-bg);
+  --bs-modal-color: var(--text-primary);
+  --bs-modal-border-color: var(--border-color);
+  --bs-dropdown-bg: var(--card-bg);
+  --bs-dropdown-color: var(--text-primary);
+  --bs-dropdown-border-color: var(--border-color);
+  --bs-offcanvas-bg: var(--card-bg);
+  --bs-offcanvas-color: var(--text-primary);
+  --bs-offcanvas-border-color: var(--border-color);
+  --bs-popover-bg: var(--card-bg);
+  --bs-popover-border-color: var(--border-color);
+  --bs-popover-header-bg: var(--glass-bg);
+  --bs-popover-header-color: var(--text-primary);
+  --bs-list-group-bg: var(--card-bg);
+  --bs-list-group-color: var(--text-primary);
+  --bs-list-group-border-color: var(--border-color);
+}
+
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-primary);
+  --bs-table-border-color: var(--border-color);
+  --bs-table-striped-bg: var(--glass-bg);
+  --bs-table-striped-color: var(--text-primary);
+  --bs-table-hover-bg: var(--glass-bg);
+  --bs-table-hover-color: var(--text-primary);
+}
+
+.form-control,
+.form-select,
+.form-check-input,
+.input-group-text {
+  --bs-body-bg: var(--bg-color);
+  --bs-body-color: var(--text-primary);
+  --bs-border-color: var(--border-color);
+  --bs-secondary-color: var(--text-secondary);
+  --bs-secondary-bg: var(--glass-bg);
+}
+
+.form-control,
+.form-select {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.form-control::placeholder {
+  color: var(--text-secondary);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 0.2rem var(--accent-glow);
+}
+
+.form-check-input:checked {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--accent-color);
+  --bs-btn-border-color: var(--accent-color);
+  --bs-btn-color: #fff;
+  --bs-btn-hover-bg: color-mix(in srgb, var(--accent-color) 90%, black);
+  --bs-btn-hover-border-color: color-mix(in srgb, var(--accent-color) 90%, black);
+  --bs-btn-active-bg: color-mix(in srgb, var(--accent-color) 80%, black);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--accent-color) 80%, black);
+  --bs-btn-disabled-bg: color-mix(in srgb, var(--accent-color) 45%, var(--card-bg));
+  --bs-btn-disabled-border-color: color-mix(in srgb, var(--accent-color) 45%, var(--card-bg));
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--accent-color);
+  --bs-btn-border-color: var(--accent-color);
+  --bs-btn-hover-bg: var(--accent-color);
+  --bs-btn-hover-border-color: var(--accent-color);
+  --bs-btn-active-bg: color-mix(in srgb, var(--accent-color) 80%, black);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--accent-color) 80%, black);
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--text-secondary);
+  --bs-btn-border-color: var(--border-color);
+  --bs-btn-hover-bg: var(--glass-bg);
+  --bs-btn-hover-border-color: var(--text-secondary);
+  --bs-btn-hover-color: var(--text-primary);
+  --bs-btn-active-bg: var(--glass-bg);
+  --bs-btn-active-border-color: var(--text-secondary);
+  --bs-btn-active-color: var(--text-primary);
+}
+
+.alert-info {
+  --bs-alert-color: var(--text-primary);
+  --bs-alert-bg: var(--bs-secondary-bg-subtle);
+  --bs-alert-border-color: var(--bs-secondary-border-subtle);
+}
+
+.alert-success {
+  --bs-alert-color: var(--success-color);
+  --bs-alert-bg: color-mix(in srgb, var(--success-color) 14%, transparent);
+  --bs-alert-border-color: color-mix(in srgb, var(--success-color) 30%, transparent);
+}
+
+.alert-warning {
+  --bs-alert-color: var(--warning-color);
+  --bs-alert-bg: color-mix(in srgb, var(--warning-color) 14%, transparent);
+  --bs-alert-border-color: color-mix(in srgb, var(--warning-color) 30%, transparent);
+}
+
+.alert-danger {
+  --bs-alert-color: var(--danger-color);
+  --bs-alert-bg: color-mix(in srgb, var(--danger-color) 14%, transparent);
+  --bs-alert-border-color: color-mix(in srgb, var(--danger-color) 30%, transparent);
+}

@@ -476,10 +476,10 @@ function updateUserDisplay(userName) {
     if (appTitle) {
         if (isAdmin) {
             appTitle.style.background = 'none';
-            appTitle.style.webkitTextFillColor = '#eb0000';
-            appTitle.style.color = '#eb0000';
+            appTitle.style.webkitTextFillColor = 'var(--accent-color)';
+            appTitle.style.color = 'var(--accent-color)';
         } else {
-            appTitle.style.background = 'linear-gradient(90deg, #58a6ff, #bc85ff)';
+            appTitle.style.background = 'linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 72%, white))';
             appTitle.style.webkitBackgroundClip = 'text';
             appTitle.style.backgroundClip = 'text';
             appTitle.style.webkitTextFillColor = 'transparent';
@@ -727,7 +727,7 @@ function openEditModal(pr) {
     removeRelatedBtns.forEach(btn => btn.disabled = isApproved);
 
     if (isApproved) {
-        document.getElementById('modalTitle').innerHTML = 'Editar Pull Request <span class="tag" style="background:#238636; color:white; margin-left:10px;">Aprovado</span>';
+        document.getElementById('modalTitle').innerHTML = 'Editar Pull Request <span class="tag" style="background: color-mix(in srgb, var(--success-color) 16%, transparent); color: var(--success-color); margin-left:10px;">Aprovado</span>';
     } else {
         document.getElementById('modalTitle').textContent = 'Editar Pull Request';
     }
@@ -800,7 +800,7 @@ function updateSummaryLabel() {
     const relatedIds = [...new Set(relatedUrls.map(url => extractJiraId(url)).filter(id => id !== null && id !== primaryId))];
 
     if (relatedIds.length > 0) {
-        const tags = relatedIds.map(id => `<span class="tag" style="background: #30363d; color: #58a6ff; font-size: 0.7rem; padding: 0.2rem 0.6rem; border: 1px solid var(--accent-color);">${id}</span>`).join('');
+        const tags = relatedIds.map(id => `<span class="tag" style="background: color-mix(in srgb, var(--accent-color) 12%, transparent); color: var(--accent-color); font-size: 0.7rem; padding: 0.2rem 0.6rem; border: 1px solid color-mix(in srgb, var(--accent-color) 28%, transparent);">${id}</span>`).join('');
         relatedTagsContainer.innerHTML = tags;
         relatedTagsContainer.style.display = 'flex';
     } else {
@@ -1197,20 +1197,20 @@ window.saveGroupVersion = async (batchId) => {
     const pipeline = elPipeline.value.trim();
     const rollback = elRollback.value.trim();
 
-    [elVersion, elPipeline, elRollback].forEach(el => el.style.border = '1px solid #30363d');
+    [elVersion, elPipeline, elRollback].forEach(el => el.style.border = '1px solid var(--border-color)');
 
     let hasError = false;
 
     if (!version) {
-        elVersion.style.border = '1px solid #da3633';
+        elVersion.style.border = '1px solid var(--danger-color)';
         hasError = true;
     }
     if (!pipeline) {
-        elPipeline.style.border = '1px solid #da3633';
+        elPipeline.style.border = '1px solid var(--danger-color)';
         hasError = true;
     }
     if (!rollback) {
-        elRollback.style.border = '1px solid #da3633';
+        elRollback.style.border = '1px solid var(--danger-color)';
         hasError = true;
     }
 
@@ -1222,13 +1222,13 @@ window.saveGroupVersion = async (batchId) => {
     const versionRegex = /^\d+\.\d+\.\d+\.\d+$/;
     
     if (!versionRegex.test(version)) {
-        elVersion.style.border = '1px solid #da3633';
+        elVersion.style.border = '1px solid var(--danger-color)';
         DOM.showToast('Versão inválida. Use 4 grupos numéricos (ex: 26.01.30.428)', 'error');
         return;
     }
 
     if (!versionRegex.test(rollback)) {
-        elRollback.style.border = '1px solid #da3633';
+        elRollback.style.border = '1px solid var(--danger-color)';
         DOM.showToast('Rollback inválido. Use 4 grupos numéricos (ex: 26.01.30.428)', 'error');
         return;
     }

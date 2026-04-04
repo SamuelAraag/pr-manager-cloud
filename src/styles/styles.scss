@@ -3,4 +3,7 @@
 @use "core/base";
 @use "themes/tema-escuro";
 @use "themes/tema-claro";
-@use "legacy";
+
+@import "bootstrap/bootstrap";
+@import "core/bootstrap-theme-bridge";
+@import "legacy";
