@@ -656,6 +656,28 @@ async function checkMonitorStatusApp(appId) {
   }
 }
 
+async function getMonitorStatusAppDetails(appId) {
+  const url = `${ApiConstants.BASE_URL}/MonitorStatusApps/${appId}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getBackendHeaders(),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(`Erro ao buscar detalhes da aplicação: ${errorBody.message || response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Falha ao buscar detalhes da aplicação monitorada:", error);
+    throw error;
+  }
+}
+
 export {
   fetchPRs,
   fetchSprints,
@@ -688,4 +710,5 @@ export {
   updateMonitorStatusApp,
   deleteMonitorStatusApp,
   checkMonitorStatusApp,
+  getMonitorStatusAppDetails,
 };

@@ -7,6 +7,7 @@
     <title>Monitor de Aplicações</title>
     <link rel="stylesheet" href="src/style.css">
     <link rel="icon" type="image/svg+xml" href="../exemplo/assets/favicon.svg">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
@@ -77,7 +78,89 @@
         </div>
     </div>
 
+    <!-- Modal de Detalhes com Gráfico -->
+    <div id="detailsModal" class="modal-overlay" style="display: none; background: var(--modal-overlay-bg); backdrop-filter: blur(4px);">
+        <div class="modal-content" style="max-width: 900px; background: var(--modal-content-bg); border: 1px solid var(--modal-content-border); position: relative;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--modal-header-border); padding-bottom: 15px; margin-bottom: 20px;">
+                <h2 id="detailsModalTitle" style="color: var(--chart-text-bright); font-size: 1.2rem; font-weight: 600; text-transform: uppercase;">Histórico de Disponibilidade do Site</h2>
+                <button class="close-btn details-close-btn" type="button" aria-label="Fechar" style="background: none; border: none; color: var(--chart-text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
+            </div>
+            
+            <div style="padding: 10px 30px 20px 40px;">
+                <!-- Chart Area -->
+                <div class="chart-wrapper" style="position: relative; height: 260px; border-bottom: 1px solid var(--modal-content-border); border-left: 1px solid var(--modal-content-border); margin-bottom: 30px;">
+                    <!-- Y Axis Labels -->
+                    <div style="position: absolute; left: -140px; top: 20px; font-size: 10px; text-align: right; width: 130px; color: var(--chart-text-muted); text-transform: uppercase; line-height: 1.4;">
+                        <strong style="color: var(--chart-text-bright);">Estável</strong>
+                    </div>
+                    <div style="position: absolute; left: -140px; bottom: 35px; font-size: 10px; text-align: right; width: 130px; color: var(--chart-text-muted); text-transform: uppercase; line-height: 1.4;">
+                        <strong style="color: var(--chart-text-bright);">Fora do Ar</strong>
+                    </div>
+
+                    <!-- Definição de Gradientes SVG -->
+                    <svg style="width:0; height:0; position:absolute;" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="gradGreen" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stop-color="var(--success-color)" stop-opacity="0.3"></stop>
+                                <stop offset="100%" stop-color="var(--success-color)" stop-opacity="0.05"></stop>
+                            </linearGradient>
+                            <linearGradient id="gradRed" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stop-color="var(--danger-color)" stop-opacity="0.4"></stop>
+                                <stop offset="100%" stop-color="var(--danger-color)" stop-opacity="0.05"></stop>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <!-- Gráfico renderizado dinamicamente -->
+                    <svg id="availabilityChart" width="100%" height="100%" viewBox="0 0 1000 240" preserveAspectRatio="none" style="overflow: visible;">
+                        <!-- Grid lines -->
+                        <g stroke="var(--chart-grid-color)" stroke-width="1" stroke-dasharray="2,2">
+                            <line x1="0" y1="40" x2="1000" y2="40"></line>
+                            <line x1="0" y1="180" x2="1000" y2="180"></line>
+                            <!-- Vertical grids inserted via script -->
+                        </g>
+
+                        <g id="chartPaths"></g>
+                        <g id="chartPoints"></g>
+                        <g id="chartHoverZones"></g>
+                    </svg>
+
+                    <!-- Tooltip -->
+                    <div id="chartTooltip" style="display: none; position: absolute; background: var(--chart-tooltip-bg); border: 1px solid var(--modal-content-border); color: var(--chart-text-bright); padding: 12px; border-radius: 6px; font-size: 11px; z-index: 10; transform: translate(-50%, -100%); margin-top: -15px; pointer-events: none; box-shadow: 0 8px 24px rgba(0,0,0,0.5); min-width: 220px;">
+                        <span id="tooltipTitle" style="color: var(--danger-color); font-weight: 600; display: block; margin-bottom: 6px; font-size: 10px; text-transform: uppercase;">INDISPONIBILIDADE</span>
+                        <div id="tooltipContent" style="color: var(--chart-text-muted); line-height: 1.4;"></div>
+                    </div>
+
+                    <!-- X Axis -->
+                    <div style="position: absolute; bottom: -25px; left: 0; width: 100%; display: flex; justify-content: space-between; color: var(--chart-text-muted); font-size: 11px; padding-left: 5px; padding-right: 5px;" id="chartXAxis"></div>
+                </div>
+
+                <!-- Footer Metrics -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: var(--chart-footer-bg); padding: 15px 20px; border-radius: 6px; border: 1px solid var(--modal-content-border); font-size: 13px; color: var(--chart-text-muted);">
+                    <div id="detailsStatusWrapper" style="display: flex; align-items: center; gap: 8px;">
+                        Status Atual: <strong id="detailsStatus" style="color: var(--success-color); font-weight: 600; font-size: 14px;">Estável (200 OK)</strong>
+                    </div>
+                    <div>
+                        Tempo Online (24h): <strong id="detailsUptime" style="color: var(--chart-text-bright); font-weight: 600; font-size: 14px;">-</strong>
+                    </div>
+                    <div>
+                        Total Falhas (24h): <strong id="detailsFailures" style="color: var(--chart-text-bright); font-weight: 600; font-size: 14px;">0</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="src/monitorStatus.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            }, 100);
+        });
+    </script>
 </body>
 
 </html>
