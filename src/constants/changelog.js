@@ -1,5 +1,12 @@
 export const ChangelogData = [
     {
+        version: "6.6.21",
+        date: "2026-04-04",
+        changes: [
+            "Implementado o sistema de temas com novas paletas de cores, incluindo suporte para tema claro e escuro",
+        ]
+    },
+    {
         version: "6.6.20",
         date: "2026-04-01",
         changes: [
