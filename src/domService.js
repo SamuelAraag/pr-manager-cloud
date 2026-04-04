@@ -22,6 +22,21 @@ const getDemoImage = (devName) => {
     return getProfileImage(devName);
 };
 
+const getTestingViewTheme = () => ({
+    headerBorder: 'var(--bs-border-color)',
+    accent: 'var(--bs-primary)',
+    accentSoft: 'var(--bs-primary-bg-subtle)',
+    accentText: 'var(--bs-primary-text-emphasis)',
+    actionBackground: 'var(--bs-secondary-bg-subtle)',
+    actionBorder: 'var(--bs-secondary-border-subtle)',
+    actionText: 'var(--bs-secondary-color)',
+    gitlabBackground: 'var(--bs-secondary-bg-subtle)',
+    gitlabBorder: 'var(--bs-secondary-border-subtle)',
+    gitlabText: 'var(--bs-secondary-color)',
+    gitlabIconFilter: 'var(--theme-icon-muted-filter)',
+    cardBackground: 'var(--card-bg)'
+});
+
 // Check if link is the last clicked one
 const getLinkAttrs = (uniqueId, extraClass = '') => {
     const lastId = localStorage.getItem('lastClickedLink');
@@ -305,6 +320,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
+    const testingTheme = getTestingViewTheme();
     
     let hasDeployed = false;
     let totalTestingBatches = 0;
@@ -364,15 +380,15 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
         headerContainer.style.alignItems = 'center';
         headerContainer.style.marginBottom = '1rem';
         headerContainer.style.marginTop = '2rem';
-        headerContainer.style.borderBottom = '1px solid #30363d';
+        headerContainer.style.borderBottom = `1px solid ${testingTheme.headerBorder}`;
         headerContainer.style.paddingBottom = '0.5rem';
 
         const sprintTitle = document.createElement('h3');
         sprintTitle.textContent = sprint.name;
-        sprintTitle.style.cssText = 'color: var(--text-primary); margin: 0; padding-left: 15px; border-left: 4px solid #8e44ad; font-size: 1.1rem; opacity: 0.9;';
+        sprintTitle.style.cssText = `color: var(--text-primary); margin: 0; padding-left: 15px; border-left: 4px solid ${testingTheme.accent}; font-size: 1.1rem; opacity: 0.9;`;
         
         const completeBtn = `
-            <button class="btn btn-outline" data-roles="Admin,QA" style="font-size: 0.75rem; padding: 0.3rem 0.8rem; border-color: #30363d; color: var(--text-secondary);" onclick="window.completeSprint(${sprint.id})">
+            <button class="btn btn-outline" data-roles="Admin,QA" style="font-size: 0.75rem; padding: 0.3rem 0.8rem; border-color: ${testingTheme.actionBorder}; background: ${testingTheme.actionBackground}; color: ${testingTheme.actionText};" onclick="window.completeSprint(${sprint.id})">
                 <i data-lucide="check-circle-2" style="width: 14px; margin-right: 5px;"></i>
                 Concluir Sprint
             </button>
@@ -392,8 +408,8 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
             let gitlabLink = '';
             if (batch.gitlabIssueLink) {
                 gitlabLink = `
-                    <a href="${batch.gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-testing-' + batch.batchId, 'btn')} style="background-color: #30363d; color: var(--text-secondary); padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; border: 1px solid #444; border-radius: 4px;">
-                        <img src="src/assets/icons/gitlab-logo-simple-thin-svgrepo-com.svg" style="height: 32px; filter: brightness(0) invert(0.6);">
+                    <a href="${batch.gitlabIssueLink}" target="_blank" ${getLinkAttrs('gitlab-testing-' + batch.batchId, 'btn')} style="background-color: ${testingTheme.gitlabBackground}; color: ${testingTheme.gitlabText}; padding: 0.2rem 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; border: 1px solid ${testingTheme.gitlabBorder}; border-radius: 4px;">
+                        <img src="src/assets/icons/gitlab-logo-simple-thin-svgrepo-com.svg" style="height: 32px; filter: ${testingTheme.gitlabIconFilter};">
                         Ver Chamado
                     </a>
                 `;
@@ -410,11 +426,12 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
             if(animate) card.style.animationDelay = `${animationDelay}ms`;
             if(animate) animationDelay += 50;
             card.style.marginBottom = '1.5rem';
-            card.style.borderLeft = '4px solid #8e44ad';
+            card.style.borderLeft = `4px solid ${testingTheme.accent}`;
+            card.style.background = testingTheme.cardBackground;
             
             const headerDiv = document.createElement('div');
             headerDiv.style.padding = '1rem';
-            headerDiv.style.borderBottom = '1px solid #30363d';
+            headerDiv.style.borderBottom = `1px solid ${testingTheme.headerBorder}`;
             headerDiv.style.display = 'flex';
             headerDiv.style.justifyContent = 'space-between';
             headerDiv.style.alignItems = 'center';
@@ -422,7 +439,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
             headerDiv.innerHTML = `
                 <div style="display:flex; align-items:center;">
                     <span style="font-weight: 600; font-size: 1.1rem;">${getDemoProject(batch.project)} (${(batch.pullRequests || []).length})</span>
-                    <span class="tag" style="background:#8e44ad; color:white; margin-left: 10px;">v${batch.version}</span>
+                    <span class="tag" style="background:${testingTheme.accentSoft}; color:${testingTheme.accentText}; margin-left: 10px;">v${batch.version}</span>
                 </div>
                 <div style="display:flex; align-items:center;">
                     ${gitlabLink}

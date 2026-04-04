@@ -1,4 +1,5 @@
 import * as API from "./apiService.js";
+import { initializeTheme } from "./themeService.js";
 
 const CHECK_INTERVAL_MS = 30000;
 const SKELETON_MIN_DURATION_MS = 300;
@@ -28,6 +29,8 @@ const appCount = document.getElementById("appCount");
 
 let appsState = [];
 let statusIntervalId = null;
+
+initializeTheme("themeToggleBtn");
 
 function getFallbackStatus(status = "offline", label = "Sem dados", checkedAt = "Sem checagem") {
   return {

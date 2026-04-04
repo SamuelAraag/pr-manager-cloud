@@ -1,0 +1,55 @@
+@use "../core/variables" as *;
+@use "../core/mixins" as *;
+@use "sass:map";
+
+$theme-dark: map.merge(
+  $theme-fallback,
+  (
+    "bg-color": #0d1117,
+    "card-bg": rgba(22, 27, 34, 0.8),
+    "border-color": #30363d,
+    "text-primary": #c9d1d9,
+    "text-secondary": #8b949e,
+    "accent-color": #58a6ff,
+    "accent-glow": rgba(88, 166, 255, 0.3),
+    "warning-color": #f0b840,
+    "success-color": #238636,
+    "danger-color": #da3633,
+    "glass-bg": rgba(255, 255, 255, 0.03),
+    "glass-border": rgba(255, 255, 255, 0.1),
+    "bs-primary": #58a6ff,
+    "bs-primary-text-emphasis": #ffffff,
+    "bs-primary-bg-subtle": rgba(88, 166, 255, 0.18),
+    "bs-secondary-color": #c9d1d9,
+    "bs-secondary-bg-subtle": #21262d,
+    "bs-secondary-border-subtle": #30363d,
+    "bs-border-color": #30363d,
+    "theme-icon-muted-filter": brightness(0) invert(0.6),
+    "module-input-bg": rgba(48, 54, 61, 0.25),
+    "module-input-focus-ring": rgba(88, 166, 255, 0.12),
+    "module-card-skeleton-border": rgba(88, 166, 255, 0.22),
+    "module-card-skeleton-bg": linear-gradient(180deg, rgba(22, 27, 34, 0.98), rgba(16, 22, 30, 0.98)),
+    "module-skeleton-bg": rgba(255, 255, 255, 0.09),
+    "module-skeleton-inset": rgba(255, 255, 255, 0.03),
+    "module-skeleton-shimmer": rgba(255, 255, 255, 0.22),
+    "module-tag-prod-bg": rgba(35, 134, 54, 0.18),
+    "module-tag-prod-color": #3fb950,
+    "module-tag-stg-bg": rgba(240, 184, 64, 0.18),
+    "module-tag-stg-color": #f0b840,
+    "module-tag-dev-bg": rgba(88, 166, 255, 0.18),
+    "module-tag-dev-color": #58a6ff,
+    "module-card-ok-border": rgba(63, 185, 80, 0.95),
+    "module-card-ok-bg": linear-gradient(180deg, rgba(8, 56, 24, 0.96), rgba(7, 34, 15, 0.98)),
+    "module-card-ok-shadow": (0 0 0 1px rgba(63, 185, 80, 0.18), 0 18px 34px rgba(13, 87, 34, 0.38)),
+    "module-card-offline-border": rgba(139, 148, 158, 0.5),
+    "module-card-error-border": rgba(248, 81, 73, 0.95),
+    "module-card-error-bg": linear-gradient(180deg, rgba(70, 10, 12, 0.96), rgba(38, 8, 10, 0.98)),
+    "module-card-error-shadow": (0 0 0 1px rgba(248, 81, 73, 0.2), 0 18px 34px rgba(120, 12, 18, 0.45)),
+    "module-status-ok-color": #b7ffbf,
+    "module-status-ok-glow": rgba(63, 185, 80, 0.3),
+    "module-status-error-color": #ffb3ad,
+    "module-status-error-glow": rgba(248, 81, 73, 0.35)
+  )
+);
+
+@include apply-theme(":root, [data-theme=\"dark\"]", $theme-dark);

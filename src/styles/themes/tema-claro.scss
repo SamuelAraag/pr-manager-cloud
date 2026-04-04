@@ -1,0 +1,61 @@
+@use "../core/variables" as *;
+@use "../core/mixins" as *;
+@use "sass:map";
+
+$theme-light: map.merge(
+  $theme-fallback,
+  (
+    "bg-color": #f6f8fa,
+    "card-bg": rgba(255, 255, 255, 0.92),
+    "border-color": #d0d7de,
+    "text-primary": #24292f,
+    "text-secondary": #57606a,
+    "accent-color": #0969da,
+    "accent-glow": rgba(9, 105, 218, 0.18),
+    "warning-color": #9a6700,
+    "success-color": #1a7f37,
+    "danger-color": #cf222e,
+    "glass-bg": rgba(255, 255, 255, 0.55),
+    "glass-border": rgba(27, 31, 36, 0.12),
+    "bs-primary": #0d6efd,
+    "bs-primary-text-emphasis": #084298,
+    "bs-primary-bg-subtle": #cfe2ff,
+    "bs-secondary-color": #495057,
+    "bs-secondary-bg-subtle": #e9ecef,
+    "bs-secondary-border-subtle": #ced4da,
+    "bs-border-color": #d0d7de,
+    "theme-icon-muted-filter": none,
+    "module-input-bg": #ffffff,
+    "module-input-focus-ring": rgba(13, 110, 253, 0.15),
+    "module-card-skeleton-border": rgba(13, 110, 253, 0.16),
+    "module-card-skeleton-bg": linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 251, 0.98)),
+    "module-skeleton-bg": rgba(32, 37, 41, 0.08),
+    "module-skeleton-inset": rgba(32, 37, 41, 0.04),
+    "module-skeleton-shimmer": rgba(255, 255, 255, 0.7),
+    "module-tag-prod-bg": #d1e7dd,
+    "module-tag-prod-color": #0f5132,
+    "module-tag-stg-bg": #fff3cd,
+    "module-tag-stg-color": #664d03,
+    "module-tag-dev-bg": #dcecff,
+    "module-tag-dev-color": #084298,
+    "module-card-ok-border": #a3cfbb,
+    "module-card-ok-bg": linear-gradient(180deg, #f3fbf5, #e8f6ec),
+    "module-card-ok-shadow": (0 0 0 1px rgba(25, 135, 84, 0.08), 0 12px 24px rgba(25, 135, 84, 0.08)),
+    "module-card-offline-border": #cbd5df,
+    "module-card-error-border": #f1aeb5,
+    "module-card-error-bg": linear-gradient(180deg, #fff5f5, #fdebec),
+    "module-card-error-shadow": (0 0 0 1px rgba(220, 53, 69, 0.08), 0 12px 24px rgba(220, 53, 69, 0.08)),
+    "module-status-ok-color": #146c43,
+    "module-status-ok-glow": rgba(25, 135, 84, 0.16),
+    "module-status-error-color": #b02a37,
+    "module-status-error-glow": rgba(220, 53, 69, 0.14)
+  )
+);
+
+@include apply-theme("[data-theme=\"light\"]", $theme-light);
+
+[data-theme="light"] {
+  .tag {
+    background: #dcecff;
+  }
+}

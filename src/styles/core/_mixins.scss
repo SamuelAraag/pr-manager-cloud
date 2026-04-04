@@ -1,0 +1,7 @@
+@mixin apply-theme($selector, $tokens) {
+  #{$selector} {
+    @each $name, $value in $tokens {
+      --#{$name}: #{$value};
+    }
+  }
+}

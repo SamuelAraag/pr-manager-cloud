@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -25,6 +25,9 @@
                 </div>
             </div>
             <div id="viewNavigation" style="display: flex; align-items: center; gap: 1rem;">
+                <button id="themeToggleBtn" class="btn btn-outline" type="button" title="Alternar tema">
+                    <i data-role="theme-icon" data-lucide="sun"></i>
+                </button>
                 <a href="index.html" class="btn btn-outline" style="text-decoration: none;">
                     <i data-lucide="arrow-left"></i> Voltar ao Dashboard
                 </a>
@@ -53,6 +56,9 @@
 
     <script type="module">
         import { ChangelogData } from './src/constants/changelog.js';
+        import { initializeTheme } from './src/themeService.js';
+
+        initializeTheme('themeToggleBtn');
 
         const container = document.getElementById('fullChangelogContent');
         if (container) {
