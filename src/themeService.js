@@ -1,5 +1,5 @@
 const THEME_STORAGE_KEY = 'pr_manager_theme';
-const DEFAULT_THEME = 'light';
+const DEFAULT_THEME = 'dark';
 
 function normalizeTheme(theme) {
     return theme === 'dark' ? 'dark' : 'light';
