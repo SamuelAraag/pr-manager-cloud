@@ -1,6 +1,6 @@
 export const ApiConstants = {
   //BASE_URL: "https://localhost:7268/api",
-  BASE_URL: "https://specially-visited-findings-moment.trycloudflare.com/api",
+  BASE_URL: " https://toronto-dvd-notification-glad.trycloudflare.com/api",
 };
 
 export function isLocalDev() {
