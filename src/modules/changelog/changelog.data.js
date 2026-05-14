@@ -3,8 +3,8 @@ export const ChangelogData = [
         version: "6.6.23",
         date: "2026-05-14",
         changes: [
-            "Padronizada a exibicao do ID da task como primeira coluna nas tabelas de PRs, seguindo o mesmo layout da lista de PRs em aberto",
-            "Ajustada a tag do ID da task para não quebrar linha, mantendo identificadores como TXDF-1560 sempre em uma unica linha",
+            "Padronizada a exibição do ID da task como primeira coluna nas tabelas de PRs, seguindo o mesmo layout da lista de PRs em aberto",
+            "Ajustada a tag do ID da task para não quebrar linha, mantendo identificadores como TXDF-1560 sempre em uma única linha",
             "Refinado o layout da tabela 'Versões em teste (STG)' para a coluna Task se ajustar automaticamente ao conteúdo"
         ]
     },
