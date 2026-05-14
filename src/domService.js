@@ -44,6 +44,23 @@ const getLinkAttrs = (uniqueId, extraClass = '') => {
     return ` onclick="window.trackLinkClick(this, '${uniqueId}')" class="${extraClass}${isLast ? ' visited-link' : ''}" `;
 };
 
+function renderTaskIdCell(pr, { includeExpand = false } = {}) {
+    const hasRelated = pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
+    const expandBtn = includeExpand && hasRelated
+        ? `<button class="expand-btn" onclick="window.toggleRelated('${pr.id}', this)"><i data-lucide="chevron-right" style="width: 14px;"></i></button>`
+        : '';
+    const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
+
+    return `
+        <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                ${expandBtn}
+                <span class="tag" style="white-space: nowrap;">${mainJiraId}</span>
+            </div>
+        </td>
+    `;
+}
+
 // Global tracker
 window.trackLinkClick = (element, uniqueId) => {
     localStorage.setItem('lastClickedLink', uniqueId);
@@ -240,16 +257,9 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
 
 
             const hasRelated = pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
-            const expandBtn = hasRelated ? `<button class="expand-btn" onclick="window.toggleRelated('${pr.id}', this)"><i data-lucide="chevron-right" style="width: 14px;"></i></button>` : '';
-            const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
 
             tr.innerHTML = `
-                <td>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        ${expandBtn}
-                        <span class="tag">${mainJiraId}</span>
-                    </div>
-                </td>
+                ${renderTaskIdCell(pr, { includeExpand: true })}
                 <td style="font-weight: 500; padding-left: 0px;">${pr.summary || '-'}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -452,7 +462,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
             const tableContainer = document.createElement('div');
             tableContainer.className = 'table-container';
             const table = document.createElement('table');
-            table.innerHTML = `<thead><tr><th>Resumo</th><th>Dev</th><th>Links</th></tr></thead><tbody></tbody>`;
+            table.innerHTML = `<thead><tr><th style="width: auto; white-space: nowrap;">Task</th><th>Resumo</th><th>Dev</th><th>Links</th></tr></thead><tbody></tbody>`;
             const tbody = table.querySelector('tbody');
             (batch.pullRequests || []).forEach(pr => {
                 const tr = document.createElement('tr');
@@ -465,8 +475,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
                     </button>
                 `;
 
-                const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
-                tr.innerHTML = `<td><div style="display: flex; align-items: center; gap: 8px;"><span class="tag">${mainJiraId}</span> ${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</div></td><td><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
+                tr.innerHTML = `${renderTaskIdCell(pr).replace('<td>', '<td style="width: 0px; white-space: nowrap;">')}<td>${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Nao requer testes de QA">Sem Teste</span>' : ''}</td><td><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td><div style="display: flex; gap: 0.8rem; align-items: center; justify-content: end;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
                 tbody.appendChild(tr);
             });
 
@@ -541,11 +550,11 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit, animate = true
             tableContainer.className = 'table-container';
             const table = document.createElement('table');
             table.style.fontSize = '0.85rem';
-            table.innerHTML = `<thead><tr style="background:transparent;"><th style="padding:0.5rem;">Projeto</th><th style="padding:0.5rem;">Resumo</th><th style="padding:0.5rem;">Dev</th><th style="padding:0.5rem;">Links</th></tr></thead><tbody></tbody>`;
+            table.innerHTML = `<thead><tr style="background:transparent;"><th style="padding:0.5rem;">Task</th><th style="padding:0.5rem;">Resumo</th><th style="padding:0.5rem;">Dev</th><th style="padding:0.5rem;">Links</th></tr></thead><tbody></tbody>`;
             const tbody = table.querySelector('tbody');
             (batch.pullRequests || []).forEach(pr => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td style="padding:0.5rem; color:var(--text-secondary);">${getDemoProject(pr.project) || '-'}</td><td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Não requer testes de QA">Sem Teste</span>' : ''}</td><td style="padding:0.5rem; color:var(--text-secondary);"><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>`;
+                tr.innerHTML = `${renderTaskIdCell(pr)}<td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Nao requer testes de QA">Sem Teste</span>' : ''}</td><td style="padding:0.5rem; color:var(--text-secondary);"><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center; justify-content: end;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>`;
                 tbody.appendChild(tr);
             });
 
@@ -741,7 +750,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     const tableContainer = document.createElement('div');
     tableContainer.className = 'table-container';
     const table = document.createElement('table');
-    table.innerHTML = `<thead><tr><th>Resumo</th><th>Dev</th><th>Status</th><th>Rollback</th><th>Links</th></tr></thead><tbody></tbody>`;
+    table.innerHTML = `<thead><tr><th>Task</th><th>Resumo</th><th>Dev</th><th>Status</th><th>Rollback</th><th>Links</th></tr></thead><tbody></tbody>`;
     const tbody = table.querySelector('tbody');
     
     projectPrs.forEach(pr => {
@@ -769,17 +778,9 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
 
         const tr = document.createElement('tr');
         const prHasRelated = pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
-        const expandBtn = prHasRelated ? `<button class="expand-btn" onclick="window.toggleRelated('${pr.id}', this)"><i data-lucide="chevron-right" style="width: 14px;"></i></button>` : '';
-        const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
-
         tr.innerHTML = `
-            <td>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    ${expandBtn}
-                    <span class="tag">${mainJiraId}</span>
-                    ${pr.summary || '-'}
-                </div>
-            </td>
+            ${renderTaskIdCell(pr, { includeExpand: true })}
+            <td>${pr.summary || '-'}</td>
             <td>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">
