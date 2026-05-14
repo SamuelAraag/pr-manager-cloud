@@ -790,7 +790,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
             <td>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <span class="status-badge" style="background: #8e44ad">Mergeado</span>
-                    ${pr.noTestingRequired ? '<span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Nao requer testes de QA">Sem Teste</span>' : ''}
+                    ${pr.noTestingRequired ? '<span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Não requer testes de QA">Sem Teste</span>' : ''}
                 </div>
             </td>
             <td style="font-size: 0.8rem; color: var(--text-secondary);">${pr.rollback || '-'}</td>
