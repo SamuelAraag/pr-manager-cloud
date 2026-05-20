@@ -1,6 +1,6 @@
 export const ApiConstants = {
   //BASE_URL: "https://localhost:7268/api",
-  BASE_URL: "https://cartridges-jake-versions-ministers.trycloudflare.com/api",
+  BASE_URL: "https://relative-antibody-jvc-urge.trycloudflare.com/api",
 };
 
 export function isLocalDev() {
