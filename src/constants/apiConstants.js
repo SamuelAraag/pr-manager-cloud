@@ -1,6 +1,27 @@
+function normalizeBaseUrl(rawUrl) {
+  const trimmedUrl = rawUrl.trim().replace(/\/+$/, "");
+
+  if (/^https?:\/\//i.test(trimmedUrl)) {
+    return trimmedUrl;
+  }
+
+  const browserProtocol =
+    typeof window !== "undefined" &&
+    (window.location.protocol === "http:" ||
+      window.location.protocol === "https:")
+      ? window.location.protocol
+      : "http:";
+
+  if (trimmedUrl.startsWith("//")) {
+    return `${browserProtocol}${trimmedUrl}`;
+  }
+
+  return `${browserProtocol}//${trimmedUrl}`;
+}
+
 export const ApiConstants = {
-  //BASE_URL: "https://localhost:7268/api",
-  BASE_URL: "pr-manager-cloud.ddnsfree.com:5231/api",
+  // BASE_URL: "https://localhost:7268/api",
+  BASE_URL: normalizeBaseUrl("pr-manager-cloud.ddnsfree.com:5231/api"),
 };
 
 export function isLocalDev() {
