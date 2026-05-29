@@ -3679,3 +3679,58 @@ footer p {
     grid-template-columns: 1fr;
   }
 }
+
+/* TODO: Remover estes estilos temporarios de indisponibilidade na proxima versao. */
+/* Temporary maintenance block start */
+.maintenance-modal-overlay {
+  align-items: center;
+  background: radial-gradient(circle at top, rgba(255, 184, 77, 0.18), transparent 35%), rgba(7, 11, 18, 0.92);
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  z-index: 5000;
+}
+
+.maintenance-modal-content {
+  background: linear-gradient(180deg, rgba(18, 25, 38, 0.98), rgba(10, 15, 24, 0.98));
+  border: 1px solid rgba(255, 184, 77, 0.28);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.45);
+  max-width: 620px;
+  padding: 32px;
+  text-align: left;
+}
+
+.maintenance-modal-content h2 {
+  color: #fff4d6;
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+  line-height: 1.2;
+  margin: 0 0 16px;
+}
+
+.maintenance-modal-content p {
+  color: rgba(255, 248, 230, 0.86);
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 14px;
+}
+
+.maintenance-modal-badge {
+  background: rgba(255, 184, 77, 0.14);
+  border: 1px solid rgba(255, 184, 77, 0.3);
+  border-radius: 999px;
+  color: #ffcf70;
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 18px;
+  padding: 6px 12px;
+  text-transform: uppercase;
+}
+
+.maintenance-modal-note {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 20px;
+  padding-top: 18px;
+}
+/* Temporary maintenance block end */

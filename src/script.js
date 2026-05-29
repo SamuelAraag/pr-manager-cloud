@@ -13,6 +13,10 @@ import { initializeTheme } from './themeService.js';
 let currentData = { prs: [] };
 let availableUsers = [];
 
+// TODO: Remover este bloqueio temporario de indisponibilidade na proxima versao.
+// Temporary maintenance block start
+const APP_TEMPORARILY_UNAVAILABLE = true;
+
 initializeTheme('themeToggleBtn');
 
 const validDevs = [
@@ -147,6 +151,16 @@ const godModeContainer = document.getElementById('godModeContainer');
 const godModeInput = document.getElementById('godModeInput');
 let pendingVersionRequestContext = null;
 
+function showMaintenanceModal() {
+    const maintenanceModal = document.getElementById('maintenanceModal');
+    if (!maintenanceModal) return;
+
+    maintenanceModal.style.display = 'flex';
+    document.body.classList.add('no-scroll');
+    DOM.showLoading(false);
+}
+// Temporary maintenance block end
+
 if (currentUserDisplay) currentUserDisplay.addEventListener('click', showProfileSelection);
 if (currentUserDisplayRight) currentUserDisplayRight.addEventListener('click', showProfileSelection);
 
@@ -161,6 +175,11 @@ if (profileScreen) {
 }
 
 window.addEventListener('keydown', (e) => {
+    if (APP_TEMPORARILY_UNAVAILABLE) {
+        e.preventDefault();
+        return;
+    }
+
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
@@ -291,6 +310,11 @@ async function init() {
     if (versionEl) {
         //version as dynamic
         versionEl.textContent = CURRENT_VERSION;
+    }
+
+    if (APP_TEMPORARILY_UNAVAILABLE) {
+        showMaintenanceModal();
+        return;
     }
     
     await loadUsers();
