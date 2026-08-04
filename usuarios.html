@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Usuários</title>
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="module-page-header">
+            <div class="logo-area">
+                <div>
+                    <h1 class="module-title">Gestão de Usuários</h1>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="themeToggleBtn" class="btn btn-outline" type="button" title="Alternar tema">
+                    <i data-role="theme-icon" data-lucide="sun"></i>
+                </button>
+                <a href="index.html" class="btn btn-outline">Voltar</a>
+            </div>
+        </header>
+
+        <section class="module-section-head module-toolbar">
+            <div>
+                <h2>Usuários cadastrados</h2>
+            </div>
+            <div class="module-toolbar-actions">
+                <span id="usersCount" class="tag module-count">0 itens</span>
+                <label style="display: flex; align-items: center; gap: 0.4rem; color: var(--text-secondary); font-size: 0.85rem;">
+                    <input type="checkbox" id="usersShowInactive"> Mostrar desativados
+                </label>
+                <button id="userNewBtn" class="btn btn-primary" type="button" title="Novo Usuário">
+                    Novo Usuário
+                </button>
+            </div>
+        </section>
+
+        <section style="overflow-x: auto;">
+            <table class="pr-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Papel</th>
+                        <th>Admin</th>
+                        <th>Status</th>
+                        <th style="width: 110px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody"></tbody>
+            </table>
+        </section>
+    </div>
+
+    <!-- Formulário de criação/edição (modal interno da rota, mesmo padrão do monitor) -->
+    <div id="userModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 560px;">
+            <div class="modal-header">
+                <h2 id="userFormTitle">Novo usuário</h2>
+                <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
+            </div>
+
+            <form id="userForm" class="module-form">
+                <input type="hidden" id="userFormId" value="">
+
+                <label class="module-field">
+                    <span>Nome</span>
+                    <input id="userFormName" type="text" required placeholder="Nome completo">
+                </label>
+
+                <label class="module-field">
+                    <span>Email</span>
+                    <input id="userFormEmail" type="email" required placeholder="pessoa@empresa.com">
+                </label>
+
+                <label class="module-field">
+                    <span>Senha <small id="userFormPasswordHint">(obrigatória)</small></span>
+                    <input id="userFormPassword" type="password" autocomplete="new-password">
+                </label>
+
+                <label class="module-field">
+                    <span>Papel</span>
+                    <select id="userFormRole">
+                        <option value="Dev">Dev</option>
+                        <option value="QA">QA</option>
+                        <option value="Gestor">Gestor</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </label>
+
+                <label class="module-field">
+                    <span>Avatar (URL)</span>
+                    <input id="userFormAvatar" type="text" placeholder="src/assets/profiles/...">
+                </label>
+
+                <label class="module-field" style="flex-direction: row; align-items: center; gap: 0.4rem;">
+                    <input type="checkbox" id="userFormIsAdmin" style="width: auto;">
+                    <span>Admin da plataforma</span>
+                </label>
+
+                <div class="module-form-actions">
+                    <button class="btn btn-primary" type="submit">Salvar</button>
+                    <button class="btn btn-outline close-modal" type="button">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="src/usersAdmin.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+
+</html>

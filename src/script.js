@@ -13,21 +13,7 @@ import { initializeTheme } from './themeService.js';
 let currentData = { prs: [] };
 let availableUsers = [];
 
-// TODO: Remover este bloqueio temporario de indisponibilidade na proxima versao.
-// Temporary maintenance block start
-const APP_TEMPORARILY_UNAVAILABLE = true;
-
 initializeTheme('themeToggleBtn');
-
-const validDevs = [
-    'Rodrigo Barbosa', 
-    'Itallo Cerqueira', 
-    'Marcos Paulo', 
-    'Samuel Santos', 
-    'Kemilly Alvez', 
-    'Fabio Cabral', 
-    'Silmara Silva'
-];
 
 function applyDevMode() {
     if (!isLocalDev()) return;
@@ -50,89 +36,24 @@ function applyDemoProjectsToSelect() {
     });
 }
 
-function renderProfileSelection() {
-    const profilesGrid = document.querySelector('.profiles-grid');
-    if (!profilesGrid) return;
-    
-    profilesGrid.innerHTML = '';
-    
-    const usersToShow = (availableUsers.length > 0 ? availableUsers : 
-        validDevs.map((name, index) => ({ id: index + 1, name, profileImage: null })))
-        .filter(user => user.name !== 'Samuel Santos');
-    
-    usersToShow.forEach(user => {
-        const profileItem = document.createElement('div');
-        profileItem.className = 'profile-item';
-        profileItem.setAttribute('data-user', user.name);
-        profileItem.setAttribute('data-user-id', user.id);
-        
-        const defaultImages = {
-            'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
-            'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
-            'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
-            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
-            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg',
-            'Silmara Silva': 'src/assets/profiles/silmara-silva.png'
-        };
-
-        let displayName = user.name;
-        let imageSrc    = user.profileImage || defaultImages[user.name] || 'src/assets/profiles/default-profile.png';
-
-        if (DEMO_MODE && DEMO_USERS[user.name]) {
-            displayName = DEMO_USERS[user.name].name;
-            imageSrc    = DEMO_USERS[user.name].image;
-        }
-        
-        profileItem.innerHTML = `
-            <img class="avatar" src="${imageSrc}">
-            <span>${displayName}</span>
-            <div class="profile-login-container">
-                <input type="password" class="profile-login-input">
-                <button class="profile-login-btn">OK</button>
-            </div>
-        `;
-        
-        profilesGrid.appendChild(profileItem);
-    });
-    
-    // Re-attach event listeners
-    attachProfileListeners();
-}
-
 // Populate developer datalist
 function populateDevList() {
     const devList = document.getElementById('devList');
     if (!devList) return;
-    
+
     devList.innerHTML = '';
-    
-    const usersToShow = availableUsers.length > 0 ? availableUsers : 
-        validDevs.map((name, index) => ({ id: index + 1, name }));
-    
-    usersToShow.forEach(user => {
+
+    availableUsers.forEach(user => {
         const option = document.createElement('option');
         option.value = user.name;
         devList.appendChild(option);
     });
 }
 
-// Get user ID by name
+// Get user ID by name (usuários vêm da API — Épico 2)
 function getUserIdByName(userName) {
-    if (availableUsers.length > 0) {
-        const user = availableUsers.find(u => u.name === userName);
-        return user ? user.id : null;
-    }
-    // Fallback to hardcoded mapping
-        const devMap = {
-        'Rodrigo Barbosa': 1,
-        'Itallo Cerqueira': 2,
-        'Marcos Paulo': 3,
-        'Samuel Santos': 4,
-        'Kemilly Alvez': 5,
-        'Fabio Cabral': 6,
-        'Silmara Silva': 7
-    };
-    return devMap[userName] || null;
+    const user = availableUsers.find(u => u.name === userName);
+    return user ? user.id : null;
 }
 
 const prModal = document.getElementById('prModal');
@@ -151,16 +72,6 @@ const godModeContainer = document.getElementById('godModeContainer');
 const godModeInput = document.getElementById('godModeInput');
 let pendingVersionRequestContext = null;
 
-function showMaintenanceModal() {
-    const maintenanceModal = document.getElementById('maintenanceModal');
-    if (!maintenanceModal) return;
-
-    maintenanceModal.style.display = 'flex';
-    document.body.classList.add('no-scroll');
-    DOM.showLoading(false);
-}
-// Temporary maintenance block end
-
 if (currentUserDisplay) currentUserDisplay.addEventListener('click', showProfileSelection);
 if (currentUserDisplayRight) currentUserDisplayRight.addEventListener('click', showProfileSelection);
 
@@ -175,11 +86,6 @@ if (profileScreen) {
 }
 
 window.addEventListener('keydown', (e) => {
-    if (APP_TEMPORARILY_UNAVAILABLE) {
-        e.preventDefault();
-        return;
-    }
-
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
@@ -225,17 +131,15 @@ window.addEventListener('keydown', (e) => {
 
         LocalStorage.setItem('previousUser', currentUser);
 
-        if (existingToken) {
-            // Switch to admin if token exists
-            // The backend should return admin user data with admin role
-            // For now, we keep the UI behavior but rely on token role
+        // sessão já é de admin (papel no JWT) → ativa direto, sem pedir senha
+        if (existingToken && AuthService.isAdmin()) {
             EffectService.triggerGodMode();
             updateUserDisplay(currentUser);
             loadData(true);
             return;
         }
 
-
+        // senão, pede a senha de um usuário admin (Épico 2.6: papel substitui a senha secreta)
         godModeInput.value = '';
         godModeInput.focus();
     } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === 'l') {
@@ -253,13 +157,34 @@ window.addEventListener('keydown', (e) => {
 if (godModeInput) {
     godModeInput.addEventListener('keydown', async (e) => {
         if (e.key === 'Enter') {
-            const password = godModeInput.value;
-            if (!password) return;
+            // Formatos aceitos: "email:senha" (loga outro admin) ou só "senha"
+            // (usa o usuário logado). O que ativa o modo é o PAPEL Admin do login.
+            const raw = godModeInput.value;
+            if (!raw) return;
+
+            let identifier;
+            let password;
+            const sep = raw.indexOf(':');
+            if (sep > 0) {
+                identifier = raw.slice(0, sep).trim();
+                password = raw.slice(sep + 1);
+            } else {
+                identifier = LocalStorage.getItem('appUser');
+                password = raw;
+            }
+            if (!identifier || !password) return;
 
             try {
                 DOM.showLoading(true);
-                const result = await API.adminLogin(password);
-                
+                const result = await API.adminLogin(identifier, password);
+
+                if (result && result.user && !(result.user.isAdmin || result.user.role === 'Admin')) {
+                    godModeInput.value = '';
+                    DOM.showLoading(false);
+                    DOM.showToast('Acesso negado: o usuário não é administrador.');
+                    return;
+                }
+
                 if (result && result.user) {
                     LocalStorage.setItem('appUser', result.user.name);
                     LocalStorage.setItem('appUserId', result.user.id);
@@ -312,15 +237,9 @@ async function init() {
         versionEl.textContent = CURRENT_VERSION;
     }
 
-    if (APP_TEMPORARILY_UNAVAILABLE) {
-        showMaintenanceModal();
-        return;
-    }
-    
     await loadUsers();
     applyDevMode();
     applyDemoProjectsToSelect();
-    renderProfileSelection();
     populateDevList();
     
     const appUser = LocalStorage.getItem('appUser');
@@ -346,90 +265,52 @@ async function init() {
     }
 }
 
-function attachProfileListeners() {
-    document.querySelectorAll('.profile-item').forEach(item => {
-        const input = item.querySelector('.profile-login-input');
-        const btn = item.querySelector('.profile-login-btn');
-        
-        if(input) {
-            input.addEventListener('click', (e) => e.stopPropagation());
-            input.addEventListener('keydown', (e) => {
-                if(e.key === 'Enter') {
-                    e.preventDefault();
-                    handleLogin(item, input.value);
-                }
-            });
-        }
-        
-        if(btn) {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                handleLogin(item, input.value);
-            });
-        }
+// Login padrão (usuário/email + senha) — substitui a antiga grade de perfis
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-        item.addEventListener('click', () => {
-            document.querySelectorAll('.profile-item.active').forEach(activeItem => {
-                if (activeItem !== item) {
-                    activeItem.classList.remove('active');
-                    const activeInput = activeItem.querySelector('.profile-login-input');
-                    if(activeInput) activeInput.value = '';
-                }
-            });
+        const identifier = document.getElementById('loginIdentifier').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const errorEl = document.getElementById('loginError');
+        if (errorEl) errorEl.style.display = 'none';
 
-            item.classList.toggle('active');
-            
-            if(item.classList.contains('active')) {
-                setTimeout(() => {
-                    if(input) input.focus();
-                }, 100);
-            }
-        });
-    });
-}
+        if (!identifier || !password) return;
 
-async function handleLogin(item, password) {
-    const userName = item.getAttribute('data-user');
-    const userId = item.getAttribute('data-user-id');
-    
-    if (!password) {
-        DOM.showToast('Por favor, digite a senha.', 'error');
-        return;
-    }
+        try {
+            DOM.showLoading(true);
+            const result = await API.login(identifier, password);
 
-    try {
-        DOM.showLoading(true);
-        const result = await API.login(userName, password);
-
-        LocalStorage.setItem('appUser', userName);
-        LocalStorage.setItem('appUserId', userId);
-        
-        if (result && result.token) {
+            LocalStorage.setItem('appUser', result.user.name);
+            LocalStorage.setItem('appUserId', result.user.id);
             LocalStorage.setItem('token', result.token);
-        }
 
-        if (AuthService.isAdmin()) {
-             EffectService.triggerGodMode();
-        }
-        
-        updateUserDisplay(userName);
-        profileScreen.style.display = 'none';
-        document.body.classList.remove('no-scroll');
-        
-        document.querySelectorAll('.profile-login-input').forEach(inp => inp.value = '');
-        document.querySelectorAll('.profile-item.active').forEach(el => el.classList.remove('active'));
+            if (AuthService.isAdmin()) {
+                EffectService.triggerGodMode();
+            }
 
-        await loadData(true);
-        
-        AuthService.applyRoleBasedVisibility();
-        connectSignalR();
-        
-    } catch (error) {
-        console.error('Erro no login:', error);
-        DOM.showToast('Autenticação falhou: ' + error.message, 'error');
-    } finally {
-        DOM.showLoading(false);
-    }
+            await loadUsers(); // lista completa (autenticada) para selects/avatares
+            updateUserDisplay(result.user.name);
+            profileScreen.style.display = 'none';
+            document.body.classList.remove('no-scroll');
+
+            document.getElementById('loginPassword').value = '';
+
+            await loadData(true);
+
+            AuthService.applyRoleBasedVisibility();
+            connectSignalR();
+        } catch (error) {
+            console.error('Erro no login:', error);
+            if (errorEl) {
+                errorEl.textContent = 'Usuário ou senha inválidos.';
+                errorEl.style.display = 'block';
+            }
+        } finally {
+            DOM.showLoading(false);
+        }
+    });
 }
 
 function handleLogout() {
@@ -444,26 +325,22 @@ function handleLogout() {
 }
 
 function showProfileSelection() {
-    document.querySelectorAll('.profile-login-input').forEach(inp => inp.value = '');
-    document.querySelectorAll('.profile-item.active').forEach(el => el.classList.remove('active'));
-    
+    // tela de login padrão: limpa credenciais e erro antes de exibir
+    const passwordInput = document.getElementById('loginPassword');
+    const errorEl = document.getElementById('loginError');
+    if (passwordInput) passwordInput.value = '';
+    if (errorEl) errorEl.style.display = 'none';
+
     profileScreen.style.display = 'flex';
     document.body.classList.add('no-scroll');
+    document.getElementById('loginIdentifier')?.focus();
 }
 
 function updateUserDisplay(userName) {
     const imageSrc = (() => {
-        const profileImages = {
-            'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
-            'Rodrigo Barbosa': 'src/assets/profiles/rodrigo-barbosa.jpeg',
-            'Kemilly Alvez': 'src/assets/profiles/kemilly-alvez.jpeg',
-            'Samuel Santos': 'src/assets/profiles/samuel-santos-profile.png',
-            'Fabio Cabral': 'src/assets/profiles/fabio-cabral.jpeg',
-            'Silmara Silva': 'src/assets/profiles/silmara-silva.png'
-        };
-        const realImage = profileImages[userName] || 'src/assets/profiles/default-profile.png';
         if (DEMO_MODE && DEMO_USERS[userName]) return DEMO_USERS[userName].image;
-        return realImage;
+        const user = availableUsers.find(u => u.name === userName);
+        return user?.avatarUrl || 'src/assets/profiles/default-profile.png';
     })();
     const isAdmin = AuthService.isAdmin();
 
@@ -496,6 +373,11 @@ function updateUserDisplay(userName) {
         setupBtn.style.display = isAdmin ? 'inline-flex' : 'none';
     }
 
+    const usersBtn = document.getElementById('usersBtn');
+    if (usersBtn) {
+        usersBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
+
     const appTitle = document.getElementById('appTitle');
     if (appTitle) {
         if (isAdmin) {
@@ -512,24 +394,24 @@ function updateUserDisplay(userName) {
 }
 
 function getVersionAssignableUsers() {
-    const usersToShow = availableUsers.length > 0
-        ? availableUsers
-        : validDevs.map((name, index) => ({ id: index + 1, name, role: 'Dev' }));
-
-    return usersToShow.filter(user => {
-        const normalizedRole = (user.role || '').toLowerCase();
-        return normalizedRole === 'dev' || validDevs.includes(user.name);
-    });
+    return availableUsers.filter(user => (user.role || '').toLowerCase() === 'dev');
 }
 
 async function loadUsers() {
-    if (!LocalStorage.getItem('token')) return;
-
+    // Antes do login não há token: a tela "Quem está editando?" usa o endpoint
+    // anônimo de perfis (só ativos, sem email). Com token, usa a lista completa.
     try {
-        const users = await API.fetchUsers();
+        let users = LocalStorage.getItem('token')
+            ? await API.fetchUsers()
+            : await API.fetchProfiles();
+
+        // token expirado/inválido → cai para o endpoint anônimo em vez de grade vazia
+        if (!Array.isArray(users) || users.length === 0) {
+            users = await API.fetchProfiles();
+        }
+
         if (Array.isArray(users) && users.length > 0) {
             availableUsers = users;
-            renderProfileSelection();
             populateDevList();
         }
     } catch (error) {
@@ -795,6 +677,13 @@ if (document.getElementById('setupBtn')) {
     document.getElementById('setupBtn').addEventListener('click', openSetupModal);
 }
 
+// Gestão de Usuários (Épico 2): tela administrativa é ROTA própria, nunca modal.
+if (document.getElementById('usersBtn')) {
+    document.getElementById('usersBtn').addEventListener('click', () => {
+        window.location.href = 'usuarios.html';
+    });
+}
+
 document.getElementById('addRelatedTaskBtn').addEventListener('click', () => addRelatedTaskInput());
 
 const taskLinkInput = document.getElementById('taskLink');
@@ -1042,13 +931,14 @@ const devInput = document.getElementById('dev');
 devInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         const typedValue = e.target.value.trim().toLowerCase();
-        
-        if (!typedValue || validDevs.some(d => d.toLowerCase() === typedValue)) {
+        const devNames = availableUsers.map(u => u.name);
+
+        if (!typedValue || devNames.some(d => d.toLowerCase() === typedValue)) {
             return;
         }
 
-        const match = validDevs.find(d => d.toLowerCase().startsWith(typedValue));
-        
+        const match = devNames.find(d => d.toLowerCase().startsWith(typedValue));
+
         if (match) {
             e.preventDefault();
             e.target.value = match;
@@ -1058,9 +948,8 @@ devInput.addEventListener('keydown', (e) => {
 });
 
 devInput.addEventListener('change', (e) => {
-    const isValid = validDevs.includes(e.target.value) || 
-                    availableUsers.find(u => u.name === e.target.value);
-    
+    const isValid = availableUsers.find(u => u.name === e.target.value);
+
     if (e.target.value && !isValid) {
         DOM.showToast('Desenvolvedor inválido. Escolha um da lista.', 'warning');
         e.target.value = '';
@@ -1102,8 +991,7 @@ if (saveConfigBtn) {
         const glToken = document.getElementById('glTokenInput') ? document.getElementById('glTokenInput').value.trim() : '';
         const jiraEmail = document.getElementById('jiraEmailInput') ? document.getElementById('jiraEmailInput').value.trim() : '';
         const jiraToken = document.getElementById('jiraTokenInput') ? document.getElementById('jiraTokenInput').value.trim() : '';
-        const secretPass = document.getElementById('secretPasswordInput') ? document.getElementById('secretPasswordInput').value.trim() : '';
-        
+
         if (!ghToken || !glToken) {
             alert('Por favor, insira os tokens necessários.');
             return;
@@ -1119,8 +1007,7 @@ if (saveConfigBtn) {
                 githubToken: ghToken,
                 gitlabToken: glToken,
                 jiraUserEmail: jiraEmail,
-                jiraToken: jiraToken,
-                secretPassword: secretPass
+                jiraToken: jiraToken
             });
 
             DOM.showToast('Configurações salvas com sucesso!');
@@ -1141,7 +1028,7 @@ prForm.addEventListener('submit', async (e) => {
     const prIdInput = document.getElementById('prId').value;
     const devName = devInputForForm.value;
 
-    if (!validDevs.includes(devName) && !availableUsers.find(u => u.name === devName)) {
+    if (!availableUsers.find(u => u.name === devName)) {
         DOM.showToast('Por favor, selecione um desenvolvedor válido da lista.', 'warning');
         devInputForForm.focus();
         return;

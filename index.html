@@ -14,54 +14,27 @@
 </head>
 
 <body>
-    <!-- TODO: Remover este modal temporario de indisponibilidade na proxima versao. -->
-    <!-- Temporary maintenance block start -->
-    <div id="maintenanceModal" class="modal-overlay maintenance-modal-overlay" style="display: flex;">
-        <div class="modal-content maintenance-modal-content">
-            <div class="maintenance-modal-badge">Comunicado importante</div>
-            <h2>Aplicacao temporariamente indisponivel</h2>
-            <p>
-                Estamos realizando uma pausa temporaria no PR Manager para ajustes operacionais e estabilizacao do ambiente.
-            </p>
-            <p>
-                Durante esse periodo, a aplicacao ficara indisponivel e nenhuma acao podera ser concluida no sistema. Assim que a manutencao terminar, o acesso sera restabelecido normalmente.
-            </p>
-            <p class="maintenance-modal-note">
-                Agradecemos a paciencia e a compreensao. Em breve estaremos de volta.
-            </p>
-        </div>
-    </div>
-    <!-- Temporary maintenance block end -->
-
+    <!-- Tela de login padrão (usuário/email + senha) -->
     <div id="profileScreen" class="modal-overlay" style="display: none; background: #0d1117; z-index: 2000;">
-        <div class="profile-container">
-            <h1>Quem está editando?</h1>
-            <div class="profiles-grid">
-                <div class="profile-item" data-user="Rodrigo Barbosa">
-                    <img class="avatar" id="avatar-rodrigo" src="src/assets/profiles/rodrigo-barbosa.jpeg">
-                    <span id="name-rodrigo">Rodrigo Barbosa</span>
+        <div class="login-card">
+            <h1 class="login-title">PR Manager</h1>
+            <p class="login-subtitle">Entre com suas credenciais</p>
+            <form id="loginForm" autocomplete="on">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="loginIdentifier">Email ou usuário</label>
+                    <input type="text" id="loginIdentifier" placeholder="voce@empresa.com" required
+                        autocomplete="username" autofocus>
                 </div>
-                <div class="profile-item" data-user="Itallo Cerqueira">
-                    <img class="avatar" id="avatar-itallo" src="src/assets/profiles/itallo-cerqueira.png">
-                    <span id="name-itallo">Itallo Cerqueira</span>
+                <div class="form-group" style="margin-bottom: 1.4rem;">
+                    <label for="loginPassword">Senha</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required
+                        autocomplete="current-password">
                 </div>
-                <div class="profile-item" data-user="Marcos Paulo">
-                    <img class="avatar" id="avatar-marcos" src="src/assets/profiles/default-profile.png">
-                    <span id="name-marcos">Marcos Paulo</span>
-                </div>
-                <div class="profile-item" data-user="Kemilly Alvez">
-                    <img class="avatar" id="avatar-kemilly" src="src/assets/profiles/kemilly-alvez.jpeg">
-                    <span id="name-kemilly">Kemilly Alvez</span>
-                </div>
-                <div class="profile-item" data-user="Fabio Cabral">
-                    <img class="avatar" id="avatar-cabral" src="src/assets/profiles/fabio-cabral.jpeg">
-                    <span id="name-cabral">Fabio Cabral</span>
-                </div>
-                <div class="profile-item" data-user="Silmara Silva">
-                    <img class="avatar" id="avatar-silmara" src="src/assets/profiles/silmara-silva.png">
-                    <span id="name-silmara">Silmara Silva</span>
-                </div>
-            </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                    Entrar
+                </button>
+                <p id="loginError" class="login-error" style="display: none;"></p>
+            </form>
         </div>
     </div>
 
@@ -99,6 +72,11 @@
                 <button id="setupBtn" data-roles="Admin" class="btn btn-outline admin-only" title="Configurar Token (S)"
                     style="border-color: var(--accent-color); color: var(--accent-color); display: none;">
                     <i data-lucide="settings"></i>
+                </button>
+
+                <button id="usersBtn" data-roles="Admin" class="btn btn-outline admin-only" title="Gerenciar Usuários"
+                    style="border-color: var(--accent-color); color: var(--accent-color); display: none;">
+                    <i data-lucide="users"></i>
                 </button>
 
                 <div id="notificationBellWrapper" style="position: relative; display: none;">
@@ -289,15 +267,12 @@
                 <label>Jira - Token de API</label>
                 <input type="password" id="jiraTokenInput" placeholder="Jira API Token...">
             </div>
-            <div class="form-group" style="margin-bottom: 1rem;">
-                <label>Super Admin Password</label>
-                <input type="password" id="secretPasswordInput" placeholder="****">
-            </div>
             <button id="saveConfigBtn" class="btn btn-primary"
                 style="width: 100%; margin-top: 1rem; justify-content: center;">Salvar</button>
         </div>
     </div>
-    
+
+
     <!-- Add/Edit PR Modal -->
     <div id="prModal" class="modal-overlay">
         <div class="modal-content">

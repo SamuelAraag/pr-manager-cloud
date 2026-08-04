@@ -57,8 +57,21 @@ async function fetchSprints() {
   }
 }
 
-async function fetchUsers() {
-  const url = `${ApiConstants.BASE_URL}/Users`;
+// Perfis para a tela pré-login "Quem está editando?" (endpoint anônimo, sem email)
+async function fetchProfiles() {
+  const url = `${ApiConstants.BASE_URL}/Users/profiles`;
+  try {
+    const response = await fetch(url, { headers: getBackendHeaders(), cache: "no-store" });
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (error) {
+    console.error("Falha ao buscar perfis:", error);
+    return [];
+  }
+}
+
+async function fetchUsers(includeInactive = false) {
+  const url = `${ApiConstants.BASE_URL}/Users${includeInactive ? "?includeInactive=true" : ""}`;
 
   try {
     const response = await fetch(url, {
@@ -436,36 +449,23 @@ async function saveAutomationConfig(configData) {
   }
 }
 
-async function adminLogin(password) {
-  const url = `${ApiConstants.BASE_URL}/Auth/admin-login`;
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: getBackendHeaders(),
-      body: JSON.stringify({ password }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json();
-      throw new Error(
-        `Acesso negado: ${errorBody.message || response.statusText}`,
-      );
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Falha no Admin Login:", error);
-    throw error;
-  }
+// God mode (Épico 2.6): a senha secreta compartilhada saiu; vira login normal e o
+// chamador confere se o usuário tem papel Admin antes de ativar o modo.
+async function adminLogin(identifier, password) {
+  return login(identifier, password);
 }
 
 async function login(username, password) {
   const url = `${ApiConstants.BASE_URL}/Auth/login`;
+  // login por email (Épico 2); Name continua aceito pelo backend na transição
+  const credentials = String(username).includes("@")
+    ? { Email: username, Password: password }
+    : { Name: username, Password: password };
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: getBackendHeaders(),
-      body: JSON.stringify({ "Name": username, "Password": password }),
+      body: JSON.stringify(credentials),
     });
 
     if (!response.ok) {
@@ -480,6 +480,46 @@ async function login(username, password) {
     console.error("Falha no Login:", error);
     throw error;
   }
+}
+
+// ── Gestão de usuários (Épico 2 — Admin) ────────────────────────────────────
+
+async function createUser(userData) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Users`, {
+    method: "POST",
+    headers: getBackendHeaders(),
+    body: JSON.stringify(userData),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Erro ao criar usuário: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+async function updateUser(id, userData) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Users/${id}`, {
+    method: "PUT",
+    headers: getBackendHeaders(),
+    body: JSON.stringify(userData),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Erro ao atualizar usuário: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+async function deactivateUser(id) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Users/${id}`, {
+    method: "DELETE",
+    headers: getBackendHeaders(),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Erro ao desativar usuário: ${response.statusText}`);
+  }
+  return await response.json();
 }
 
 async function archivePR(prId) {
@@ -704,6 +744,10 @@ export {
   saveAutomationConfig,
   adminLogin,
   login,
+  fetchProfiles,
+  createUser,
+  updateUser,
+  deactivateUser,
   archivePR,
   fetchMonitorStatusApps,
   createMonitorStatusApp,
