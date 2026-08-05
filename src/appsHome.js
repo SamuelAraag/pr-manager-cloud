@@ -43,6 +43,13 @@ async function renderApps() {
                 <span title="PRs abertos"><strong>${app.openPrs}</strong> abertos</span>
                 <span title="Total de PRs"><strong>${app.totalPrs}</strong> PRs</span>
                 <span title="Membros"><strong>${app.memberCount}</strong> membros</span>
+                ${app.monitorCount > 0 ? `
+                    <span title="Monitores vinculados (Épico 7)"
+                          style="color: ${app.monitorsDown > 0 ? 'var(--danger, #c62828)' : 'var(--success, #2e7d32)'};">
+                        ● ${app.monitorsDown > 0
+                            ? `${app.monitorsDown}/${app.monitorCount} fora`
+                            : `${app.monitorCount} online`}
+                    </span>` : ''}
             </div>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <button class="btn btn-primary app-enter-btn" data-name="${app.name}">Entrar</button>

@@ -1,5 +1,18 @@
 export const ChangelogData = [
     {
+        version: "7.0.24",
+        date: "2026-08-05",
+        changes: [
+            "Plataforma multi-app: home de Apps com cards (PRs, membros, monitores), gestão de membros com papéis por app (Dev, Gestor, QA) e dashboard filtrado por app",
+            "Nova tela de login padrão (email/senha) e tela de gestão de usuários (Admin)",
+            "Tela de Ambientes por app (dev/stg/prod) com histórico de deploys, promoção stg → prod e rollback",
+            "Monitores de status agora podem ser vinculados ao ambiente de um app; status aparece no card do app e na tela de ambientes",
+            "Notificações escopadas: dentro de um app, só chegam notificações daquele app; roteamento por papel no backend",
+            "Configuração de automação (GitLab/Jira) por app com fallback global; campo de token GitHub removido (fluxo antigo desativado)",
+            "Histórico de auditoria por PR (botão Histórico) e migração do banco para PostgreSQL com backup diário automatizado"
+        ]
+    },
+    {
         version: "6.6.23",
         date: "2026-05-14",
         changes: [

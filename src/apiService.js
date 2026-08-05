@@ -437,8 +437,9 @@ async function markPrFixed(prId) {
   }
 }
 
-async function getAutomationConfig() {
-  const url = `${ApiConstants.BASE_URL}/AutomationConfig`;
+// Épico 7.3: appId opcional — com ele a config é a do app (resolução app ?? global no backend)
+async function getAutomationConfig(appId = null) {
+  const url = `${ApiConstants.BASE_URL}/AutomationConfig${appId ? `?appId=${appId}` : ""}`;
   try {
     const response = await fetch(url, { headers: getBackendHeaders() });
     return response.ok ? await response.json() : null;
@@ -448,8 +449,8 @@ async function getAutomationConfig() {
   }
 }
 
-async function saveAutomationConfig(configData) {
-  const url = `${ApiConstants.BASE_URL}/AutomationConfig`;
+async function saveAutomationConfig(configData, appId = null) {
+  const url = `${ApiConstants.BASE_URL}/AutomationConfig${appId ? `?appId=${appId}` : ""}`;
 
   try {
     const response = await fetch(url, {

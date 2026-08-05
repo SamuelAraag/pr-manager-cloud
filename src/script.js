@@ -16,6 +16,8 @@ let availableUsers = [];
 // Filtro por app (Épico 3): apps.html manda para index.html?app=<nome>;
 // a ligação é pelo nome do projeto até o Épico 5 trocar por FK.
 const appFilter = new URLSearchParams(window.location.search).get('app');
+// id do app filtrado (resolvido quando a lista de apps carrega) — usado pela config por app
+let currentAppId = null;
 
 initializeTheme('themeToggleBtn');
 
@@ -49,6 +51,7 @@ async function loadProjectOptions() {
         if (appFilter) {
             const app = apps.find(a => a.name === appFilter);
             AuthService.setCurrentAppRole(app?.myRole ?? null);
+            currentAppId = app?.id ?? null; // Épico 7.3: config de automação por app
 
             // Formulário de PR herda o app filtrado (Épico 5.3): trava a escolha em vez de
             // só pré-selecionar — dentro de um app, o projeto não é mais uma decisão do
@@ -113,7 +116,6 @@ const requestVersionDevSelect = document.getElementById('requestVersionDevSelect
 const requestVersionModalDescription = document.getElementById('requestVersionModalDescription');
 const confirmRequestVersionModalBtn = document.getElementById('confirmRequestVersionModalBtn');
 const prForm = document.getElementById('prForm');
-const ghTokenInput = document.getElementById('ghTokenInput');
 const profileScreen = document.getElementById('profileScreen');
 const currentUserDisplay = document.getElementById('currentUserDisplay');
 const currentUserDisplayRight = document.getElementById('currentUserDisplayRight');
@@ -1100,12 +1102,23 @@ function openSetupModal() {
         return;
     }
 
-    API.getAutomationConfig().then(config => {
+    // Épico 7.3: dentro de um app, o setup opera a config DAQUELE app (fallback global);
+    // sem app selecionado, opera a global.
+    const scopeEl = document.getElementById('setupModalScope');
+    if (scopeEl) {
+        scopeEl.textContent = appFilter
+            ? `Config do app: ${appFilter} (sem valores próprios, vale a global)`
+            : 'Config global (usada por apps sem config própria)';
+    }
+
+    API.getAutomationConfig(currentAppId).then(config => {
         if (config) {
-            if (ghTokenInput) ghTokenInput.value = config.githubToken || '';
             if (document.getElementById('glTokenInput')) document.getElementById('glTokenInput').value = config.gitlabToken || '';
             if (document.getElementById('jiraEmailInput')) document.getElementById('jiraEmailInput').value = config.jiraUserEmail || '';
             if (document.getElementById('jiraTokenInput')) document.getElementById('jiraTokenInput').value = config.jiraToken || '';
+            if (scopeEl && currentAppId && !config.appId) {
+                scopeEl.textContent = `Config do app: ${appFilter} — exibindo a GLOBAL (este app ainda não tem config própria; salvar cria uma só dele)`;
+            }
         }
     }).catch(err => {
         console.error('Erro ao buscar config:', err);
@@ -1117,13 +1130,12 @@ function openSetupModal() {
 const saveConfigBtn = document.getElementById('saveConfigBtn');
 if (saveConfigBtn) {
     saveConfigBtn.addEventListener('click', async () => {
-        const ghToken = ghTokenInput ? ghTokenInput.value.trim() : '';
         const glToken = document.getElementById('glTokenInput') ? document.getElementById('glTokenInput').value.trim() : '';
         const jiraEmail = document.getElementById('jiraEmailInput') ? document.getElementById('jiraEmailInput').value.trim() : '';
         const jiraToken = document.getElementById('jiraTokenInput') ? document.getElementById('jiraTokenInput').value.trim() : '';
 
-        if (!ghToken || !glToken) {
-            alert('Por favor, insira os tokens necessários.');
+        if (!glToken) {
+            alert('Por favor, insira o token do GitLab.');
             return;
         }
 
@@ -1134,11 +1146,10 @@ if (saveConfigBtn) {
         try {
             DOM.showLoading(true);
             await API.saveAutomationConfig({
-                githubToken: ghToken,
                 gitlabToken: glToken,
                 jiraUserEmail: jiraEmail,
                 jiraToken: jiraToken
-            });
+            }, currentAppId);
 
             DOM.showToast('Configurações salvas com sucesso!');
             if (setupModal) setupModal.style.display = 'none';

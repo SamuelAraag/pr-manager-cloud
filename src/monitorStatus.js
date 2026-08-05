@@ -25,11 +25,28 @@ const appIdInput = document.getElementById("appId");
 const appNameInput = document.getElementById("appName");
 const appUrlInput = document.getElementById("appUrl");
 const appEnvironmentInput = document.getElementById("appEnvironment");
+const appLinkSelect = document.getElementById("appLinkSelect");
 const appCards = document.getElementById("appCards");
 const appCount = document.getElementById("appCount");
 
 let appsState = [];
 let statusIntervalId = null;
+
+// Épico 7.1: select de apps da plataforma para vincular o monitor (via Environment)
+async function loadAppOptions() {
+  if (!appLinkSelect) return;
+  try {
+    const apps = await API.fetchApps();
+    apps.forEach((app) => {
+      const opt = document.createElement("option");
+      opt.value = app.id;
+      opt.textContent = app.name;
+      appLinkSelect.appendChild(opt);
+    });
+  } catch (_) {
+    // sem apps (ex.: token expirado) o monitor segue funcionando como avulso
+  }
+}
 
 initializeTheme("themeToggleBtn");
 
@@ -125,11 +142,13 @@ function openModal(mode = "create", app = null) {
     appNameInput.value = app.name;
     appUrlInput.value = app.url;
     appEnvironmentInput.value = String(normalizeEnvironment(app.environment));
+    if (appLinkSelect) appLinkSelect.value = app.appId || "";
   } else {
     appModalTitle.textContent = "Cadastro de Aplicação";
     appForm.reset();
     appIdInput.value = "";
     appEnvironmentInput.value = "1";
+    if (appLinkSelect) appLinkSelect.value = "";
   }
 
   appModal.style.display = "flex";
@@ -344,6 +363,7 @@ function renderCards() {
               <div>
                 <h3>${app.name}</h3>
                 <p>${app.url}</p>
+                ${app.appName ? `<p style="font-size: 0.8rem; color: var(--text-secondary);">App: ${app.appName}</p>` : ''}
               </div>
               <span class="module-tag ${getEnvironmentClass(appEnvironment)}">${getEnvironmentLabel(appEnvironment)}</span>
             </div>
@@ -480,6 +500,7 @@ async function handleSubmit(event) {
     name: appNameInput.value.trim(),
     url: appUrlInput.value.trim(),
     environment: Number(appEnvironmentInput.value),
+    appId: appLinkSelect?.value || null,
   };
 
   if (!payload.name || !payload.url) {
@@ -572,6 +593,7 @@ if (appCards) {
 }
 
 loadApps();
+loadAppOptions();
 
 if (statusIntervalId) {
   clearInterval(statusIntervalId);

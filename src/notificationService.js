@@ -203,6 +203,15 @@ export async function connectSignalR(onMessageReceived) {
             const actionType = envelope.ActionType || '';
 
             const project = data.Project || '';
+
+            // Épico 7.2: com um app selecionado (?app=), notificações de outros apps são
+            // descartadas — o servidor já roteia por papel; aqui é só o recorte de contexto.
+            const currentApp = new URLSearchParams(window.location.search).get('app');
+            if (currentApp && project && project !== currentApp) {
+                console.debug(`Notificação de "${project}" ignorada (app aberto: ${currentApp}).`);
+                return;
+            }
+
             const jiraId  = extractJiraId(data.TaskLink);
             const prLink  = data.PrLink || '';
             const dev     = getDemoName(data.Dev || '');
