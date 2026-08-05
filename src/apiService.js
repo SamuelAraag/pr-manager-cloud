@@ -390,6 +390,29 @@ async function approvePR(prId, approverId) {
   }
 }
 
+async function fetchPrEvents(prId) {
+  const url = `${ApiConstants.BASE_URL}/PullRequests/${prId}/events`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getBackendHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(
+        `Erro ao buscar histórico: ${errorBody.message || response.statusText}`,
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Falha ao buscar histórico do PR:", error);
+    throw error;
+  }
+}
+
 async function markPrFixed(prId) {
   const url = `${ApiConstants.BASE_URL}/PullRequests/${prId}/mark-fixed`;
 
@@ -750,6 +773,7 @@ export {
   requestCorrection,
   markPrFixed,
   approvePR,
+  fetchPrEvents,
   requestVersionBatch,
   saveVersionBatch,
   fetchBatches,

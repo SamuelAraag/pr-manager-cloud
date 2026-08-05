@@ -302,8 +302,13 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                             </button>` 
                             : ''}
                             
+                        <button class="btn btn-outline" style="padding: 0.4rem;" title="Histórico"
+                            onclick="window.togglePrHistory('${pr.id}')">
+                            <i data-lucide="history" style="width: 14px;"></i>
+                        </button>
+
                         <button class="btn btn-outline" data-roles="Admin"
-                            style="padding: 0.4rem; border-color: #da3633; color: #da3633;" 
+                            style="padding: 0.4rem; border-color: #da3633; color: #da3633;"
                             title="Arquivar PR"
                             onclick="window.archivePr('${pr.id}')">
                             <i data-lucide="trash-2" style="width: 14px;"></i>
@@ -322,8 +327,61 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                 subRow.innerHTML = `<td colspan="6">${renderRelatedTasksList(pr.linksRelatedTask, pr.project)}</td>`;
                 body.appendChild(subRow);
             }
+
+            // Timeline de auditoria (Épico 5.4) — carregada sob demanda no primeiro clique.
+            const historyRow = document.createElement('tr');
+            historyRow.id = `history-${pr.id}`;
+            historyRow.className = 'pr-history-row';
+            historyRow.style.display = 'none';
+            historyRow.innerHTML = `<td colspan="6"></td>`;
+            body.appendChild(historyRow);
         });
     });
+}
+
+const EVENT_LABELS = {
+    created: 'Criado',
+    updated: 'Editado',
+    approved: 'Aprovado',
+    correction_requested: 'Correção solicitada',
+    fixed: 'Marcado como corrigido',
+    version_requested: 'Versão solicitada',
+    deployed_to_staging: 'Deploy em staging',
+    done: 'Concluído',
+    archived: 'Arquivado',
+    removed_from_batch: 'Removido do lote'
+};
+
+/** Renderiza a lista de eventos dentro da sub-row `history-${prId}` (Épico 5.4). */
+function renderPrHistory(prId, events) {
+    const cell = document.querySelector(`#history-${prId} td`);
+    if (!cell) return;
+
+    if (!events || events.length === 0) {
+        cell.innerHTML = '<div style="padding: 0.6rem 1rem; color: var(--text-secondary); font-size: 0.85rem;">Sem eventos registrados.</div>';
+        return;
+    }
+
+    cell.innerHTML = `
+        <div style="padding: 0.6rem 1rem; display: flex; flex-direction: column; gap: 0.4rem;">
+            ${events.map(e => {
+                const label = EVENT_LABELS[e.eventType] || e.eventType;
+                const when = new Date(e.createdAt).toLocaleString('pt-BR');
+                let detailText = '';
+                if (e.detail) {
+                    try {
+                        const d = JSON.parse(e.detail);
+                        detailText = d.reason || d.version || '';
+                    } catch { /* detail não é JSON válido, ignora */ }
+                }
+                return `<div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; gap: 0.5rem; align-items: baseline;">
+                    <span style="color: var(--text-primary); font-weight: 500;">${label}</span>
+                    <span>${e.actorName}</span>
+                    <span>${when}</span>
+                    ${detailText ? `<span style="font-style: italic;">"${detailText}"</span>` : ''}
+                </div>`;
+            }).join('')}
+        </div>`;
 }
 
 
@@ -906,4 +964,4 @@ function showLoading(show) {
     if (dbHist) dbHist.style.display = contentDisplay;
 }
 
-export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts };
+export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory };

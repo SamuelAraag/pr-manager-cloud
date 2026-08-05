@@ -642,6 +642,8 @@ function openEditModal(pr) {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = isApproved;
     });
+    // Épico 5.3: dentro de um app, o campo projeto fica travado mesmo com o PR não aprovado.
+    if (appFilter) document.getElementById('project').disabled = true;
 
     if (noTestingCheckbox) {
         noTestingCheckbox.disabled = isApproved;
@@ -683,6 +685,13 @@ function openAddModal() {
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = false;
     });
+    // Épico 5.3: dentro de um app, o PR herda o projeto — sem campo de escolha.
+    // prForm.reset() (acima) já desfez o value pré-selecionado; refaz antes de travar.
+    if (appFilter) {
+        const projectField = document.getElementById('project');
+        projectField.value = appFilter;
+        projectField.disabled = true;
+    }
 
     const noTestingCheckbox = document.getElementById('noTestingRequired');
     if (noTestingCheckbox) {
@@ -723,16 +732,21 @@ if (appFilter) {
         chip.href = 'index.html';
         chip.className = 'tag';
         chip.style.cssText = 'margin-left: 10px; background: var(--accent-color); color: white; text-decoration: none; font-size: 0.7rem; vertical-align: middle;';
-        chip.title = 'Filtrando por app — clique para limpar';
+        chip.title = 'Filtrando por app - clique para limpar';
         chip.textContent = `${appFilter} ✕`;
         appTitle.insertAdjacentElement('afterend', chip);
     }
 
-    // formulário de PR herda o app filtrado
+    // Formulário de PR herda o app filtrado (Épico 5.3): trava a escolha em vez de só
+    // pré-selecionar — dentro de um app, o projeto não é mais uma decisão do formulário.
     const projectSelect = document.getElementById('project');
     if (projectSelect) {
         const match = Array.from(projectSelect.options).find(o => o.value === appFilter);
-        if (match) projectSelect.value = appFilter;
+        if (match) {
+            projectSelect.value = appFilter;
+            projectSelect.disabled = true;
+            projectSelect.title = 'Projeto herdado do app selecionado';
+        }
     }
 }
 
@@ -953,6 +967,32 @@ window.markPrFixed = async (prId) => {
     } catch (error) {
         console.error('Erro ao marcar corrigido:', error);
         DOM.showToast('Erro: ' + error.message, 'error');
+    }
+};
+
+// Timeline de auditoria do PR (Épico 5.4) — carrega sob demanda no primeiro clique,
+// depois só alterna visibilidade (sem refetch a cada toggle).
+const prHistoryLoaded = new Set();
+window.togglePrHistory = async (prId) => {
+    const row = document.getElementById(`history-${prId}`);
+    if (!row) return;
+
+    if (row.style.display !== 'none') {
+        row.style.display = 'none';
+        return;
+    }
+
+    row.style.display = '';
+    if (!prHistoryLoaded.has(prId)) {
+        try {
+            const events = await API.fetchPrEvents(prId);
+            DOM.renderPrHistory(prId, events);
+            prHistoryLoaded.add(prId);
+        } catch (error) {
+            console.error('Erro ao carregar histórico do PR:', error);
+            DOM.showToast('Erro ao carregar histórico: ' + error.message, 'error');
+            row.style.display = 'none';
+        }
     }
 };
 
