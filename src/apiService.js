@@ -482,6 +482,29 @@ async function login(username, password) {
   }
 }
 
+// ── Apps (Épico 3) ──────────────────────────────────────────────────────────
+
+async function appsRequest(path, options = {}) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Apps${path}`, {
+    headers: getBackendHeaders(),
+    ...options,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Erro na API de apps: ${response.statusText}`);
+  }
+  return response.status === 204 ? null : await response.json();
+}
+
+const fetchApps = () => appsRequest("");
+const createApp = (data) => appsRequest("", { method: "POST", body: JSON.stringify(data) });
+const updateApp = (id, data) => appsRequest(`/${id}`, { method: "PUT", body: JSON.stringify(data) });
+const deactivateApp = (id) => appsRequest(`/${id}`, { method: "DELETE" });
+const fetchAppMembers = (id) => appsRequest(`/${id}/members`);
+const addAppMember = (id, data) => appsRequest(`/${id}/members`, { method: "POST", body: JSON.stringify(data) });
+const updateAppMember = (id, userId, data) => appsRequest(`/${id}/members/${userId}`, { method: "PUT", body: JSON.stringify(data) });
+const removeAppMember = (id, userId) => appsRequest(`/${id}/members/${userId}`, { method: "DELETE" });
+
 // ── Gestão de usuários (Épico 2 — Admin) ────────────────────────────────────
 
 async function createUser(userData) {
@@ -745,6 +768,14 @@ export {
   adminLogin,
   login,
   fetchProfiles,
+  fetchApps,
+  createApp,
+  updateApp,
+  deactivateApp,
+  fetchAppMembers,
+  addAppMember,
+  updateAppMember,
+  removeAppMember,
   createUser,
   updateUser,
   deactivateUser,

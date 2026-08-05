@@ -13,6 +13,10 @@ import { initializeTheme } from './themeService.js';
 let currentData = { prs: [] };
 let availableUsers = [];
 
+// Filtro por app (Épico 3): apps.html manda para index.html?app=<nome>;
+// a ligação é pelo nome do projeto até o Épico 5 trocar por FK.
+const appFilter = new URLSearchParams(window.location.search).get('app');
+
 initializeTheme('themeToggleBtn');
 
 function applyDevMode() {
@@ -503,14 +507,18 @@ async function loadPrTablesData(animate = false) {
     if (!prResult || !Array.isArray(prResult.prs)) {
         throw new Error('Falha ao carregar PRs');
     }
-    currentData.prs = prResult.prs;
+    currentData.prs = appFilter
+        ? prResult.prs.filter(p => p.project === appFilter)
+        : prResult.prs;
     refreshOpenPrs(animate);
 
     const batches = await API.fetchBatches();
     if (!Array.isArray(batches)) {
         throw new Error('Falha ao carregar lotes');
     }
-    currentData.batches = batches;
+    currentData.batches = appFilter
+        ? batches.filter(b => b.project === appFilter)
+        : batches;
     refreshApprovedPrs(animate);
 }
 
@@ -682,6 +690,34 @@ if (document.getElementById('usersBtn')) {
     document.getElementById('usersBtn').addEventListener('click', () => {
         window.location.href = 'usuarios.html';
     });
+}
+
+// Home de Apps (Épico 3): rota própria
+if (document.getElementById('appsBtn')) {
+    document.getElementById('appsBtn').addEventListener('click', () => {
+        window.location.href = 'apps.html';
+    });
+}
+
+// Chip do filtro por app no título + limpar filtro
+if (appFilter) {
+    const appTitle = document.getElementById('appTitle');
+    if (appTitle) {
+        const chip = document.createElement('a');
+        chip.href = 'index.html';
+        chip.className = 'tag';
+        chip.style.cssText = 'margin-left: 10px; background: var(--accent-color); color: white; text-decoration: none; font-size: 0.7rem; vertical-align: middle;';
+        chip.title = 'Filtrando por app — clique para limpar';
+        chip.textContent = `${appFilter} ✕`;
+        appTitle.insertAdjacentElement('afterend', chip);
+    }
+
+    // formulário de PR herda o app filtrado
+    const projectSelect = document.getElementById('project');
+    if (projectSelect) {
+        const match = Array.from(projectSelect.options).find(o => o.value === appFilter);
+        if (match) projectSelect.value = appFilter;
+    }
 }
 
 document.getElementById('addRelatedTaskBtn').addEventListener('click', () => addRelatedTaskInput());

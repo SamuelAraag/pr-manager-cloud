@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apps — PR Manager</title>
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="module-page-header">
+            <div class="logo-area">
+                <div>
+                    <h1 class="module-title">Apps</h1>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="themeToggleBtn" class="btn btn-outline" type="button" title="Alternar tema">
+                    <i data-role="theme-icon" data-lucide="sun"></i>
+                </button>
+                <a href="index.html" class="btn btn-outline">Voltar</a>
+            </div>
+        </header>
+
+        <section class="module-section-head module-toolbar">
+            <div>
+                <h2>Selecione um app para trabalhar</h2>
+            </div>
+            <div class="module-toolbar-actions">
+                <span id="appsCount" class="tag module-count">0 itens</span>
+                <button id="appNewBtn" class="btn btn-primary admin-only" type="button" style="display: none;">
+                    Novo App
+                </button>
+            </div>
+        </section>
+
+        <section id="appsGrid" class="module-cards"></section>
+    </div>
+
+    <!-- Formulário de criar/editar app (modal interno da rota) -->
+    <div id="appFormModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 560px;">
+            <div class="modal-header">
+                <h2 id="appFormTitle">Novo App</h2>
+                <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
+            </div>
+            <form id="appForm" class="module-form">
+                <input type="hidden" id="appFormId" value="">
+                <label class="module-field">
+                    <span>Nome</span>
+                    <input id="appFormName" type="text" required placeholder="Ex.: DF-e">
+                </label>
+                <label class="module-field">
+                    <span>Repositório (URL)</span>
+                    <input id="appFormRepo" type="url" placeholder="https://github.com/org/repo">
+                </label>
+                <label class="module-field">
+                    <span>Descrição</span>
+                    <input id="appFormDescription" type="text" placeholder="Opcional">
+                </label>
+                <div class="module-form-actions">
+                    <button class="btn btn-primary" type="submit">Salvar</button>
+                    <button class="btn btn-outline close-modal" type="button">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Membros do app (modal interno da rota) -->
+    <div id="membersModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2 id="membersTitle">Membros</h2>
+                <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
+            </div>
+            <div id="membersAdminBar" class="module-toolbar-actions admin-only"
+                style="display: none; gap: 0.5rem; margin-bottom: 0.9rem;">
+                <select id="memberUserSelect" style="flex: 1;"></select>
+                <select id="memberRoleSelect" style="width: 110px;">
+                    <option value="Dev">Dev</option>
+                    <option value="Gestor">Gestor</option>
+                    <option value="QA">QA</option>
+                </select>
+                <button id="memberAddBtn" class="btn btn-primary" type="button">Adicionar</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="pr-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th style="width: 140px;">Papel</th>
+                            <th style="width: 90px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="membersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/appsHome.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+
+</html>
