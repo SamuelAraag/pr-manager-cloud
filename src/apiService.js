@@ -528,6 +528,33 @@ const addAppMember = (id, data) => appsRequest(`/${id}/members`, { method: "POST
 const updateAppMember = (id, userId, data) => appsRequest(`/${id}/members/${userId}`, { method: "PUT", body: JSON.stringify(data) });
 const removeAppMember = (id, userId) => appsRequest(`/${id}/members/${userId}`, { method: "DELETE" });
 
+// ── Ambientes (Épico 6) ─────────────────────────────────────────────────────
+// O erro carrega status e body: o chamador diferencia 403 (sem papel), 409
+// (stg_active_batch_changed / not_active) e 501 (dev sem fluxo nesta fase).
+
+async function environmentsRequest(appId, path, options = {}) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/Environments${path}`, {
+    headers: getBackendHeaders(),
+    cache: "no-store",
+    ...options,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const error = new Error(body.error || `Erro na API de ambientes: ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+  return response.status === 204 ? null : await response.json();
+}
+
+const fetchEnvironments = (appId) => environmentsRequest(appId, "");
+const fetchEnvironmentHistory = (appId, kind) => environmentsRequest(appId, `/${kind}/history`);
+const deployToEnvironment = (appId, kind, batchId) =>
+  environmentsRequest(appId, `/${kind}/deploy`, { method: "POST", body: JSON.stringify({ batchId }) });
+const rollbackDeployment = (appId, kind, deploymentId) =>
+  environmentsRequest(appId, `/${kind}/deployments/${deploymentId}/rollback`, { method: "POST" });
+
 // ── Gestão de usuários (Épico 2 — Admin) ────────────────────────────────────
 
 async function createUser(userData) {
@@ -800,6 +827,10 @@ export {
   addAppMember,
   updateAppMember,
   removeAppMember,
+  fetchEnvironments,
+  fetchEnvironmentHistory,
+  deployToEnvironment,
+  rollbackDeployment,
   createUser,
   updateUser,
   deactivateUser,

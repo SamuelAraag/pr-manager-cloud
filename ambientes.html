@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambientes - PR Manager</title>
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="module-page-header">
+            <div class="logo-area">
+                <div>
+                    <h1 class="module-title">Ambientes</h1>
+                    <p id="envAppName" style="color: var(--text-secondary); margin: 0.2rem 0 0;"></p>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="themeToggleBtn" class="btn btn-outline" type="button" title="Alternar tema">
+                    <i data-role="theme-icon" data-lucide="sun"></i>
+                </button>
+                <a href="apps.html" class="btn btn-outline">Voltar</a>
+            </div>
+        </header>
+
+        <section class="module-section-head module-toolbar">
+            <div>
+                <h2>O que está rodando em cada ambiente</h2>
+            </div>
+        </section>
+
+        <section id="envGrid" class="module-cards"></section>
+    </div>
+
+    <!-- Confirmação de promoção stg → prod (modal interno da rota) -->
+    <div id="promoteModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 560px;">
+            <div class="modal-header">
+                <h2>Promover para produção</h2>
+                <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
+            </div>
+            <div id="promoteSummary" style="margin-bottom: 1rem;"></div>
+            <div class="module-form-actions">
+                <button id="promoteConfirmBtn" class="btn btn-primary" type="button">Promover</button>
+                <button class="btn btn-outline close-modal" type="button">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/environments.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+
+</html>

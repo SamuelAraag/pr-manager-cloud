@@ -48,6 +48,7 @@ async function renderApps() {
                 <button class="btn btn-primary app-enter-btn" data-name="${app.name}">Entrar</button>
                 ${app.repositoryUrl ? `<a class="btn btn-outline" href="${app.repositoryUrl}" target="_blank" rel="noopener" title="Repositório"><i data-lucide="git-branch"></i></a>` : ''}
                 <button class="btn btn-outline app-members-btn" data-id="${app.id}" title="Membros"><i data-lucide="users"></i></button>
+                <button class="btn btn-outline app-envs-btn" data-id="${app.id}" title="Ambientes"><i data-lucide="server"></i></button>
                 ${isAdmin ? `
                     <button class="btn btn-outline app-edit-btn" data-id="${app.id}" title="Editar"><i data-lucide="pencil"></i></button>
                     <button class="btn btn-outline app-deactivate-btn" data-id="${app.id}" title="Desativar"><i data-lucide="archive"></i></button>` : ''}
@@ -63,6 +64,11 @@ async function renderApps() {
         }));
     appsGrid.querySelectorAll('.app-members-btn').forEach(btn =>
         btn.addEventListener('click', () => openMembers(btn.dataset.id)));
+    appsGrid.querySelectorAll('.app-envs-btn').forEach(btn =>
+        btn.addEventListener('click', () => {
+            // rota própria (Épico 6.3) — regra do projeto: telas administrativas são rotas
+            window.location.href = `ambientes.html?appId=${btn.dataset.id}`;
+        }));
 
     if (isAdmin) {
         appsGrid.querySelectorAll('.app-edit-btn').forEach(btn =>
