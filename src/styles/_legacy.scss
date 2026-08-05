@@ -663,6 +663,77 @@ input, select, textarea {
     font-size: 0.9rem;
 }
 
+/* select sem isso renderiza com a altura nativa do SO (alguns navegadores calculam
+   diferente de input/textarea, principalmente quando disabled) — box-sizing +
+   appearance normalizam pra ficar igual aos outros campos do formulário. Como
+   appearance:none também remove a seta nativa, desenha uma via gradiente (não
+   imagem/SVG fixo, pra herdar var(--text-secondary) e continuar certo nos dois temas). */
+select {
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 2rem;
+    background-repeat: no-repeat;
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
+        linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+    background-position:
+        calc(100% - 18px) center,
+        calc(100% - 13px) center;
+    background-size: 5px 5px, 5px 5px;
+}
+
+select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.field-help-btn {
+    display: inline-flex;
+    align-items: center;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+    line-height: 0;
+}
+
+.field-help-btn:hover {
+    color: var(--accent-color);
+}
+
+.field-help-tooltip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 20;
+    margin-top: 0.35rem;
+    max-width: 260px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.7rem 0.85rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.field-help-tooltip a {
+    display: inline-block;
+    margin-top: 0.5rem;
+    color: var(--accent-color);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.field-help-tooltip a:hover {
+    text-decoration: underline;
+}
+
 input::placeholder,
 textarea::placeholder {
     color: var(--text-secondary);
@@ -1166,6 +1237,11 @@ footer p {
     color: var(--text-primary);
     padding: 0.85rem 0.95rem;
     outline: none;
+}
+
+/* espaço reservado pro chevron da regra global `select` (senão o texto encosta nele) */
+.module-field select {
+    padding-right: 2.4rem;
 }
 
 .module-field input:focus,

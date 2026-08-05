@@ -213,6 +213,11 @@ if (isAdmin) {
     const newBtn = document.getElementById('appNewBtn');
     newBtn.style.display = 'inline-flex';
     newBtn.addEventListener('click', () => openAppForm());
+
+    // Acesso rápido a partir do "?" de ajuda no formulário de PR (apps.html?new=1).
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+        openAppForm();
+    }
 }
 
 document.querySelectorAll('.close-btn, .close-modal').forEach(btn =>

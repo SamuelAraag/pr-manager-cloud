@@ -292,20 +292,19 @@
             <form id="prForm">
                 <input type="hidden" id="prId">
                 <div class="form-grid" style="gap: 1rem;">
-                    <div class="form-group">
-                        <label>Projeto</label>
+                    <div class="form-group" style="position: relative;">
+                        <label style="display: flex; align-items: center; gap: 0.35rem;">
+                            Projeto
+                            <button type="button" id="projectHelpBtn" class="field-help-btn" aria-label="Ajuda sobre a lista de projetos">
+                                <i data-lucide="circle-help" style="width: 14px; height: 14px;"></i>
+                            </button>
+                        </label>
                         <select id="project" required>
-                            <option value="DF-e">DF-e</option>
-                            <option value="DF-e Eventos">DF-e Eventos</option>
-                            <option value="CT-e Buscador">CT-e Buscador</option>
-                            <option value="CT-e Conversor">CT-e Conversor</option>
-                            <option value="NF-e Buscador">NF-e Buscador</option>
-                            <option value="NF-e Conversor">NF-e Conversor</option>
-                            <option value="NFS-e Buscador">NFS-e Buscador</option>
-                            <option value="NFS-e Conversor">NFS-e Conversor</option>
-                            <option value="NF-e Buscador InvoiSys">NF-e Buscador InvoiSys</option>
-                            <option value="Classification">Classification</option>
                         </select>
+                        <div id="projectHelpTooltip" class="field-help-tooltip" style="display: none;">
+                            Não encontrou a aplicação na lista? Ela precisa estar cadastrada no PR Manager primeiro.
+                            <a href="apps.html?new=1" target="_blank" rel="noopener">Cadastrar aplicação →</a>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Desenvolvedor</label>

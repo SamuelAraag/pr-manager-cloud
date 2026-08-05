@@ -19,17 +19,48 @@ const appFilter = new URLSearchParams(window.location.search).get('app');
 
 initializeTheme('themeToggleBtn');
 
-// Papel do usuário logado NO APP filtrado (Épico 4.3): reaproveita o "myRole" que o
-// Épico 3 já calcula em GET /Apps, em vez de decodificar memberships na mão aqui.
-// Sem app selecionado, não mexe em nada — visibilidade cai no papel global de sempre.
-async function resolveCurrentAppRole() {
-    if (!appFilter) return;
+// Épico 5.3: o <select id="project"> não tem mais lista fixa no HTML — vem inteira da
+// API (mesmos apps que a Home de Apps do Épico 3 já lista). Também resolve o papel do
+// usuário NO APP filtrado (Épico 4.3, reaproveitando o "myRole" que GET /Apps já calcula).
+async function loadProjectOptions() {
+    const projectSelect = document.getElementById('project');
+    const previousValue = projectSelect?.value;
+
     try {
         const apps = await API.fetchApps();
-        const app = Array.isArray(apps) ? apps.find(a => a.name === appFilter) : null;
-        AuthService.setCurrentAppRole(app?.myRole ?? null);
+        if (!Array.isArray(apps)) return;
+
+        if (projectSelect) {
+            projectSelect.innerHTML = '';
+            apps
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .forEach(app => {
+                    const option = document.createElement('option');
+                    option.value = app.name;
+                    option.textContent = app.name;
+                    projectSelect.appendChild(option);
+                });
+            if (previousValue && apps.some(a => a.name === previousValue)) {
+                projectSelect.value = previousValue;
+            }
+        }
+
+        if (appFilter) {
+            const app = apps.find(a => a.name === appFilter);
+            AuthService.setCurrentAppRole(app?.myRole ?? null);
+
+            // Formulário de PR herda o app filtrado (Épico 5.3): trava a escolha em vez de
+            // só pré-selecionar — dentro de um app, o projeto não é mais uma decisão do
+            // formulário. Só dá pra fazer isso aqui, com a lista real já carregada.
+            if (projectSelect && apps.some(a => a.name === appFilter)) {
+                projectSelect.value = appFilter;
+                projectSelect.disabled = true;
+                projectSelect.title = 'Projeto herdado do app selecionado';
+            }
+        }
     } catch (error) {
-        console.error('Erro ao resolver papel no app filtrado:', error);
+        console.error('Erro ao carregar lista de apps:', error);
     }
 }
 
@@ -257,16 +288,16 @@ async function init() {
 
     await loadUsers();
     applyDevMode();
-    applyDemoProjectsToSelect();
     populateDevList();
-    
+
     const appUser = LocalStorage.getItem('appUser');
     if (!appUser) {
         showProfileSelection();
     } else {
         updateUserDisplay(appUser);
 
-        await resolveCurrentAppRole();
+        await loadProjectOptions();
+        applyDemoProjectsToSelect();
         await loadData();
         DOM.loadPendingToasts();
         connectSignalR();
@@ -316,7 +347,8 @@ if (loginForm) {
 
             document.getElementById('loginPassword').value = '';
 
-            await resolveCurrentAppRole();
+            await loadProjectOptions();
+            applyDemoProjectsToSelect();
             await loadData(true);
 
             AuthService.applyRoleBasedVisibility();
@@ -736,18 +768,24 @@ if (appFilter) {
         chip.textContent = `${appFilter} ✕`;
         appTitle.insertAdjacentElement('afterend', chip);
     }
+    // O travamento do campo Projeto acontece em loadProjectOptions() (chamada em init()),
+    // depois que a lista real de apps já foi carregada — não dá pra travar aqui em cima
+    // porque o <select> ainda está vazio nesse ponto do carregamento da página.
+}
 
-    // Formulário de PR herda o app filtrado (Épico 5.3): trava a escolha em vez de só
-    // pré-selecionar — dentro de um app, o projeto não é mais uma decisão do formulário.
-    const projectSelect = document.getElementById('project');
-    if (projectSelect) {
-        const match = Array.from(projectSelect.options).find(o => o.value === appFilter);
-        if (match) {
-            projectSelect.value = appFilter;
-            projectSelect.disabled = true;
-            projectSelect.title = 'Projeto herdado do app selecionado';
+// Ajuda do campo Projeto: por que a aplicação pode não estar na lista + atalho pra cadastrar.
+const projectHelpBtn = document.getElementById('projectHelpBtn');
+const projectHelpTooltip = document.getElementById('projectHelpTooltip');
+if (projectHelpBtn && projectHelpTooltip) {
+    projectHelpBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        projectHelpTooltip.style.display = projectHelpTooltip.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', (e) => {
+        if (projectHelpTooltip.style.display !== 'none' && !projectHelpTooltip.contains(e.target) && e.target !== projectHelpBtn) {
+            projectHelpTooltip.style.display = 'none';
         }
-    }
+    });
 }
 
 document.getElementById('addRelatedTaskBtn').addEventListener('click', () => addRelatedTaskInput());
