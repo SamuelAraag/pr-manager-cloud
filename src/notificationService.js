@@ -1,5 +1,8 @@
 import { extractJiraId } from './utils.js';
 import { ApiConstants, getDemoProject, getDemoName } from './constants/apiConstants.js';
+import { initNotificationAudio } from './notificationAudioService.js';
+import { initBrowserNotifications, showBrowserNotification } from './browserNotificationService.js';
+import { refreshIcons } from './iconService.js';
 
 const STORAGE_KEY = 'pr_notifications';
 const UNREAD_KEY  = 'pr_notifications_unread';
@@ -7,6 +10,7 @@ const UNREAD_KEY  = 'pr_notifications_unread';
 let connection   = null;
 let panelOpen    = false;
 let bellUIReady  = false;
+let audioPlayer  = null;
 
 const ICONS = {
     success: 'check-circle',
@@ -89,7 +93,7 @@ function renderNotificationList() {
         ${closeTag}`;
     }).join('');
 
-    if (window.lucide) window.lucide.createIcons();
+    refreshIcons();
 }
 
 function pushNotification({ msg, type, project, jiraId = '', summary = '', prLink = '' }) {
@@ -108,9 +112,25 @@ function pushNotification({ msg, type, project, jiraId = '', summary = '', prLin
         void btn.offsetWidth;
         btn.classList.add('has-notifications');
     }
+
+    audioPlayer?.play();
+
+    // Notificação do SO só quando o usuário não está com a aba em foco — o sino +
+    // som já cobrem o caso de tab ativa, notificação do navegador seria redundante.
+    if (document.visibilityState !== 'visible') {
+        showBrowserNotification({
+            title: `PR Manager - ${getDemoProject(project)}`,
+            body: msg,
+            tag: prLink || undefined,
+            onClickUrl: prLink,
+        });
+    }
 }
 
 function setupBellUI() {
+    if (!audioPlayer) audioPlayer = initNotificationAudio();
+    initBrowserNotifications();
+
     const wrapper = document.getElementById('notificationBellWrapper');
     if (wrapper) wrapper.style.display = 'flex';
 
