@@ -70,6 +70,47 @@ export function getRolesFromToken() {
 }
 
 /**
+ * Papel do usuário logado, por app (Épico 4). Vem da claim "memberships" do JWT:
+ * [{ appId, role }]. Pode ficar desatualizado por até 30 dias (duração do token) se as
+ * memberships mudarem — para dado fresco, ver GET /api/Users/me.
+ * @returns {{appId: string, role: string}[]}
+ */
+export function getMembershipsFromToken() {
+    const payload = getTokenPayload();
+    if (!payload || !payload.memberships) return [];
+    try {
+        return JSON.parse(payload.memberships);
+    } catch (error) {
+        console.error('Error parsing memberships claim:', error);
+        return [];
+    }
+}
+
+/**
+ * Papel global de administração da plataforma (Épico 2/4) — passa em qualquer permissão,
+ * independente do app. Não confundir com a role legada "Admin" do enum UserRole.
+ * @returns {boolean}
+ */
+export function isAdminGlobal() {
+    const payload = getTokenPayload();
+    return payload?.is_admin === 'true';
+}
+
+// Papel do usuário no app atualmente selecionado (dashboard filtrado por ?app=).
+// Setado explicitamente por quem sabe qual app está aberto (script.js) — authService
+// não tem acesso à URL/estado de navegação por conta própria.
+let currentAppRole = null;
+
+/** @param {string|null} role - "Dev" | "Gestor" | "QA" | null (nenhum app selecionado) */
+export function setCurrentAppRole(role) {
+    currentAppRole = role || null;
+}
+
+export function getCurrentAppRole() {
+    return currentAppRole;
+}
+
+/**
  * Get current user information including roles
  * @returns {object} User info with roles array
  */
@@ -165,20 +206,29 @@ export function getTokenPayload() {
  */
 export function applyRoleBasedVisibility() {
     const userRoles = getRolesFromToken();
-    
+    const admin = isAdminGlobal();
+    const appRole = getCurrentAppRole();
+
     // Select all elements with data-roles attribute
     document.querySelectorAll('[data-roles]').forEach(element => {
         const requiredRolesAttr = element.getAttribute('data-roles');
         if (!requiredRolesAttr) return;
-        
+
         const requiredRoles = requiredRolesAttr
             .split(',')
             .map(r => r.trim())
             .filter(r => r.length > 0);
-        
-        // Check if user has at least one of the required roles
-        const hasPermission = requiredRoles.some(role => userRoles.includes(role));
-        
+
+        // Admin global sempre passa. Sem app selecionado, usa a role legada e global do
+        // JWT (comportamento pré-Épico 4). Com um app selecionado, "Admin"/"QA" nos
+        // templates passam a significar "Gestor do app"/"QA do app" (Épico 4.2/4.3):
+        // são os mesmos papéis que o backend passou a exigir nesses mesmos botões.
+        let hasPermission = admin || requiredRoles.some(role => userRoles.includes(role));
+        if (!hasPermission && appRole) {
+            hasPermission = requiredRoles.some(role =>
+                (role === 'Admin' && appRole === 'Gestor') || (role === 'QA' && appRole === 'QA'));
+        }
+
         if (hasPermission) {
             // Show element
             element.style.removeProperty('display');
@@ -201,5 +251,9 @@ export default {
     isDeveloper,
     can,
     getTokenPayload,
-    applyRoleBasedVisibility
+    applyRoleBasedVisibility,
+    getMembershipsFromToken,
+    isAdminGlobal,
+    setCurrentAppRole,
+    getCurrentAppRole
 };

@@ -19,6 +19,20 @@ const appFilter = new URLSearchParams(window.location.search).get('app');
 
 initializeTheme('themeToggleBtn');
 
+// Papel do usuário logado NO APP filtrado (Épico 4.3): reaproveita o "myRole" que o
+// Épico 3 já calcula em GET /Apps, em vez de decodificar memberships na mão aqui.
+// Sem app selecionado, não mexe em nada — visibilidade cai no papel global de sempre.
+async function resolveCurrentAppRole() {
+    if (!appFilter) return;
+    try {
+        const apps = await API.fetchApps();
+        const app = Array.isArray(apps) ? apps.find(a => a.name === appFilter) : null;
+        AuthService.setCurrentAppRole(app?.myRole ?? null);
+    } catch (error) {
+        console.error('Erro ao resolver papel no app filtrado:', error);
+    }
+}
+
 function applyDevMode() {
     if (!isLocalDev()) return;
     const banner = document.getElementById('devModeBanner');
@@ -251,7 +265,8 @@ async function init() {
         showProfileSelection();
     } else {
         updateUserDisplay(appUser);
-        
+
+        await resolveCurrentAppRole();
         await loadData();
         DOM.loadPendingToasts();
         connectSignalR();
@@ -301,6 +316,7 @@ if (loginForm) {
 
             document.getElementById('loginPassword').value = '';
 
+            await resolveCurrentAppRole();
             await loadData(true);
 
             AuthService.applyRoleBasedVisibility();

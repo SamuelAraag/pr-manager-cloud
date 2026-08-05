@@ -118,7 +118,7 @@ document.getElementById('appForm')?.addEventListener('submit', async (e) => {
 async function openMembers(appId) {
     membersAppId = appId;
     const app = appsState.find(a => a.id === appId);
-    document.getElementById('membersTitle').textContent = `Membros — ${app.name}`;
+    document.getElementById('membersTitle').textContent = `Membros - ${app.name}`;
 
     if (isAdmin) {
         const bar = document.getElementById('membersAdminBar');

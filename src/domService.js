@@ -293,7 +293,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                             <i data-lucide="check-circle" style="width: 14px;"></i>
                         </button>
 
-                        ${(getItem('appUser') === pr.dev && needsCorrection) ? 
+                        ${(needsCorrection && (getItem('appUser') === pr.dev || AuthService.isAdminGlobal() || AuthService.getCurrentAppRole() === 'Gestor')) ?
                             `<button class="btn btn-outline" 
                                 style="padding: 0.4rem; border-color: #238636; color: #238636;" 
                                 title="Marcar como Corrigido"
