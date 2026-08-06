@@ -38,6 +38,29 @@
         </div>
     </div>
 
+    <!-- Épico 9 §6: seletor de tenant (usuário com mais de um tenant ativo) -->
+    <div id="tenantSelectScreen" class="modal-overlay" style="z-index: 2100;">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>Selecione o tenant</h2>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Seu usuário está vinculado a mais de um tenant. Escolha com qual deseja trabalhar.</p>
+            <div id="tenantSelectList"></div>
+        </div>
+    </div>
+
+    <!-- Épico 9 §6: mensagem para usuário sem nenhum tenant ativo -->
+    <div id="noTenantScreen" class="modal-overlay" style="z-index: 2100;">
+        <div class="modal-content" style="max-width: 420px; text-align: center;">
+            <div class="modal-header" style="justify-content: center;">
+                <h2>Sem acesso a nenhum tenant</h2>
+            </div>
+            <p style="color: var(--text-secondary);">Seu usuário ainda não está vinculado a nenhum tenant. Entre em
+                contato com o administrador da sua organização ou com o suporte da plataforma para solicitar acesso.</p>
+            <button id="noTenantLogoutBtn" class="btn btn-outline" style="margin-top: 1rem;">Sair</button>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <div class="logo-area">
@@ -77,6 +100,18 @@
                 <button id="usersBtn" data-roles="Admin" class="btn btn-outline admin-only" title="Gerenciar Usuários"
                     style="border-color: var(--accent-color); color: var(--accent-color); display: none;">
                     <i data-lucide="users"></i>
+                </button>
+
+                <!-- Épico 9: só PlatformAdmin gerencia tenants — TenantAdmin não bypassa este. -->
+                <button id="tenantsBtn" data-roles="PlatformAdmin" class="btn btn-outline" title="Gerenciar Tenants"
+                    style="display: none;">
+                    <i data-lucide="building"></i>
+                </button>
+
+                <!-- Épico 9 §6: só aparece quando o usuário tem mais de um tenant ativo. -->
+                <button id="tenantSwitchBtn" class="btn btn-outline" title="Trocar tenant" style="display: none;">
+                    <i data-lucide="building-2"></i>
+                    <span id="currentTenantLabel"></span>
                 </button>
 
                 <button id="appsBtn" class="btn btn-outline" title="Apps">
