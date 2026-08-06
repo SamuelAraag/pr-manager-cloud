@@ -60,10 +60,6 @@
                     <i data-lucide="activity"></i>
                 </button>
 
-                <button id="changeUserBtn" class="btn btn-outline admin-only" title="Trocar Usuário (U)">
-                    <i data-lucide="users"></i>
-                </button>
-
                 <button id="newSprintBtn" data-roles="Admin,QA" class="btn btn-outline admin-only" title="Nova Sprint">
                     <i data-lucide="plus-circle"></i>
                     <span>Nova Sprint</span>
@@ -77,6 +73,14 @@
                 <button id="usersBtn" data-roles="Admin" class="btn btn-outline admin-only" title="Gerenciar Usuários"
                     style="border-color: var(--accent-color); color: var(--accent-color); display: none;">
                     <i data-lucide="users"></i>
+                </button>
+
+                <!-- Sem data-roles de propósito: applyRoleBasedVisibility() mostraria para
+                     qualquer Admin. Visibilidade é só via AuthService.isPlatformAdmin() em
+                     script.js (mais restritivo — só a organização-plataforma). -->
+                <button id="orgsBtn" class="btn btn-outline platform-admin-only" title="Gerenciar Organizações"
+                    style="border-color: var(--accent-color); color: var(--accent-color); display: none;">
+                    <i data-lucide="building-2"></i>
                 </button>
 
                 <button id="appsBtn" class="btn btn-outline" title="Apps">
@@ -206,10 +210,6 @@
                 <div class="shortcut-item">
                     <span>Ver Atalhos</span>
                     <kbd>?</kbd>
-                </div>
-                <div class="shortcut-item">
-                    <span>Mudar Usuário</span>
-                    <kbd>U</kbd>
                 </div>
                 <div class="shortcut-item">
                     <span>Fechar Modal</span>
