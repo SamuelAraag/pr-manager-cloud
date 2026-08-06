@@ -44,15 +44,17 @@ async function renderTenantsTable() {
     tbody.innerHTML = '';
     tenantsState.forEach(tenant => {
         const tr = document.createElement('tr');
-        if (tenant.status !== 'Active') tr.style.opacity = '0.6';
+        if (tenant.status !== 'Active') tr.style.opacity = '0.7';
         tr.innerHTML = `
             <td>${tenant.name}</td>
             <td>${tenant.slug || '—'}</td>
-            <td>${traduzStatus(tenant.status)}</td>
+            <td>${statusBadge(tenant.status)}</td>
             <td>${tenant.userCount}</td>
             <td>
-                <button class="btn btn-outline tenant-edit-btn" data-id="${tenant.id}" title="Editar"><i data-lucide="pencil"></i></button>
-                ${renderStatusActions(tenant)}
+                <div style="display: flex; gap: 6px; flex-wrap: nowrap;">
+                    <button class="btn btn-outline tenant-edit-btn" data-id="${tenant.id}" title="Editar"><i data-lucide="pencil"></i></button>
+                    ${renderStatusActions(tenant)}
+                </div>
             </td>`;
         tbody.appendChild(tr);
     });
@@ -65,8 +67,14 @@ async function renderTenantsTable() {
         btn.addEventListener('click', () => changeTenantStatus(btn.dataset.id, btn.dataset.status)));
 }
 
-function traduzStatus(status) {
-    return { Active: 'Ativo', Inactive: 'Inativo', Archived: 'Arquivado' }[status] || status;
+// .status-badge (ver 11-component-catalog.md) — nunca só cor/texto isolado, sempre com o rótulo.
+function statusBadge(status) {
+    const config = {
+        Active: { label: 'Ativo', bg: 'var(--success-color)' },
+        Inactive: { label: 'Inativo', bg: 'var(--warning-color)' },
+        Archived: { label: 'Arquivado', bg: 'var(--danger-color)' }
+    }[status] || { label: status, bg: 'var(--text-secondary)' };
+    return `<span class="status-badge" style="background: ${config.bg}; color: #fff;">${config.label}</span>`;
 }
 
 // Archived é definitivo nesta fase (§3.2 do plano) — sem botão de voltar pra Active.
@@ -104,8 +112,9 @@ function openTenantForm(tenant = null) {
     document.getElementById('tenantFormId').value = tenant ? tenant.id : '';
     document.getElementById('tenantFormName').value = tenant ? tenant.name : '';
 
-    // Campos do primeiro admin só fazem sentido na criação (§8.1 do plano).
-    document.getElementById('tenantFormAdminFields').style.display = tenant ? 'none' : 'block';
+    // Campos do primeiro admin só fazem sentido na criação (§8.1 do plano). 'contents' (não
+    // 'block') pra manter os campos participando do grid de .module-form quando visíveis.
+    document.getElementById('tenantFormAdminFields').style.display = tenant ? 'none' : 'contents';
     document.getElementById('tenantFormAdminName').value = '';
     document.getElementById('tenantFormAdminEmail').value = '';
     document.getElementById('tenantFormAdminPassword').value = '';
@@ -174,9 +183,11 @@ async function renderInvitationsTable() {
             <td>${inv.requestedTenantRole === 'TenantAdmin' ? 'Administrador' : 'Membro'}</td>
             <td>${new Date(inv.createdAt).toLocaleDateString('pt-BR')}</td>
             <td>
-                <button class="btn btn-primary invitation-approve-btn" data-id="${inv.id}" title="Aprovar">Aprovar</button>
-                <button class="btn btn-outline invitation-reject-btn" data-id="${inv.id}" title="Rejeitar">Rejeitar</button>
-                <button class="btn btn-outline invitation-remove-btn" data-id="${inv.id}" title="Remover"><i data-lucide="trash-2"></i></button>
+                <div style="display: flex; gap: 6px; flex-wrap: nowrap;">
+                    <button class="btn btn-primary invitation-approve-btn" data-id="${inv.id}" title="Aprovar">Aprovar</button>
+                    <button class="btn btn-outline invitation-reject-btn" data-id="${inv.id}" title="Rejeitar">Rejeitar</button>
+                    <button class="btn btn-outline invitation-remove-btn" data-id="${inv.id}" title="Remover"><i data-lucide="trash-2"></i></button>
+                </div>
             </td>`;
         tbody.appendChild(tr);
     });

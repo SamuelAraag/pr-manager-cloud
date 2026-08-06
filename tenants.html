@@ -78,9 +78,12 @@
         </section>
     </div>
 
-    <!-- Formulário de criação/edição de tenant -->
+    <!-- Formulário de criação/edição de tenant. Campos ocupam a largura toda (grid-column:
+         1/-1): .module-form é grid de 3 colunas por padrão (pensado pra formulários com
+         6+ campos curtos, ver usuarios.html), mas aqui os campos são poucos e mais longos
+         (nome/email) — 3 colunas estreitas nesse modal de 640px ficariam ilegíveis. -->
     <div id="tenantModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 560px;">
+        <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
                 <h2 id="tenantFormTitle">Novo tenant</h2>
                 <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
@@ -89,19 +92,24 @@
             <form id="tenantForm" class="module-form">
                 <input type="hidden" id="tenantFormId" value="">
 
-                <label class="module-field">
+                <label class="module-field" style="grid-column: 1 / -1;">
                     <span>Nome do tenant</span>
                     <input id="tenantFormName" type="text" required placeholder="Nome da organização">
                 </label>
 
-                <div id="tenantFormAdminFields">
-                    <label class="module-field">
-                        <span>Nome do primeiro administrador</span>
+                <div id="tenantFormAdminFields" style="grid-column: 1 / -1; display: contents;">
+                    <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Primeiro administrador</strong>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Vira o TenantAdmin inicial deste tenant.</span>
+                    </div>
+
+                    <label class="module-field" style="grid-column: 1 / -1;">
+                        <span>Nome completo</span>
                         <input id="tenantFormAdminName" type="text" placeholder="Nome completo">
                     </label>
 
-                    <label class="module-field">
-                        <span>Email do primeiro administrador</span>
+                    <label class="module-field" style="grid-column: span 2;">
+                        <span>Email</span>
                         <input id="tenantFormAdminEmail" type="email" placeholder="admin@empresa.com">
                     </label>
 
@@ -111,7 +119,7 @@
                     </label>
                 </div>
 
-                <label class="module-field" id="tenantFormStatusField" style="display: none;">
+                <label class="module-field" id="tenantFormStatusField" style="display: none; grid-column: 1 / -1;">
                     <span>Status</span>
                     <select id="tenantFormStatus">
                         <option value="Active">Ativo</option>
