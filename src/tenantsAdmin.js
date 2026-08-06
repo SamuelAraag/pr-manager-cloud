@@ -8,6 +8,7 @@ import * as DOM from './domService.js';
 import { initializeTheme } from './themeService.js';
 
 initializeTheme('themeToggleBtn');
+DOM.enableEscapeToCloseModals();
 
 const tenantModal = document.getElementById('tenantModal');
 const tenantForm = document.getElementById('tenantForm');

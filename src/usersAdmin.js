@@ -7,6 +7,7 @@ import * as DOM from './domService.js';
 import { initializeTheme } from './themeService.js';
 
 initializeTheme('themeToggleBtn');
+DOM.enableEscapeToCloseModals();
 
 const userModal = document.getElementById('userModal');
 const userForm = document.getElementById('userForm');

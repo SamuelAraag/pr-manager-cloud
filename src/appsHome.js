@@ -4,9 +4,11 @@
 import * as API from './apiService.js';
 import * as AuthService from './authService.js';
 import * as LocalStorage from './localStorageService.js';
+import * as DOM from './domService.js';
 import { initializeTheme } from './themeService.js';
 
 initializeTheme('themeToggleBtn');
+DOM.enableEscapeToCloseModals();
 
 // Rota exige sessão; papel Admin libera as ações de gestão
 LocalStorage.init?.();

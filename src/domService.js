@@ -187,6 +187,19 @@ function confirmDialog(message, title = 'Confirmar ação') {
     });
 }
 
+// Fecha qualquer .modal-overlay visível ao pressionar Esc — chamar uma vez por página que
+// só tem modais dispensáveis (formulários, confirmações). Não usar em telas com um modal
+// obrigatório/bloqueante (ex.: login, seleção de tenant em index.html) — lá o fechamento
+// via Esc é tratado à parte, modal a modal, porque alguns não podem ser dispensados.
+function enableEscapeToCloseModals() {
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            if (getComputedStyle(overlay).display !== 'none') overlay.style.display = 'none';
+        });
+    });
+}
+
 function renderTable(prs, batches, sprints, onEdit, animate = true) {
     const openPrs = prs.filter(p => !p.approved);
     
@@ -993,4 +1006,4 @@ function showLoading(show) {
     if (dbHist) dbHist.style.display = contentDisplay;
 }
 
-export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory, confirmDialog };
+export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory, confirmDialog, enableEscapeToCloseModals };

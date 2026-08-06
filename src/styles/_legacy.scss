@@ -1314,7 +1314,9 @@ footer p {
     min-height: 46px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    background: var(--module-input-bg);
+    /* background-color, não o shorthand `background` — shorthand zera background-image e
+       apaga o ícone de seta desenhado pela regra global `select` (ver abaixo). */
+    background-color: var(--module-input-bg);
     color: var(--text-primary);
     padding: 0.85rem 0.95rem;
     outline: none;
@@ -1335,6 +1337,7 @@ footer p {
     grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 10px;
     padding-top: 4px;
 }
