@@ -154,9 +154,6 @@ window.addEventListener('keydown', (e) => {
     } else if (key === 'r') {
         e.preventDefault();
         loadData();
-    } else if (key === 'u') {
-        e.preventDefault();
-        showProfileSelection();
     } else if (key === '?' || (e.shiftKey && e.key === '?')) {
         e.preventDefault();
         shortcutsModal.style.display = 'flex';
