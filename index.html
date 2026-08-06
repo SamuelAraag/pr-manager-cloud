@@ -27,8 +27,14 @@
                 </div>
                 <div class="form-group" style="margin-bottom: 1.4rem;">
                     <label for="loginPassword">Senha</label>
-                    <input type="password" id="loginPassword" placeholder="••••••••" required
-                        autocomplete="current-password">
+                    <div class="input-with-action">
+                        <input type="password" id="loginPassword" placeholder="••••••••" required
+                            autocomplete="current-password">
+                        <button type="button" id="toggleLoginPassword" class="input-action-btn"
+                            aria-label="Mostrar senha" title="Mostrar senha">
+                            <i data-lucide="eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
                     Entrar

@@ -647,6 +647,87 @@ tr:hover {
     grid-column: span 2;
 }
 
+/* Tela de login (#profileScreen) — .login-card/.login-title/.login-subtitle/.login-error
+   não tinham nenhuma regra própria antes (só herdavam estilo genérico de input/label),
+   por isso os campos ficavam com a largura mínima nativa do navegador. */
+.login-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 2.5rem 2.25rem;
+    border-radius: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+}
+
+.login-title {
+    text-align: center;
+    margin: 0 0 0.4rem;
+}
+
+.login-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin: 0 0 2rem;
+}
+
+.login-error {
+    color: var(--danger-color);
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+    text-align: center;
+}
+
+.login-card .form-group input {
+    width: 100%;
+    min-height: 46px;
+    border-radius: 12px;
+    padding: 0.85rem 0.95rem;
+    box-sizing: border-box;
+}
+
+.login-card .form-group input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 4px var(--module-input-focus-ring);
+}
+
+/* Botão de mostrar/esconder senha, embutido no próprio campo. */
+.input-with-action {
+    position: relative;
+    display: flex;
+}
+
+.input-with-action input {
+    padding-right: 2.75rem !important;
+}
+
+.input-action-btn {
+    position: absolute;
+    right: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+.input-action-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.input-action-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
 label {
     font-size: 0.85rem;
     font-weight: 500;

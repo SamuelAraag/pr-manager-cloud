@@ -16,6 +16,10 @@ const approveForm = document.getElementById('approveForm');
 
 let tenantsState = [];
 let invitationsState = [];
+let usersState = [];
+let usersLoaded = false;
+let adminUsuarioEncontrado = null;
+let membrosSelecionados = new Set();
 
 function traduzErro(error) {
     const friendly = {
@@ -107,6 +111,83 @@ async function changeTenantStatus(id, status) {
     }
 }
 
+// Busca por e-mail no formulário de "Novo tenant": se já existir um usuário com esse e-mail,
+// vincula ele direto como TenantAdmin (o backend já aceita isso — ver TenantService.CreateAsync)
+// em vez de pedir nome/senha pra criar conta duplicada.
+async function ensureUsersLoaded() {
+    if (usersLoaded) return;
+    usersState = await API.fetchUsers(true);
+    usersLoaded = true;
+    renderMembersList();
+}
+
+function findUserByEmail(email) {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return null;
+    return usersState.find(u => u.email.toLowerCase() === normalized) || null;
+}
+
+function atualizarCamposConformeEmail() {
+    const email = document.getElementById('tenantFormAdminEmail').value;
+    adminUsuarioEncontrado = findUserByEmail(email);
+
+    const note = document.getElementById('tenantFormAdminFoundNote');
+    const nameField = document.getElementById('tenantFormAdminNameField');
+    const passwordField = document.getElementById('tenantFormAdminPasswordField');
+
+    if (adminUsuarioEncontrado) {
+        note.style.display = 'block';
+        note.textContent = `Usuário existente encontrado: ${adminUsuarioEncontrado.name} — será vinculado como administrador deste tenant, sem criar conta nova.`;
+        nameField.style.display = 'none';
+        passwordField.style.display = 'none';
+    } else {
+        note.style.display = 'none';
+        nameField.style.display = '';
+        passwordField.style.display = '';
+    }
+
+    // O usuário escolhido como primeiro admin não faz sentido aparecer de novo na lista
+    // de "outros membros" — ele já vai entrar como TenantAdmin.
+    renderMembersList();
+}
+
+// Lista de seleção de "outros membros" (opcional, §8.1 do plano — os demais são incluídos
+// depois via convite, mas dá pra já trazer gente que já existe na plataforma direto aqui).
+// PlatformAdmin não aparece: já é vinculado automaticamente em todo tenant novo.
+function renderMembersList() {
+    const container = document.getElementById('tenantFormMembersList');
+    if (!container) return;
+
+    const filtro = (document.getElementById('tenantFormMembersFilter')?.value || '').trim().toLowerCase();
+    const excluirId = adminUsuarioEncontrado?.id;
+
+    const candidatos = usersState
+        .filter(u => !u.isPlatformAdmin && u.id !== excluirId)
+        .filter(u => !filtro || u.name.toLowerCase().includes(filtro) || u.email.toLowerCase().includes(filtro))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (candidatos.length === 0) {
+        container.innerHTML = `<p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.4rem;">Nenhum usuário encontrado.</p>`;
+        return;
+    }
+
+    container.innerHTML = candidatos.map(u => `
+        <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.4rem; cursor: pointer;">
+            <input type="checkbox" class="tenant-member-checkbox" data-id="${u.id}" ${membrosSelecionados.has(u.id) ? 'checked' : ''} style="width: auto;">
+            <span>${u.name} <span style="color: var(--text-secondary); font-size: 0.8rem;">(${u.email})</span></span>
+        </label>
+    `).join('');
+
+    container.querySelectorAll('.tenant-member-checkbox').forEach(cb =>
+        cb.addEventListener('change', () => {
+            const id = Number(cb.dataset.id);
+            if (cb.checked) membrosSelecionados.add(id);
+            else membrosSelecionados.delete(id);
+        }));
+}
+
+document.getElementById('tenantFormMembersFilter')?.addEventListener('input', renderMembersList);
+
 function openTenantForm(tenant = null) {
     document.getElementById('tenantFormTitle').textContent = tenant ? `Editar: ${tenant.name}` : 'Novo tenant';
     document.getElementById('tenantFormId').value = tenant ? tenant.id : '';
@@ -118,17 +199,25 @@ function openTenantForm(tenant = null) {
     document.getElementById('tenantFormAdminName').value = '';
     document.getElementById('tenantFormAdminEmail').value = '';
     document.getElementById('tenantFormAdminPassword').value = '';
+    adminUsuarioEncontrado = null;
+    membrosSelecionados = new Set();
+    document.getElementById('tenantFormMembersFilter').value = '';
+    atualizarCamposConformeEmail();
 
     document.getElementById('tenantFormStatusField').style.display = tenant ? 'flex' : 'none';
     document.getElementById('tenantFormStatus').value = tenant ? tenant.status : 'Active';
 
     tenantModal.style.display = 'flex';
     document.getElementById('tenantFormName').focus();
+
+    if (!tenant) ensureUsersLoaded();
 }
 
 function closeTenantForm() {
     tenantModal.style.display = 'none';
 }
+
+document.getElementById('tenantFormAdminEmail')?.addEventListener('input', atualizarCamposConformeEmail);
 
 tenantForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -143,9 +232,12 @@ tenantForm?.addEventListener('submit', async (e) => {
         } else {
             await API.createTenant({
                 name: document.getElementById('tenantFormName').value.trim(),
-                adminName: document.getElementById('tenantFormAdminName').value.trim(),
                 adminEmail: document.getElementById('tenantFormAdminEmail').value.trim(),
-                adminPassword: document.getElementById('tenantFormAdminPassword').value,
+                // §2.3 do plano: e-mail já existente vincula sem precisar disso — o backend
+                // ignora nome/senha quando encontra o usuário pelo e-mail.
+                adminName: adminUsuarioEncontrado ? '' : document.getElementById('tenantFormAdminName').value.trim(),
+                adminPassword: adminUsuarioEncontrado ? '' : document.getElementById('tenantFormAdminPassword').value,
+                memberUserIds: [...membrosSelecionados],
             });
         }
         closeTenantForm();

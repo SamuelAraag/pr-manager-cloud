@@ -100,23 +100,37 @@
                 <div id="tenantFormAdminFields" style="grid-column: 1 / -1; display: contents;">
                     <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
                         <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Primeiro administrador</strong>
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Vira o TenantAdmin inicial deste tenant.</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Vira o TenantAdmin inicial deste tenant. Se o e-mail já for de um usuário existente, ele é vinculado direto — sem criar conta nova.</span>
                     </div>
 
                     <label class="module-field" style="grid-column: 1 / -1;">
-                        <span>Nome completo</span>
-                        <input id="tenantFormAdminName" type="text" placeholder="Nome completo">
-                    </label>
-
-                    <label class="module-field" style="grid-column: span 2;">
                         <span>Email</span>
                         <input id="tenantFormAdminEmail" type="email" placeholder="admin@empresa.com">
                     </label>
 
-                    <label class="module-field">
+                    <div id="tenantFormAdminFoundNote" style="grid-column: 1 / -1; display: none; padding: 0.6rem 0.85rem; border-radius: 8px; background: color-mix(in srgb, var(--success-color) 15%, transparent); border: 1px solid var(--success-color); font-size: 0.85rem;"></div>
+
+                    <label class="module-field" id="tenantFormAdminNameField" style="grid-column: 1 / -1;">
+                        <span>Nome completo</span>
+                        <input id="tenantFormAdminName" type="text" placeholder="Nome completo">
+                    </label>
+
+                    <label class="module-field" id="tenantFormAdminPasswordField" style="grid-column: 1 / -1;">
                         <span>Senha inicial</span>
                         <input id="tenantFormAdminPassword" type="password" autocomplete="new-password">
                     </label>
+
+                    <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Outros membros (opcional)</strong>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Usuários já existentes na plataforma, incluídos como Membro. Administradores da plataforma são vinculados automaticamente, não precisam ser marcados aqui.</span>
+                    </div>
+
+                    <label class="module-field" style="grid-column: 1 / -1;">
+                        <span>Filtrar por nome ou e-mail</span>
+                        <input id="tenantFormMembersFilter" type="text" placeholder="Digite pra filtrar a lista abaixo">
+                    </label>
+
+                    <div id="tenantFormMembersList" style="grid-column: 1 / -1; max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem;"></div>
                 </div>
 
                 <label class="module-field" id="tenantFormStatusField" style="display: none; grid-column: 1 / -1;">

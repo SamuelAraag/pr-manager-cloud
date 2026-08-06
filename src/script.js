@@ -419,6 +419,20 @@ async function init() {
     }
 }
 
+// Botão de mostrar/esconder a senha no login.
+const toggleLoginPasswordBtn = document.getElementById('toggleLoginPassword');
+if (toggleLoginPasswordBtn) {
+    toggleLoginPasswordBtn.addEventListener('click', () => {
+        const input = document.getElementById('loginPassword');
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        toggleLoginPasswordBtn.setAttribute('aria-label', isHidden ? 'Esconder senha' : 'Mostrar senha');
+        toggleLoginPasswordBtn.setAttribute('title', isHidden ? 'Esconder senha' : 'Mostrar senha');
+        toggleLoginPasswordBtn.innerHTML = `<i data-lucide="${isHidden ? 'eye-off' : 'eye'}"></i>`;
+        if (window.lucide) lucide.createIcons();
+    });
+}
+
 // Login padrão (usuário/email + senha) — substitui a antiga grade de perfis
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {
