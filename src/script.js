@@ -1021,11 +1021,6 @@ if (monitorStatusBtn) {
     });
 }
 
-const changeUserBtn = document.getElementById('changeUserBtn');
-if (changeUserBtn) {
-    changeUserBtn.addEventListener('click', showProfileSelection);
-}
-
 document.getElementById('logoutBtn').addEventListener('click', handleLogout);
 
 
