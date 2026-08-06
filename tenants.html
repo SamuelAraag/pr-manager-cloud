@@ -142,6 +142,30 @@
                     </select>
                 </label>
 
+                <!-- Só na edição (não faz sentido gerenciar membros de um tenant que ainda não
+                     existe). Vínculo aqui é direto — sem passar pelo fluxo de convite/aprovação,
+                     já que quem está nesta tela já é PlatformAdmin (ver TenantMembershipsController
+                     .AddExistingUser, RequirePlatformAdmin). -->
+                <div id="tenantEditMembersSection" style="grid-column: 1 / -1; display: none;">
+                    <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Membros deste tenant</strong>
+                    </div>
+
+                    <div id="tenantEditMembersTable" style="grid-column: 1 / -1; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.4rem;"></div>
+
+                    <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Adicionar usuário existente</strong>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Vínculo imediato, sem convite/aprovação.</span>
+                    </div>
+
+                    <label class="module-field" style="grid-column: 1 / -1;">
+                        <span>Filtrar por nome ou e-mail</span>
+                        <input id="tenantEditMembersFilter" type="text" placeholder="Digite pra filtrar a lista abaixo">
+                    </label>
+
+                    <div id="tenantEditMembersAddList" style="grid-column: 1 / -1; max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.4rem;"></div>
+                </div>
+
                 <div class="module-form-actions">
                     <button class="btn btn-primary" type="submit">Salvar</button>
                     <button class="btn btn-outline close-modal" type="button">Cancelar</button>

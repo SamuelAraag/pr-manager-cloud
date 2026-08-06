@@ -59,6 +59,8 @@ const fetchTenantMemberships = (tenantId) => apiRequest(`/tenants/${tenantId}/me
 const updateMembershipRole = (id, data) => apiRequest(`/tenant-memberships/${id}/role`, { method: "PUT", body: JSON.stringify(data) });
 const deactivateMembership = (id) => apiRequest(`/tenant-memberships/${id}/deactivate`, { method: "POST" });
 const reactivateMembership = (id) => apiRequest(`/tenant-memberships/${id}/reactivate`, { method: "POST" });
+// Atalho só de PlatformAdmin: vincula usuário já existente direto ao tenant (sem convite/aprovação).
+const addTenantMember = (tenantId, data) => apiRequest(`/tenants/${tenantId}/memberships`, { method: "POST", body: JSON.stringify(data) });
 
 // ── Notificações ─────────────────────────────────────────────────────────────
 const fetchNotifications = (onlyUnread) => apiRequest(`/Notifications${onlyUnread ? "?onlyUnread=true" : ""}`);
@@ -903,6 +905,7 @@ export {
   updateMembershipRole,
   deactivateMembership,
   reactivateMembership,
+  addTenantMember,
   fetchNotifications,
   markNotificationRead,
 };

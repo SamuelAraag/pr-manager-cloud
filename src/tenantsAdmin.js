@@ -20,6 +20,8 @@ let usersState = [];
 let usersLoaded = false;
 let adminUsuarioEncontrado = null;
 let membrosSelecionados = new Set();
+let editingTenantId = null;
+let editMembersState = [];
 
 function traduzErro(error) {
     const friendly = {
@@ -32,6 +34,11 @@ function traduzErro(error) {
         status_invalid: 'Status inválido.',
         tenant_archived: 'Tenant arquivado não pode ser reativado por aqui.',
         not_found: 'Registro não encontrado.',
+        tenant_not_found: 'Tenant não encontrado.',
+        user_not_found: 'Usuário não encontrado.',
+        member_exists: 'Este usuário já é membro ativo deste tenant.',
+        role_invalid: 'Papel inválido.',
+        last_tenant_admin: 'Não é possível remover/rebaixar o último administrador ativo do tenant.',
         invitation_not_pending: 'Este convite já foi revisado.',
         invitation_not_removable: 'Só é possível remover convites pendentes ou rejeitados.',
     };
@@ -188,6 +195,120 @@ function renderMembersList() {
 
 document.getElementById('tenantFormMembersFilter')?.addEventListener('input', renderMembersList);
 
+// ── Membros do tenant sendo editado (vínculo direto, atalho só de PlatformAdmin) ───────────
+
+async function loadEditMembers(tenantId) {
+    editMembersState = await API.fetchTenantMemberships(tenantId);
+    renderEditMembersTable();
+    await ensureUsersLoaded();
+    renderEditMembersAddList();
+}
+
+function renderEditMembersTable() {
+    const container = document.getElementById('tenantEditMembersTable');
+    if (!container) return;
+
+    if (editMembersState.length === 0) {
+        container.innerHTML = `<p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.4rem;">Nenhum membro ainda.</p>`;
+        return;
+    }
+
+    container.innerHTML = editMembersState.map(m => `
+        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.4rem; ${m.status !== 'Active' ? 'opacity: 0.6;' : ''}">
+            <span style="flex: 1;">${m.userName} <span style="color: var(--text-secondary); font-size: 0.8rem;">(${m.userEmail})</span></span>
+            <select class="tenant-edit-member-role" data-id="${m.id}" ${m.status !== 'Active' ? 'disabled' : ''} style="width: auto; min-height: 34px; padding: 0.3rem 1.8rem 0.3rem 0.5rem;">
+                <option value="Member" ${m.role === 'Member' ? 'selected' : ''}>Membro</option>
+                <option value="TenantAdmin" ${m.role === 'TenantAdmin' ? 'selected' : ''}>Administrador</option>
+            </select>
+            ${m.status === 'Active'
+                ? `<button type="button" class="btn btn-outline tenant-edit-member-deactivate" data-id="${m.id}" title="Inativar"><i data-lucide="user-x"></i></button>`
+                : `<button type="button" class="btn btn-outline tenant-edit-member-reactivate" data-id="${m.id}" title="Reativar"><i data-lucide="user-check"></i></button>`}
+        </div>
+    `).join('');
+    if (window.lucide) lucide.createIcons();
+
+    container.querySelectorAll('.tenant-edit-member-role').forEach(select =>
+        select.addEventListener('change', async () => {
+            try {
+                await API.updateMembershipRole(select.dataset.id, { role: select.value });
+                await loadEditMembers(editingTenantId);
+                DOM.showToast('Papel atualizado.');
+            } catch (error) {
+                DOM.showToast(traduzErro(error), 'error');
+                await loadEditMembers(editingTenantId);
+            }
+        }));
+
+    container.querySelectorAll('.tenant-edit-member-deactivate').forEach(btn =>
+        btn.addEventListener('click', async () => {
+            const m = editMembersState.find(x => x.id === btn.dataset.id);
+            const ok = await DOM.confirmDialog(`Inativar ${m.userName} neste tenant?`, 'Inativar membro');
+            if (!ok) return;
+            try {
+                await API.deactivateMembership(m.id);
+                await loadEditMembers(editingTenantId);
+                DOM.showToast('Membro inativado.');
+            } catch (error) {
+                DOM.showToast(traduzErro(error), 'error');
+            }
+        }));
+
+    container.querySelectorAll('.tenant-edit-member-reactivate').forEach(btn =>
+        btn.addEventListener('click', async () => {
+            try {
+                await API.reactivateMembership(btn.dataset.id);
+                await loadEditMembers(editingTenantId);
+                DOM.showToast('Membro reativado.');
+            } catch (error) {
+                DOM.showToast(traduzErro(error), 'error');
+            }
+        }));
+}
+
+function renderEditMembersAddList() {
+    const container = document.getElementById('tenantEditMembersAddList');
+    if (!container) return;
+
+    const filtro = (document.getElementById('tenantEditMembersFilter')?.value || '').trim().toLowerCase();
+    const idsJaMembros = new Set(editMembersState.filter(m => m.status === 'Active').map(m => m.userId));
+
+    const candidatos = usersState
+        .filter(u => !idsJaMembros.has(u.id))
+        .filter(u => !filtro || u.name.toLowerCase().includes(filtro) || u.email.toLowerCase().includes(filtro))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (candidatos.length === 0) {
+        container.innerHTML = `<p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.4rem;">Nenhum usuário encontrado.</p>`;
+        return;
+    }
+
+    container.innerHTML = candidatos.map(u => `
+        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.4rem;">
+            <span style="flex: 1;">${u.name} <span style="color: var(--text-secondary); font-size: 0.8rem;">(${u.email})</span></span>
+            <select class="tenant-edit-member-add-role" data-id="${u.id}" style="width: auto; min-height: 34px; padding: 0.3rem 1.8rem 0.3rem 0.5rem;">
+                <option value="Member">Membro</option>
+                <option value="TenantAdmin">Administrador</option>
+            </select>
+            <button type="button" class="btn btn-primary tenant-edit-member-add" data-id="${u.id}" title="Adicionar">Adicionar</button>
+        </div>
+    `).join('');
+
+    container.querySelectorAll('.tenant-edit-member-add').forEach(btn =>
+        btn.addEventListener('click', async () => {
+            const userId = Number(btn.dataset.id);
+            const role = container.querySelector(`.tenant-edit-member-add-role[data-id="${userId}"]`).value;
+            try {
+                await API.addTenantMember(editingTenantId, { userId, role });
+                await loadEditMembers(editingTenantId);
+                DOM.showToast('Membro adicionado.');
+            } catch (error) {
+                DOM.showToast(traduzErro(error), 'error');
+            }
+        }));
+}
+
+document.getElementById('tenantEditMembersFilter')?.addEventListener('input', renderEditMembersAddList);
+
 function openTenantForm(tenant = null) {
     document.getElementById('tenantFormTitle').textContent = tenant ? `Editar: ${tenant.name}` : 'Novo tenant';
     document.getElementById('tenantFormId').value = tenant ? tenant.id : '';
@@ -207,10 +328,20 @@ function openTenantForm(tenant = null) {
     document.getElementById('tenantFormStatusField').style.display = tenant ? 'flex' : 'none';
     document.getElementById('tenantFormStatus').value = tenant ? tenant.status : 'Active';
 
+    // Gestão de membros só faz sentido editando um tenant que já existe.
+    editingTenantId = tenant ? tenant.id : null;
+    document.getElementById('tenantEditMembersSection').style.display = tenant ? 'contents' : 'none';
+    document.getElementById('tenantEditMembersFilter').value = '';
+    editMembersState = [];
+
     tenantModal.style.display = 'flex';
     document.getElementById('tenantFormName').focus();
 
-    if (!tenant) ensureUsersLoaded();
+    if (!tenant) {
+        ensureUsersLoaded();
+    } else {
+        loadEditMembers(tenant.id);
+    }
 }
 
 function closeTenantForm() {
