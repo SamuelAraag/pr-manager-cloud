@@ -99,6 +99,9 @@ document.getElementById('userNewBtn')?.addEventListener('click', () => openUserF
 document.getElementById('usersShowInactive')?.addEventListener('change', renderUsersTable);
 userModal?.querySelectorAll('.close-btn, .close-modal').forEach(btn =>
     btn.addEventListener('click', closeUserForm));
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && userModal.style.display === 'flex') closeUserForm();
+});
 
 userForm?.addEventListener('submit', async (e) => {
     e.preventDefault();

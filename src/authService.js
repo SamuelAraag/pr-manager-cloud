@@ -96,6 +96,17 @@ export function isAdminGlobal() {
     return payload?.is_admin === 'true';
 }
 
+/**
+ * Épico 8b: admin da organização-plataforma — a única organização que gerencia o
+ * cadastro de todas as demais (criar/renomear/ativar-desativar organizações). Não confundir
+ * com isAdminGlobal (admin dentro da própria organização, desde o Épico 8).
+ * @returns {boolean}
+ */
+export function isPlatformAdmin() {
+    const payload = getTokenPayload();
+    return payload?.is_platform_admin === 'true';
+}
+
 // Papel do usuário no app atualmente selecionado (dashboard filtrado por ?app=).
 // Setado explicitamente por quem sabe qual app está aberto (script.js) — authService
 // não tem acesso à URL/estado de navegação por conta própria.
@@ -254,6 +265,7 @@ export default {
     applyRoleBasedVisibility,
     getMembershipsFromToken,
     isAdminGlobal,
+    isPlatformAdmin,
     setCurrentAppRole,
     getCurrentAppRole
 };

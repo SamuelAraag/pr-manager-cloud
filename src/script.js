@@ -156,9 +156,6 @@ window.addEventListener('keydown', (e) => {
     } else if (key === 'r') {
         e.preventDefault();
         loadData();
-    } else if (key === 'u') {
-        e.preventDefault();
-        showProfileSelection();
     } else if (key === '?' || (e.shiftKey && e.key === '?')) {
         e.preventDefault();
         shortcutsModal.style.display = 'flex';
@@ -430,6 +427,12 @@ function updateUserDisplay(userName) {
     const usersBtn = document.getElementById('usersBtn');
     if (usersBtn) {
         usersBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
+
+    // Épico 8b: mais restritivo que os outros admin-only — só a organização-plataforma.
+    const orgsBtn = document.getElementById('orgsBtn');
+    if (orgsBtn) {
+        orgsBtn.style.display = AuthService.isPlatformAdmin() ? 'inline-flex' : 'none';
     }
 
     const appTitle = document.getElementById('appTitle');
@@ -751,6 +754,13 @@ if (document.getElementById('usersBtn')) {
     });
 }
 
+// Gestão de Organizações (Épico 8b): tela administrativa é ROTA própria, nunca modal.
+if (document.getElementById('orgsBtn')) {
+    document.getElementById('orgsBtn').addEventListener('click', () => {
+        window.location.href = 'organizacoes.html';
+    });
+}
+
 // Home de Apps (Épico 3): rota própria
 if (document.getElementById('appsBtn')) {
     document.getElementById('appsBtn').addEventListener('click', () => {
@@ -893,11 +903,6 @@ if (monitorStatusBtn) {
     monitorStatusBtn.addEventListener('click', () => {
         window.location.href = 'monitor-de-status.html';
     });
-}
-
-const changeUserBtn = document.getElementById('changeUserBtn');
-if (changeUserBtn) {
-    changeUserBtn.addEventListener('click', showProfileSelection);
 }
 
 document.getElementById('logoutBtn').addEventListener('click', handleLogout);

@@ -529,6 +529,25 @@ const addAppMember = (id, data) => appsRequest(`/${id}/members`, { method: "POST
 const updateAppMember = (id, userId, data) => appsRequest(`/${id}/members/${userId}`, { method: "PUT", body: JSON.stringify(data) });
 const removeAppMember = (id, userId) => appsRequest(`/${id}/members/${userId}`, { method: "DELETE" });
 
+// ── Organizações (Épico 8b) — só visível/chamável por admin da organização-plataforma ──
+
+async function organizationsRequest(path, options = {}) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Organizations${path}`, {
+    headers: getBackendHeaders(),
+    ...options,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Erro na API de organizações: ${response.statusText}`);
+  }
+  return response.status === 204 ? null : await response.json();
+}
+
+const fetchOrganizations = () => organizationsRequest("");
+const createOrganization = (data) => organizationsRequest("", { method: "POST", body: JSON.stringify(data) });
+const updateOrganization = (id, data) => organizationsRequest(`/${id}`, { method: "PUT", body: JSON.stringify(data) });
+const deactivateOrganization = (id) => organizationsRequest(`/${id}`, { method: "PUT", body: JSON.stringify({ isActive: false }) });
+
 // ── Ambientes (Épico 6) ─────────────────────────────────────────────────────
 // O erro carrega status e body: o chamador diferencia 403 (sem papel), 409
 // (stg_active_batch_changed / not_active) e 501 (dev sem fluxo nesta fase).
@@ -842,4 +861,8 @@ export {
   deleteMonitorStatusApp,
   checkMonitorStatusApp,
   getMonitorStatusAppDetails,
+  fetchOrganizations,
+  createOrganization,
+  updateOrganization,
+  deactivateOrganization,
 };
