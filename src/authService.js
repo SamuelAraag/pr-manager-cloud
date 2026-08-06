@@ -3,8 +3,9 @@
  * Centralized service for JWT token handling and role-based access control
  */
 
-import { getItem } from './localStorageService.js';
+import { getItem, setItem } from './localStorageService.js';
 import { ROLES, PERMISSIONS } from './constants/roles.js';
+import * as API from './apiService.js';
 
 /**
  * Decode JWT token (simple base64 decode)
@@ -86,14 +87,65 @@ export function getMembershipsFromToken() {
     }
 }
 
+// Épico 9 Fase 3: PlatformAdmin/TenantAdmin não são mais claim do JWT (token vale até 30
+// dias e não pode carregar um papel que precisa de efeito imediato quando revogado). A fonte
+// fresca é GET /api/Users/me, revalidada no backend a cada chamada — cacheada aqui em memória
+// e atualizada por refreshMe(), chamada no login e na troca de tenant.
+let meCache = null;
+
 /**
- * Papel global de administração da plataforma (Épico 2/4) — passa em qualquer permissão,
- * independente do app. Não confundir com a role legada "Admin" do enum UserRole.
+ * Busca a identidade "fresca" do usuário logado (IsPlatformAdmin, tenant atual, papel no
+ * tenant atual, lista de tenants) e cacheia em memória para os getters síncronos abaixo.
+ * Deve ser chamada após login e após troca de tenant, antes de applyRoleBasedVisibility().
+ * @returns {Promise<object|null>}
+ */
+export async function refreshMe() {
+    try {
+        const me = await API.fetchMe();
+        meCache = me;
+        if (me?.currentTenantId) {
+            setItem('currentTenantId', me.currentTenantId);
+        }
+        return me;
+    } catch (error) {
+        console.error('Falha ao buscar identidade atual (/Users/me):', error);
+        meCache = null;
+        return null;
+    }
+}
+
+/** @returns {object|null} último resultado cacheado de refreshMe() */
+export function getMe() {
+    return meCache;
+}
+
+/** @returns {string|null} "TenantAdmin" | "Member" | null (sem tenant resolvido) */
+export function getRoleInCurrentTenant() {
+    return meCache?.roleInCurrentTenant ?? null;
+}
+
+/** @returns {{tenantId: string, tenantName: string, role: string}[]} */
+export function getMyTenants() {
+    return meCache?.tenants ?? [];
+}
+
+/**
+ * Administrador global da plataforma (User.IsPlatformAdmin) — bypassa qualquer checagem de
+ * tenant/app. Fonte: refreshMe() (fresca, revalidada no backend), não o JWT.
+ * @returns {boolean}
+ */
+export function isPlatformAdmin() {
+    return !!meCache?.isPlatformAdmin;
+}
+
+/**
+ * Administrador com poderes de gestão do tenant atual — PlatformAdmin (bypassa) OU
+ * TenantAdmin do tenant resolvido pro request. Substitui a antiga claim "is_admin" (removida
+ * do JWT no Épico 9 — não representa mais nem o modelo de dados nem revoga na hora).
  * @returns {boolean}
  */
 export function isAdminGlobal() {
-    const payload = getTokenPayload();
-    return payload?.is_admin === 'true';
+    return isPlatformAdmin() || getRoleInCurrentTenant() === 'TenantAdmin';
 }
 
 /**
@@ -209,15 +261,20 @@ export function getTokenPayload() {
  * Usage in HTML:
  *   <button data-roles="Admin">Admin Only</button>
  *   <button data-roles="Admin,QA">Admin or QA</button>
- * 
+ *   <button data-roles="PlatformAdmin">PlatformAdmin only (TenantAdmin não bypassa)</button>
+ *
  * Should be called:
- *   - After login
+ *   - After login (depois de refreshMe())
  *   - After rendering dynamic content
- *   - After switching users
+ *   - After switching users or tenant
  */
 export function applyRoleBasedVisibility() {
     const userRoles = getRolesFromToken();
-    const admin = isAdminGlobal();
+    const platformAdmin = isPlatformAdmin();
+    // TenantAdmin do tenant atual (ou PlatformAdmin) — bypassa telas gated por "Admin",
+    // igual ao antigo admin de organização. "PlatformAdmin" no data-roles é mais restrito:
+    // só passa pra quem é de fato PlatformAdmin (ver requiredRoles.includes abaixo).
+    const tenantAdmin = isAdminGlobal();
     const appRole = getCurrentAppRole();
 
     // Select all elements with data-roles attribute
@@ -230,11 +287,10 @@ export function applyRoleBasedVisibility() {
             .map(r => r.trim())
             .filter(r => r.length > 0);
 
-        // Admin global sempre passa. Sem app selecionado, usa a role legada e global do
-        // JWT (comportamento pré-Épico 4). Com um app selecionado, "Admin"/"QA" nos
-        // templates passam a significar "Gestor do app"/"QA do app" (Épico 4.2/4.3):
-        // são os mesmos papéis que o backend passou a exigir nesses mesmos botões.
-        let hasPermission = admin || requiredRoles.some(role => userRoles.includes(role));
+        let hasPermission = platformAdmin || requiredRoles.some(role => userRoles.includes(role));
+        if (!hasPermission && tenantAdmin && requiredRoles.includes('Admin')) {
+            hasPermission = true;
+        }
         if (!hasPermission && appRole) {
             hasPermission = requiredRoles.some(role =>
                 (role === 'Admin' && appRole === 'Gestor') || (role === 'QA' && appRole === 'QA'));
@@ -267,5 +323,10 @@ export default {
     isAdminGlobal,
     isPlatformAdmin,
     setCurrentAppRole,
-    getCurrentAppRole
+    getCurrentAppRole,
+    refreshMe,
+    getMe,
+    getRoleInCurrentTenant,
+    getMyTenants,
+    isPlatformAdmin
 };

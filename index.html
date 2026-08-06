@@ -27,14 +27,43 @@
                 </div>
                 <div class="form-group" style="margin-bottom: 1.4rem;">
                     <label for="loginPassword">Senha</label>
-                    <input type="password" id="loginPassword" placeholder="••••••••" required
-                        autocomplete="current-password">
+                    <div class="input-with-action">
+                        <input type="password" id="loginPassword" placeholder="••••••••" required
+                            autocomplete="current-password">
+                        <button type="button" id="toggleLoginPassword" class="input-action-btn"
+                            aria-label="Mostrar senha" title="Mostrar senha">
+                            <i data-lucide="eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
                     Entrar
                 </button>
                 <p id="loginError" class="login-error" style="display: none;"></p>
             </form>
+        </div>
+    </div>
+
+    <!-- Épico 9 §6: seletor de tenant (usuário com mais de um tenant ativo) -->
+    <div id="tenantSelectScreen" class="modal-overlay" style="z-index: 2100;">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>Selecione o tenant</h2>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Seu usuário está vinculado a mais de um tenant. Escolha com qual deseja trabalhar.</p>
+            <div id="tenantSelectList"></div>
+        </div>
+    </div>
+
+    <!-- Épico 9 §6: mensagem para usuário sem nenhum tenant ativo -->
+    <div id="noTenantScreen" class="modal-overlay" style="z-index: 2100;">
+        <div class="modal-content" style="max-width: 420px; text-align: center;">
+            <div class="modal-header" style="justify-content: center;">
+                <h2>Sem acesso a nenhum tenant</h2>
+            </div>
+            <p style="color: var(--text-secondary);">Seu usuário ainda não está vinculado a nenhum tenant. Entre em
+                contato com o administrador da sua organização ou com o suporte da plataforma para solicitar acesso.</p>
+            <button id="noTenantLogoutBtn" class="btn btn-outline" style="margin-top: 1rem;">Sair</button>
         </div>
     </div>
 
@@ -75,12 +104,25 @@
                     <i data-lucide="users"></i>
                 </button>
 
+<<<<<<< HEAD
                 <!-- Sem data-roles de propósito: applyRoleBasedVisibility() mostraria para
                      qualquer Admin. Visibilidade é só via AuthService.isPlatformAdmin() em
                      script.js (mais restritivo — só a organização-plataforma). -->
                 <button id="orgsBtn" class="btn btn-outline platform-admin-only" title="Gerenciar Organizações"
                     style="border-color: var(--accent-color); color: var(--accent-color); display: none;">
                     <i data-lucide="building-2"></i>
+=======
+                <!-- Épico 9: só PlatformAdmin gerencia tenants — TenantAdmin não bypassa este. -->
+                <button id="tenantsBtn" data-roles="PlatformAdmin" class="btn btn-outline" title="Gerenciar Tenants"
+                    style="display: none;">
+                    <i data-lucide="building"></i>
+                </button>
+
+                <!-- Épico 9 §6: só aparece quando o usuário tem mais de um tenant ativo. -->
+                <button id="tenantSwitchBtn" class="btn btn-outline" title="Trocar tenant" style="display: none;">
+                    <i data-lucide="building-2"></i>
+                    <span id="currentTenantLabel"></span>
+>>>>>>> origin/worktree-epico9-fase2-6
                 </button>
 
                 <button id="appsBtn" class="btn btn-outline" title="Apps">

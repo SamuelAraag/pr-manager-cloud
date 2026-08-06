@@ -158,6 +158,48 @@ function showToast(message, type = 'success', title = '', isRestored = false) {
     }, 5000);
 }
 
+// Diálogo de confirmação em UI (00-principles.md proíbe confirm()/alert() nativos). Espera
+// os elementos #confirmDialog/#confirmDialogTitle/#confirmDialogMessage/#confirmDialogYes/
+// #confirmDialogNo na página (ver tenants.html). Resolve true/false, nunca rejeita.
+function confirmDialog(message, title = 'Confirmar ação') {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('confirmDialog');
+        if (!overlay) { resolve(window.confirm(message)); return; }
+
+        document.getElementById('confirmDialogTitle').textContent = title;
+        document.getElementById('confirmDialogMessage').textContent = message;
+
+        const yesBtn = document.getElementById('confirmDialogYes');
+        const noBtn = document.getElementById('confirmDialogNo');
+
+        const cleanup = (result) => {
+            overlay.style.display = 'none';
+            yesBtn.removeEventListener('click', onYes);
+            noBtn.removeEventListener('click', onNo);
+            resolve(result);
+        };
+        const onYes = () => cleanup(true);
+        const onNo = () => cleanup(false);
+
+        yesBtn.addEventListener('click', onYes);
+        noBtn.addEventListener('click', onNo);
+        overlay.style.display = 'flex';
+    });
+}
+
+// Fecha qualquer .modal-overlay visível ao pressionar Esc — chamar uma vez por página que
+// só tem modais dispensáveis (formulários, confirmações). Não usar em telas com um modal
+// obrigatório/bloqueante (ex.: login, seleção de tenant em index.html) — lá o fechamento
+// via Esc é tratado à parte, modal a modal, porque alguns não podem ser dispensados.
+function enableEscapeToCloseModals() {
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            if (getComputedStyle(overlay).display !== 'none') overlay.style.display = 'none';
+        });
+    });
+}
+
 function renderTable(prs, batches, sprints, onEdit, animate = true) {
     const openPrs = prs.filter(p => !p.approved);
     
@@ -964,4 +1006,4 @@ function showLoading(show) {
     if (dbHist) dbHist.style.display = contentDisplay;
 }
 
-export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory };
+export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory, confirmDialog, enableEscapeToCloseModals };

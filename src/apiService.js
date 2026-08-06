@@ -3,6 +3,9 @@ import { ApiConstants } from "./constants/apiConstants.js";
 
 function getBackendHeaders() {
   const token = getItem("token");
+  // Épico 9 Fase 3: tenant atual não vem mais de claim do JWT — vai por header em
+  // toda requisição, validado no backend contra TenantMembership ativo a cada request.
+  const tenantId = getItem("currentTenantId");
   const headers = {
     Accept: "application/json",
     "Content-Type": "application/json",
@@ -12,9 +15,56 @@ function getBackendHeaders() {
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
+  if (tenantId) {
+    headers["X-Tenant-Id"] = tenantId;
+  }
 
   return headers;
 }
+
+// Helper genérico para os endpoints novos do Épico 9 (Tenants, Convites, Memberships,
+// Notificações) — mesmo padrão de appsRequest/environmentsRequest, sem repetir por recurso.
+async function apiRequest(path, options = {}) {
+  const response = await fetch(`${ApiConstants.BASE_URL}${path}`, {
+    headers: getBackendHeaders(),
+    ...options,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Erro na API: ${response.statusText}`);
+  }
+  return response.status === 204 ? null : await response.json();
+}
+
+// ── Identidade fresca (Épico 9 Fase 3) ──────────────────────────────────────
+const fetchMe = () => apiRequest("/Users/me");
+
+// ── Tenants (Épico 9 — PlatformAdmin) ───────────────────────────────────────
+const fetchTenants = () => apiRequest("/Tenants");
+const createTenant = (data) => apiRequest("/Tenants", { method: "POST", body: JSON.stringify(data) });
+const updateTenant = (id, data) => apiRequest(`/Tenants/${id}`, { method: "PUT", body: JSON.stringify(data) });
+
+// ── Convites (TenantInvitation) ─────────────────────────────────────────────
+const fetchTenantInvitations = (tenantId) => apiRequest(`/tenants/${tenantId}/invitations`);
+const createTenantInvitation = (tenantId, data) =>
+  apiRequest(`/tenants/${tenantId}/invitations`, { method: "POST", body: JSON.stringify(data) });
+const fetchPendingInvitations = () => apiRequest("/tenant-invitations/pending");
+const approveInvitation = (id, data) =>
+  apiRequest(`/tenant-invitations/${id}/approve`, { method: "POST", body: JSON.stringify(data || {}) });
+const rejectInvitation = (id) => apiRequest(`/tenant-invitations/${id}/reject`, { method: "POST" });
+const removeInvitation = (id) => apiRequest(`/tenant-invitations/${id}/remove`, { method: "POST" });
+
+// ── Memberships (TenantMembership) ──────────────────────────────────────────
+const fetchTenantMemberships = (tenantId) => apiRequest(`/tenants/${tenantId}/memberships`);
+const updateMembershipRole = (id, data) => apiRequest(`/tenant-memberships/${id}/role`, { method: "PUT", body: JSON.stringify(data) });
+const deactivateMembership = (id) => apiRequest(`/tenant-memberships/${id}/deactivate`, { method: "POST" });
+const reactivateMembership = (id) => apiRequest(`/tenant-memberships/${id}/reactivate`, { method: "POST" });
+// Atalho só de PlatformAdmin: vincula usuário já existente direto ao tenant (sem convite/aprovação).
+const addTenantMember = (tenantId, data) => apiRequest(`/tenants/${tenantId}/memberships`, { method: "POST", body: JSON.stringify(data) });
+
+// ── Notificações ─────────────────────────────────────────────────────────────
+const fetchNotifications = (onlyUnread) => apiRequest(`/Notifications${onlyUnread ? "?onlyUnread=true" : ""}`);
+const markNotificationRead = (id) => apiRequest(`/Notifications/${id}/read`, { method: "PUT" });
 
 async function fetchPRs() {
   const url = `${ApiConstants.BASE_URL}/PullRequests`;
@@ -861,8 +911,28 @@ export {
   deleteMonitorStatusApp,
   checkMonitorStatusApp,
   getMonitorStatusAppDetails,
+<<<<<<< HEAD
   fetchOrganizations,
   createOrganization,
   updateOrganization,
   deactivateOrganization,
+=======
+  fetchMe,
+  fetchTenants,
+  createTenant,
+  updateTenant,
+  fetchTenantInvitations,
+  createTenantInvitation,
+  fetchPendingInvitations,
+  approveInvitation,
+  rejectInvitation,
+  removeInvitation,
+  fetchTenantMemberships,
+  updateMembershipRole,
+  deactivateMembership,
+  reactivateMembership,
+  addTenantMember,
+  fetchNotifications,
+  markNotificationRead,
+>>>>>>> origin/worktree-epico9-fase2-6
 };

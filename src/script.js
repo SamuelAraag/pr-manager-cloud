@@ -237,7 +237,10 @@ if (godModeInput) {
                     LocalStorage.setItem('appUser', result.user.name);
                     LocalStorage.setItem('appUserId', result.user.id);
                     LocalStorage.setItem('token', result.token);
-                    
+
+                    const tenantOk = await ensureTenantContext();
+                    if (!tenantOk) { DOM.showLoading(false); return; }
+
                     EffectService.triggerGodMode();
                     updateUserDisplay(result.user.name);
                     await loadData(true);
@@ -262,6 +265,103 @@ if (godModeInput) {
         }
     });
 }
+
+// ── Seleção de tenant (Épico 9 §6) ──────────────────────────────────────────
+// Busca a identidade fresca (IsPlatformAdmin/tenant atual/tenants do usuário) e garante que
+// currentTenantId em localStorage aponta pra um tenant válido antes de carregar dados —
+// toda chamada à API depois disso já sai com o header X-Tenant-Id certo.
+async function ensureTenantContext() {
+    const me = await AuthService.refreshMe();
+    if (!me) {
+        // token inválido/expirado: volta pro login em vez de travar a tela
+        LocalStorage.clearSession();
+        showProfileSelection();
+        return false;
+    }
+
+    const tenants = me.tenants || [];
+    if (tenants.length === 0) {
+        document.getElementById('noTenantScreen').style.display = 'flex';
+        return false;
+    }
+
+    const storedId = LocalStorage.getItem('currentTenantId');
+    const storedIsValid = storedId && tenants.some(t => t.tenantId === storedId);
+
+    if (tenants.length === 1) {
+        LocalStorage.setItem('currentTenantId', tenants[0].tenantId);
+    } else if (!storedIsValid) {
+        const chosenId = await showTenantSelector(tenants);
+        LocalStorage.setItem('currentTenantId', chosenId);
+        await AuthService.refreshMe(); // refaz com o header certo pra pegar o papel no tenant escolhido
+    }
+
+    updateTenantSwitcher();
+    return true;
+}
+
+function showTenantSelector(tenants) {
+    return new Promise(resolve => {
+        const screen = document.getElementById('tenantSelectScreen');
+        const list = document.getElementById('tenantSelectList');
+        if (!screen || !list) { resolve(tenants[0].tenantId); return; }
+
+        list.innerHTML = '';
+        tenants.forEach(t => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-outline';
+            btn.style.cssText = 'width:100%; justify-content:space-between; margin-bottom:0.5rem;';
+            btn.innerHTML = `<span>${t.tenantName}</span><span style="color: var(--text-secondary); font-size: 0.75rem;">${t.role === 'TenantAdmin' ? 'Administrador' : 'Membro'}</span>`;
+            btn.addEventListener('click', () => {
+                screen.style.display = 'none';
+                resolve(t.tenantId);
+            });
+            list.appendChild(btn);
+        });
+        screen.style.display = 'flex';
+    });
+}
+
+function updateTenantSwitcher() {
+    const me = AuthService.getMe();
+    const btn = document.getElementById('tenantSwitchBtn');
+    const label = document.getElementById('currentTenantLabel');
+    if (!btn || !label) return;
+
+    const tenants = me?.tenants || [];
+    const current = tenants.find(t => t.tenantId === me?.currentTenantId);
+    label.textContent = current ? current.tenantName : '';
+    btn.style.display = tenants.length > 1 ? 'inline-flex' : 'none';
+}
+
+document.getElementById('tenantSwitchBtn')?.addEventListener('click', async () => {
+    const me = AuthService.getMe();
+    if (!me || !(me.tenants || []).length) return;
+
+    const chosenId = await showTenantSelector(me.tenants);
+    if (chosenId === LocalStorage.getItem('currentTenantId')) return;
+
+    LocalStorage.setItem('currentTenantId', chosenId);
+    DOM.showLoading(true);
+    try {
+        await AuthService.refreshMe();
+        updateTenantSwitcher();
+        AuthService.applyRoleBasedVisibility();
+        await loadProjectOptions();
+        applyDemoProjectsToSelect();
+        await loadData(true);
+        DOM.showToast('Tenant alterado.');
+    } finally {
+        DOM.showLoading(false);
+    }
+});
+
+document.getElementById('noTenantLogoutBtn')?.addEventListener('click', () => {
+    document.getElementById('noTenantScreen').style.display = 'none';
+    LocalStorage.clearSession();
+    showProfileSelection();
+});
 
 function closeAllModals() {
     prModal.style.display = 'none';
@@ -295,6 +395,10 @@ async function init() {
     } else {
         updateUserDisplay(appUser);
 
+        const tenantOk = await ensureTenantContext();
+        if (!tenantOk) return;
+        AuthService.applyRoleBasedVisibility();
+
         await loadProjectOptions();
         applyDemoProjectsToSelect();
         await loadData();
@@ -312,6 +416,20 @@ async function init() {
             }, 500);
         });
     }
+}
+
+// Botão de mostrar/esconder a senha no login.
+const toggleLoginPasswordBtn = document.getElementById('toggleLoginPassword');
+if (toggleLoginPasswordBtn) {
+    toggleLoginPasswordBtn.addEventListener('click', () => {
+        const input = document.getElementById('loginPassword');
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        toggleLoginPasswordBtn.setAttribute('aria-label', isHidden ? 'Esconder senha' : 'Mostrar senha');
+        toggleLoginPasswordBtn.setAttribute('title', isHidden ? 'Esconder senha' : 'Mostrar senha');
+        toggleLoginPasswordBtn.innerHTML = `<i data-lucide="${isHidden ? 'eye-off' : 'eye'}"></i>`;
+        if (window.lucide) lucide.createIcons();
+    });
 }
 
 // Login padrão (usuário/email + senha) — substitui a antiga grade de perfis
@@ -334,6 +452,9 @@ if (loginForm) {
             LocalStorage.setItem('appUser', result.user.name);
             LocalStorage.setItem('appUserId', result.user.id);
             LocalStorage.setItem('token', result.token);
+
+            const tenantOk = await ensureTenantContext();
+            if (!tenantOk) { DOM.showLoading(false); return; }
 
             if (AuthService.isAdmin()) {
                 EffectService.triggerGodMode();
@@ -754,10 +875,17 @@ if (document.getElementById('usersBtn')) {
     });
 }
 
+<<<<<<< HEAD
 // Gestão de Organizações (Épico 8b): tela administrativa é ROTA própria, nunca modal.
 if (document.getElementById('orgsBtn')) {
     document.getElementById('orgsBtn').addEventListener('click', () => {
         window.location.href = 'organizacoes.html';
+=======
+// Gestão de Tenants (Épico 9): tela administrativa do PlatformAdmin, rota própria.
+if (document.getElementById('tenantsBtn')) {
+    document.getElementById('tenantsBtn').addEventListener('click', () => {
+        window.location.href = 'tenants.html';
+>>>>>>> origin/worktree-epico9-fase2-6
     });
 }
 

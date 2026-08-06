@@ -3,22 +3,20 @@
 import * as API from './apiService.js';
 import * as AuthService from './authService.js';
 import * as LocalStorage from './localStorageService.js';
+import * as DOM from './domService.js';
 import { initializeTheme } from './themeService.js';
 
 initializeTheme('themeToggleBtn');
-
-// Guarda de acesso: rota é de Admin. O backend é a fonte de verdade (401/403),
-// isto só evita renderizar a tela para quem não deveria vê-la.
-LocalStorage.init?.();
-if (!LocalStorage.getItem('token') || !AuthService.isAdmin()) {
-    window.location.href = 'index.html';
-}
+DOM.enableEscapeToCloseModals();
 
 const userModal = document.getElementById('userModal');
 const userForm = document.getElementById('userForm');
 const usersCount = document.getElementById('usersCount');
+const inviteModal = document.getElementById('inviteModal');
+const inviteForm = document.getElementById('inviteForm');
 
 let usersState = [];
+let membershipsState = [];
 
 async function renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
@@ -54,12 +52,15 @@ async function renderUsersTable() {
     tbody.querySelectorAll('.user-deactivate-btn').forEach(btn =>
         btn.addEventListener('click', async () => {
             const user = usersState.find(u => String(u.id) === btn.dataset.id);
-            if (!confirm(`Desativar ${user.name}? O histórico de PRs permanece, mas o login é bloqueado.`)) return;
+            const ok = await DOM.confirmDialog(
+                `Desativar ${user.name}? O histórico de PRs permanece, mas o login é bloqueado.`, 'Desativar usuário');
+            if (!ok) return;
             try {
                 await API.deactivateUser(user.id);
                 await renderUsersTable();
+                DOM.showToast('Usuário desativado.');
             } catch (error) {
-                alert(traduzErro(error));
+                DOM.showToast(traduzErro(error), 'error');
             }
         }));
 }
@@ -90,7 +91,11 @@ function traduzErro(error) {
         last_admin: 'Não é possível rebaixar/desativar o último admin.',
         cannot_deactivate_self: 'Você não pode desativar a si mesmo.',
         password_required: 'Senha é obrigatória.',
-        name_required: 'Nome é obrigatório.'
+        name_required: 'Nome é obrigatório.',
+        invitation_pending: 'Já existe uma solicitação pendente para este usuário.',
+        role_invalid: 'Papel inválido.',
+        last_tenant_admin: 'Não é possível remover/rebaixar o último administrador ativo do tenant.',
+        not_found: 'Registro não encontrado.'
     };
     return friendly[error.message] || `Erro: ${error.message}`;
 }
@@ -120,14 +125,139 @@ userForm?.addEventListener('submit', async (e) => {
         if (id) {
             await API.updateUser(id, payload);
         } else {
-            if (!password) { alert('Senha é obrigatória para criar usuário.'); return; }
+            if (!password) { DOM.showToast('Senha é obrigatória para criar usuário.', 'error'); return; }
             await API.createUser(payload);
         }
         closeUserForm();
         await renderUsersTable();
+        DOM.showToast('Usuário salvo com sucesso.');
     } catch (error) {
-        alert(traduzErro(error));
+        DOM.showToast(traduzErro(error), 'error');
     }
 });
 
-renderUsersTable();
+// ── Membros do tenant atual (Épico 9 §8.2/§8.5-8.7) ────────────────────────────────────────
+// Vínculo com o tenant (papel/ativação) é distinto da conta global acima — ver TenantMembership.
+
+async function renderMembershipsTable() {
+    const tbody = document.getElementById('membershipsTableBody');
+    const tenantId = AuthService.getMe()?.currentTenantId;
+    if (!tbody || !tenantId) return;
+
+    membershipsState = await API.fetchTenantMemberships(tenantId);
+    document.getElementById('membershipsCount').textContent = `${membershipsState.length} itens`;
+
+    tbody.innerHTML = '';
+    membershipsState.forEach(m => {
+        const tr = document.createElement('tr');
+        if (m.status !== 'Active') tr.style.opacity = '0.5';
+        tr.innerHTML = `
+            <td>${m.userName}</td>
+            <td>${m.userEmail}</td>
+            <td>
+                <select class="membership-role-select" data-id="${m.id}" ${m.status !== 'Active' ? 'disabled' : ''}>
+                    <option value="Member" ${m.role === 'Member' ? 'selected' : ''}>Membro</option>
+                    <option value="TenantAdmin" ${m.role === 'TenantAdmin' ? 'selected' : ''}>Administrador</option>
+                </select>
+            </td>
+            <td>${m.status === 'Active' ? 'Ativo' : 'Inativo'}</td>
+            <td>
+                ${m.status === 'Active'
+                    ? `<button class="btn btn-outline membership-deactivate-btn" data-id="${m.id}" title="Inativar"><i data-lucide="user-x"></i></button>`
+                    : `<button class="btn btn-outline membership-reactivate-btn" data-id="${m.id}" title="Reativar"><i data-lucide="user-check"></i></button>`}
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    if (window.lucide) lucide.createIcons();
+
+    tbody.querySelectorAll('.membership-role-select').forEach(select =>
+        select.addEventListener('change', async () => {
+            try {
+                await API.updateMembershipRole(select.dataset.id, { role: select.value });
+                await renderMembershipsTable();
+                DOM.showToast('Papel atualizado.');
+            } catch (error) {
+                DOM.showToast(traduzErro(error), 'error');
+                await renderMembershipsTable();
+            }
+        }));
+
+    tbody.querySelectorAll('.membership-deactivate-btn').forEach(btn =>
+        btn.addEventListener('click', async () => {
+            const m = membershipsState.find(x => x.id === btn.dataset.id);
+            const ok = await DOM.confirmDialog(
+                `Inativar ${m.userName} neste tenant? Os vínculos com apps deste tenant também serão inativados.`, 'Inativar membro');
+            if (!ok) return;
+            try {
+                await API.deactivateMembership(m.id);
+                await renderMembershipsTable();
+                DOM.showToast('Membro inativado.');
+            } catch (error) {
+                DOM.showToast(traduzErro(error), 'error');
+            }
+        }));
+
+    tbody.querySelectorAll('.membership-reactivate-btn').forEach(btn =>
+        btn.addEventListener('click', async () => {
+            try {
+                await API.reactivateMembership(btn.dataset.id);
+                await renderMembershipsTable();
+                DOM.showToast('Membro reativado.');
+            } catch (error) {
+                DOM.showToast(traduzErro(error), 'error');
+            }
+        }));
+}
+
+function openInviteForm() {
+    document.getElementById('inviteFormEmail').value = '';
+    document.getElementById('inviteFormRole').value = 'Member';
+    inviteModal.style.display = 'flex';
+    document.getElementById('inviteFormEmail').focus();
+}
+
+function closeInviteForm() {
+    inviteModal.style.display = 'none';
+}
+
+document.getElementById('membershipInviteBtn')?.addEventListener('click', openInviteForm);
+inviteModal?.querySelectorAll('.close-btn, .close-modal').forEach(btn => btn.addEventListener('click', closeInviteForm));
+
+inviteForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const tenantId = AuthService.getMe()?.currentTenantId;
+    if (!tenantId) return;
+
+    try {
+        await API.createTenantInvitation(tenantId, {
+            email: document.getElementById('inviteFormEmail').value.trim(),
+            requestedTenantRole: document.getElementById('inviteFormRole').value
+        });
+        closeInviteForm();
+        DOM.showToast('Convite enviado — aguardando aprovação do administrador da plataforma.');
+    } catch (error) {
+        DOM.showToast(traduzErro(error), 'error');
+    }
+});
+
+async function boot() {
+    LocalStorage.init?.();
+    if (!LocalStorage.getItem('token')) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // Guarda de acesso: rota é de administrador do tenant. PlatformAdmin/TenantAdmin não são
+    // mais claim do JWT (Épico 9) — precisa da checagem fresca via /Users/me. O backend
+    // (policy RequireTenantAdmin) é a fonte de verdade; isto só evita renderizar a tela.
+    const me = await AuthService.refreshMe();
+    if (!me || !AuthService.isAdminGlobal()) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    await renderUsersTable();
+    await renderMembershipsTable();
+}
+
+boot();

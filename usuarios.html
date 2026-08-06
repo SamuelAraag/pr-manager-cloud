@@ -56,6 +56,35 @@
                 <tbody id="usersTableBody"></tbody>
             </table>
         </section>
+
+        <!-- Épico 9 §8.2/§8.5-8.7: vínculo do usuário com o tenant atual (papel/ativação),
+             separado da conta global acima. Só aparece pra quem administra o tenant atual. -->
+        <section class="module-section-head module-toolbar" style="margin-top: 2rem;">
+            <div>
+                <h2>Membros do tenant atual</h2>
+            </div>
+            <div class="module-toolbar-actions">
+                <span id="membershipsCount" class="tag module-count">0 itens</span>
+                <button id="membershipInviteBtn" class="btn btn-primary" type="button" title="Convidar usuário">
+                    Convidar usuário
+                </button>
+            </div>
+        </section>
+
+        <section style="overflow-x: auto;">
+            <table class="pr-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Papel no tenant</th>
+                        <th>Status</th>
+                        <th style="width: 150px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="membershipsTableBody"></tbody>
+            </table>
+        </section>
     </div>
 
     <!-- Formulário de criação/edição (modal interno da rota, mesmo padrão do monitor) -->
@@ -105,12 +134,58 @@
                 </label>
 
                 <div class="module-form-actions">
-                    <button class="btn btn-primary" type="submit">Salvar</button>
                     <button class="btn btn-outline close-modal" type="button">Cancelar</button>
+                    <button class="btn btn-primary" type="submit">Salvar</button>
                 </div>
             </form>
         </div>
     </div>
+
+    <!-- Convite de usuário para o tenant atual (§8.2 do plano) -->
+    <div id="inviteModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2>Convidar usuário</h2>
+                <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
+            </div>
+
+            <form id="inviteForm" class="module-form">
+                <label class="module-field">
+                    <span>Email</span>
+                    <input id="inviteFormEmail" type="email" required placeholder="pessoa@empresa.com">
+                </label>
+
+                <label class="module-field">
+                    <span>Papel no tenant</span>
+                    <select id="inviteFormRole">
+                        <option value="Member">Membro</option>
+                        <option value="TenantAdmin">Administrador</option>
+                    </select>
+                </label>
+
+                <div class="module-form-actions">
+                    <button class="btn btn-outline close-modal" type="button">Cancelar</button>
+                    <button class="btn btn-primary" type="submit">Enviar convite</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Diálogo de confirmação em UI (00-principles.md proíbe confirm() nativo) -->
+    <div id="confirmDialog" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2 id="confirmDialogTitle">Confirmar ação</h2>
+            </div>
+            <p id="confirmDialogMessage" style="color: var(--text-secondary);"></p>
+            <div class="module-form-actions">
+                <button id="confirmDialogNo" class="btn btn-outline" type="button">Cancelar</button>
+                <button id="confirmDialogYes" class="btn btn-primary" type="button">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
 
     <script type="module" src="src/usersAdmin.js"></script>
     <script>

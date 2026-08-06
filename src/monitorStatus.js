@@ -1,4 +1,5 @@
 import * as API from "./apiService.js";
+import * as DOM from "./domService.js";
 import { initializeTheme } from "./themeService.js";
 
 const CHECK_INTERVAL_MS = 30000;
@@ -49,6 +50,7 @@ async function loadAppOptions() {
 }
 
 initializeTheme("themeToggleBtn");
+DOM.enableEscapeToCloseModals();
 
 function getFallbackStatus(status = "offline", label = "Sem dados", checkedAt = "Sem checagem") {
   return {

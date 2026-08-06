@@ -41,6 +41,7 @@ const clearSession = () => {
         removeItem('githubToken');
         removeItem('previousUser');
         removeItem('lastClickedLink');
+        removeItem('currentTenantId');
     } catch (error) {
         console.error("Erro ao limpar o localStorage:", error);
     }

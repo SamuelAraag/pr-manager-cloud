@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Tenants</title>
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="module-page-header">
+            <div class="logo-area">
+                <div>
+                    <h1 class="module-title">Gestão de Tenants</h1>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="themeToggleBtn" class="btn btn-outline" type="button" title="Alternar tema">
+                    <i data-role="theme-icon" data-lucide="sun"></i>
+                </button>
+                <a href="index.html" class="btn btn-outline">Voltar</a>
+            </div>
+        </header>
+
+        <section class="module-section-head module-toolbar">
+            <div>
+                <h2>Tenants</h2>
+            </div>
+            <div class="module-toolbar-actions">
+                <span id="tenantsCount" class="tag module-count">0 itens</span>
+                <button id="tenantNewBtn" class="btn btn-primary" type="button" title="Novo Tenant">
+                    Novo Tenant
+                </button>
+            </div>
+        </section>
+
+        <section style="overflow-x: auto;">
+            <table class="pr-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Slug</th>
+                        <th>Status</th>
+                        <th>Usuários</th>
+                        <th style="width: 190px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tenantsTableBody"></tbody>
+            </table>
+        </section>
+
+        <section class="module-section-head module-toolbar" style="margin-top: 2rem;">
+            <div>
+                <h2>Convites pendentes</h2>
+            </div>
+            <div class="module-toolbar-actions">
+                <span id="invitationsCount" class="tag module-count">0 itens</span>
+            </div>
+        </section>
+
+        <section style="overflow-x: auto;">
+            <table class="pr-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Tenant</th>
+                        <th>Email</th>
+                        <th>Papel solicitado</th>
+                        <th>Criado em</th>
+                        <th style="width: 220px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="invitationsTableBody"></tbody>
+            </table>
+        </section>
+    </div>
+
+    <!-- Formulário de criação/edição de tenant. Campos ocupam a largura toda (grid-column:
+         1/-1): .module-form é grid de 3 colunas por padrão (pensado pra formulários com
+         6+ campos curtos, ver usuarios.html), mas aqui os campos são poucos e mais longos
+         (nome/email) — 3 colunas estreitas nesse modal de 640px ficariam ilegíveis. -->
+    <div id="tenantModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2 id="tenantFormTitle">Novo tenant</h2>
+                <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
+            </div>
+
+            <form id="tenantForm" class="module-form">
+                <input type="hidden" id="tenantFormId" value="">
+
+                <label class="module-field" style="grid-column: 1 / -1;">
+                    <span>Nome do tenant</span>
+                    <input id="tenantFormName" type="text" required placeholder="Nome da organização">
+                </label>
+
+                <div id="tenantFormAdminFields" style="grid-column: 1 / -1; display: contents;">
+                    <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Primeiro administrador</strong>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Vira o TenantAdmin inicial deste tenant. Se o e-mail já for de um usuário existente, ele é vinculado direto — sem criar conta nova.</span>
+                    </div>
+
+                    <label class="module-field" style="grid-column: 1 / -1;">
+                        <span>Email</span>
+                        <input id="tenantFormAdminEmail" type="email" placeholder="admin@empresa.com">
+                    </label>
+
+                    <div id="tenantFormAdminFoundNote" style="grid-column: 1 / -1; display: none; padding: 0.6rem 0.85rem; border-radius: 8px; background: color-mix(in srgb, var(--success-color) 15%, transparent); border: 1px solid var(--success-color); font-size: 0.85rem;"></div>
+
+                    <label class="module-field" id="tenantFormAdminNameField" style="grid-column: 1 / -1;">
+                        <span>Nome completo</span>
+                        <input id="tenantFormAdminName" type="text" placeholder="Nome completo">
+                    </label>
+
+                    <label class="module-field" id="tenantFormAdminPasswordField" style="grid-column: 1 / -1;">
+                        <span>Senha inicial</span>
+                        <input id="tenantFormAdminPassword" type="password" autocomplete="new-password">
+                    </label>
+
+                    <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Outros membros (opcional)</strong>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Usuários já existentes na plataforma, incluídos como Membro. Administradores da plataforma são vinculados automaticamente, não precisam ser marcados aqui.</span>
+                    </div>
+
+                    <label class="module-field" style="grid-column: 1 / -1;">
+                        <span>Filtrar por nome ou e-mail</span>
+                        <input id="tenantFormMembersFilter" type="text" placeholder="Digite pra filtrar a lista abaixo">
+                    </label>
+
+                    <div id="tenantFormMembersList" style="grid-column: 1 / -1; max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem;"></div>
+                </div>
+
+                <label class="module-field" id="tenantFormStatusField" style="display: none; grid-column: 1 / -1;">
+                    <span>Status</span>
+                    <select id="tenantFormStatus">
+                        <option value="Active">Ativo</option>
+                        <option value="Inactive">Inativo</option>
+                        <option value="Archived">Arquivado</option>
+                    </select>
+                </label>
+
+                <!-- Só na edição (não faz sentido gerenciar membros de um tenant que ainda não
+                     existe). Vínculo aqui é direto — sem passar pelo fluxo de convite/aprovação,
+                     já que quem está nesta tela já é PlatformAdmin (ver TenantMembershipsController
+                     .AddExistingUser, RequirePlatformAdmin). -->
+                <div id="tenantEditMembersSection" style="grid-column: 1 / -1; display: none;">
+                    <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Membros deste tenant</strong>
+                    </div>
+
+                    <div id="tenantEditMembersTable" style="grid-column: 1 / -1; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.4rem;"></div>
+
+                    <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Adicionar usuário existente</strong>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Vínculo imediato, sem convite/aprovação.</span>
+                    </div>
+
+                    <label class="module-field" style="grid-column: 1 / -1;">
+                        <span>Filtrar por nome ou e-mail</span>
+                        <input id="tenantEditMembersFilter" type="text" placeholder="Digite pra filtrar a lista abaixo">
+                    </label>
+
+                    <div id="tenantEditMembersAddList" style="grid-column: 1 / -1; max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.4rem;"></div>
+                </div>
+
+                <div class="module-form-actions">
+                    <button class="btn btn-outline close-modal" type="button">Cancelar</button>
+                    <button class="btn btn-primary" type="submit">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Aprovação de convite: senha inicial opcional (sem infra de e-mail no projeto) -->
+    <div id="approveModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2>Aprovar convite</h2>
+                <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
+            </div>
+
+            <form id="approveForm" class="module-form">
+                <input type="hidden" id="approveFormId" value="">
+                <p style="color: var(--text-secondary);">Sem envio de e-mail nesta fase — informe a senha inicial
+                    para repassar ao usuário, ou deixe em branco para gerar uma aleatória.</p>
+                <label class="module-field">
+                    <span>Senha inicial (opcional)</span>
+                    <input id="approveFormPassword" type="password" autocomplete="new-password">
+                </label>
+                <div class="module-form-actions">
+                    <button class="btn btn-outline close-modal" type="button">Cancelar</button>
+                    <button class="btn btn-primary" type="submit">Aprovar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Diálogo de confirmação em UI (00-principles.md proíbe confirm() nativo) -->
+    <div id="confirmDialog" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2 id="confirmDialogTitle">Confirmar ação</h2>
+            </div>
+            <p id="confirmDialogMessage" style="color: var(--text-secondary);"></p>
+            <div class="module-form-actions">
+                <button id="confirmDialogNo" class="btn btn-outline" type="button">Cancelar</button>
+                <button id="confirmDialogYes" class="btn btn-primary" type="button">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script type="module" src="src/tenantsAdmin.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+
+</html>
