@@ -74,8 +74,10 @@ async function renderApps() {
 
     appsGrid.querySelectorAll('.app-enter-btn').forEach(btn =>
         btn.addEventListener('click', () => {
-            // dashboard filtrado por app (Project == nome até o Épico 5)
-            window.location.href = `index.html?app=${encodeURIComponent(btn.dataset.name)}`;
+            const app = appsState.find(item => item.name === btn.dataset.name);
+            const params = new URLSearchParams({ app: btn.dataset.name });
+            if (app?.id) params.set('appId', app.id);
+            window.location.href = `index.html?${params.toString()}`;
         }));
     appsGrid.querySelectorAll('.app-members-btn').forEach(btn =>
         btn.addEventListener('click', () => openMembers(btn.dataset.id)));

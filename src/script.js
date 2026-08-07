@@ -5,7 +5,7 @@ import * as AuthService from './authService.js';
 import { GitLabService } from './automationService.js';
 import { EffectService } from './effectService.js';
 import { CURRENT_VERSION } from './modules/changelog/changelog.data.js';
-import { extractJiraId } from './utils.js';
+import { extractJiraId, isOpenPullRequest } from './utils.js';
 import { connectSignalR } from './notificationService.js';
 import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/apiConstants.js';
 import { initializeTheme } from './themeService.js';
@@ -13,9 +13,11 @@ import { initializeTheme } from './themeService.js';
 let currentData = { prs: [] };
 let availableUsers = [];
 
-// Filtro por app (Épico 3): apps.html manda para index.html?app=<nome>;
-// a ligação é pelo nome do projeto até o Épico 5 trocar por FK.
-const appFilter = new URLSearchParams(window.location.search).get('app');
+// appId é a referência estável. `app` continua na URL para exibição e compatibilidade
+// com links antigos criados antes das rotas escopadas por aplicação.
+const appParams = new URLSearchParams(window.location.search);
+let appFilter = appParams.get('app');
+const appIdFilter = appParams.get('appId');
 // id do app filtrado (resolvido quando a lista de apps carrega) — usado pela config por app
 let currentAppId = null;
 
@@ -48,8 +50,10 @@ async function loadProjectOptions() {
             }
         }
 
-        if (appFilter) {
-            const app = apps.find(a => a.name === appFilter);
+        if (appIdFilter || appFilter) {
+            const app = apps.find(a => a.id === appIdFilter)
+                ?? apps.find(a => a.name === appFilter);
+            if (app) appFilter = app.name;
             AuthService.setCurrentAppRole(app?.myRole ?? null);
             currentAppId = app?.id ?? null; // Épico 7.3: config de automação por app
 
@@ -738,20 +742,22 @@ async function confirmRequestVersionSelection() {
 }
 
 async function loadPrTablesData(animate = false) {
-    const prResult = await API.fetchPRs();
+    const prResult = await API.fetchPRs(currentAppId);
     if (!prResult || !Array.isArray(prResult.prs)) {
         throw new Error('Falha ao carregar PRs');
     }
-    currentData.prs = appFilter
+    // Links novos consultam a rota escopada por AppId. O filtro textual fica somente
+    // como fallback para links antigos (`?app=nome`) ainda compartilhados/salvos.
+    currentData.prs = appFilter && !currentAppId
         ? prResult.prs.filter(p => p.project === appFilter)
         : prResult.prs;
     refreshOpenPrs(animate);
 
-    const batches = await API.fetchBatches();
+    const batches = await API.fetchBatches(currentAppId);
     if (!Array.isArray(batches)) {
         throw new Error('Falha ao carregar lotes');
     }
-    currentData.batches = appFilter
+    currentData.batches = appFilter && !currentAppId
         ? batches.filter(b => b.project === appFilter)
         : batches;
     refreshApprovedPrs(animate);
@@ -799,7 +805,7 @@ async function loadData(skipLoading = false) {
 }
 
 function refreshOpenPrs(animate = false) {
-    const openPrs = currentData.prs.filter(p => !p.approved);
+    const openPrs = currentData.prs.filter(isOpenPullRequest);
     const totalOpenBadge = document.getElementById('totalOpenPrs');
     if (totalOpenBadge) {
         totalOpenBadge.textContent = openPrs.length;
@@ -813,7 +819,8 @@ function refreshOpenPrs(animate = false) {
 function refreshApprovedPrs(animate = false) {
     if (!Array.isArray(currentData.batches)) return;
 
-    const approvedPending = currentData.prs.filter(p => p.approved && !p.deployedToStg);
+    const approvedPending = currentData.prs.filter(p =>
+        p.approved && !p.deployedToStg && !isOpenPullRequest(p));
     DOM.renderApprovedTables(approvedPending, currentData.batches, 'dashboardApproved', openEditModal, animate);
     if (window.lucide) window.lucide.createIcons();
     if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();

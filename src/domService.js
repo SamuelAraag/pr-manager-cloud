@@ -1,5 +1,5 @@
 import { getItem } from './localStorageService.js';
-import { extractJiraId } from './utils.js';
+import { extractJiraId, isOpenPullRequest } from './utils.js';
 import * as AuthService from './authService.js';
 import { DEMO_MODE, DEMO_USERS, getDemoProject, getDemoName } from './constants/apiConstants.js';
 
@@ -225,10 +225,11 @@ function enableEscapeToCloseModals() {
 }
 
 function renderTable(prs, batches, sprints, onEdit, animate = true) {
-    const openPrs = prs.filter(p => !p.approved);
+    const openPrs = prs.filter(isOpenPullRequest);
     
     const approvedTotal = prs.filter(p => p.approved);
-    const approvedPending = approvedTotal.filter(p => !p.deployedToStg);
+    const approvedPending = approvedTotal.filter(p =>
+        !p.deployedToStg && !isOpenPullRequest(p));
     
     const activeSprints = sprints.filter(s => s.isActive);
     const inactiveSprints = sprints.filter(s => !s.isActive);

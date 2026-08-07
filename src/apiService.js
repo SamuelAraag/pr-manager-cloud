@@ -66,8 +66,10 @@ const addTenantMember = (tenantId, data) => apiRequest(`/tenants/${tenantId}/mem
 const fetchNotifications = (onlyUnread) => apiRequest(`/Notifications${onlyUnread ? "?onlyUnread=true" : ""}`);
 const markNotificationRead = (id) => apiRequest(`/Notifications/${id}/read`, { method: "PUT" });
 
-async function fetchPRs() {
-  const url = `${ApiConstants.BASE_URL}/PullRequests`;
+async function fetchPRs(appId = null) {
+  const url = appId
+    ? `${ApiConstants.BASE_URL}/Apps/${appId}/PullRequests`
+    : `${ApiConstants.BASE_URL}/PullRequests`;
 
   try {
     const response = await fetch(url, {
@@ -281,8 +283,10 @@ async function saveVersionBatch(batchData) {
   }
 }
 
-async function fetchBatches() {
-  const url = `${ApiConstants.BASE_URL}/VersionBatches`;
+async function fetchBatches(appId = null) {
+  const url = appId
+    ? `${ApiConstants.BASE_URL}/Apps/${appId}/VersionBatches`
+    : `${ApiConstants.BASE_URL}/VersionBatches`;
   try {
     const response = await fetch(url, { headers: getBackendHeaders() });
     return response.ok ? await response.json() : [];

@@ -9,3 +9,7 @@ export function extractJiraId(url) {
     const match = url.match(regex);
     return match ? match[1].toUpperCase() : null;
 }
+
+export function isOpenPullRequest(pr) {
+    return pr?.status === 'Open' || pr?.status === 'NeedsCorrection';
+}
