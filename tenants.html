@@ -100,12 +100,12 @@
                 <div id="tenantFormAdminFields" style="grid-column: 1 / -1; display: contents;">
                     <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
                         <strong style="display: block; font-size: 0.85rem; color: var(--text-secondary);">Primeiro administrador</strong>
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Vira o TenantAdmin inicial deste tenant. Se o e-mail já for de um usuário existente, ele é vinculado direto — sem criar conta nova.</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Opcional. Se preencher o e-mail, ele vira o TenantAdmin inicial: se o usuário já existir, é vinculado direto; se não existir, você cria a conta com nome e senha. Se deixar em branco, o tenant nasce só com os PlatformAdmins já vinculados.</span>
                     </div>
 
                     <label class="module-field" style="grid-column: 1 / -1;">
                         <span>Email</span>
-                        <input id="tenantFormAdminEmail" type="email" placeholder="admin@empresa.com">
+                        <input id="tenantFormAdminEmail" type="email" placeholder="admin@empresa.com (opcional)">
                     </label>
 
                     <div id="tenantFormAdminFoundNote" style="grid-column: 1 / -1; display: none; padding: 0.6rem 0.85rem; border-radius: 8px; background: color-mix(in srgb, var(--success-color) 15%, transparent); border: 1px solid var(--success-color); font-size: 0.85rem;"></div>

@@ -187,6 +187,30 @@ function confirmDialog(message, title = 'Confirmar ação') {
     });
 }
 
+// Diálogo de aviso em UI (00-principles.md proíbe confirm()/alert() nativos). Espera os
+// elementos #alertDialog/#alertDialogTitle/#alertDialogMessage/#alertDialogOk na página
+// (mesmo padrão do confirmDialog acima). Resolve quando o usuário fecha via OK.
+function alertDialog(message, title = 'Aviso') {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('alertDialog');
+        if (!overlay) { window.alert(message); resolve(); return; }
+
+        document.getElementById('alertDialogTitle').textContent = title;
+        document.getElementById('alertDialogMessage').textContent = message;
+
+        const okBtn = document.getElementById('alertDialogOk');
+
+        const onOk = () => {
+            overlay.style.display = 'none';
+            okBtn.removeEventListener('click', onOk);
+            resolve();
+        };
+
+        okBtn.addEventListener('click', onOk);
+        overlay.style.display = 'flex';
+    });
+}
+
 // Fecha qualquer .modal-overlay visível ao pressionar Esc — chamar uma vez por página que
 // só tem modais dispensáveis (formulários, confirmações). Não usar em telas com um modal
 // obrigatório/bloqueante (ex.: login, seleção de tenant em index.html) — lá o fechamento
@@ -1006,4 +1030,4 @@ function showLoading(show) {
     if (dbHist) dbHist.style.display = contentDisplay;
 }
 
-export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory, confirmDialog, enableEscapeToCloseModals };
+export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory, confirmDialog, alertDialog, enableEscapeToCloseModals };

@@ -104,14 +104,6 @@
                     <i data-lucide="users"></i>
                 </button>
 
-<<<<<<< HEAD
-                <!-- Sem data-roles de propósito: applyRoleBasedVisibility() mostraria para
-                     qualquer Admin. Visibilidade é só via AuthService.isPlatformAdmin() em
-                     script.js (mais restritivo — só a organização-plataforma). -->
-                <button id="orgsBtn" class="btn btn-outline platform-admin-only" title="Gerenciar Organizações"
-                    style="border-color: var(--accent-color); color: var(--accent-color); display: none;">
-                    <i data-lucide="building-2"></i>
-=======
                 <!-- Épico 9: só PlatformAdmin gerencia tenants — TenantAdmin não bypassa este. -->
                 <button id="tenantsBtn" data-roles="PlatformAdmin" class="btn btn-outline" title="Gerenciar Tenants"
                     style="display: none;">
@@ -122,7 +114,6 @@
                 <button id="tenantSwitchBtn" class="btn btn-outline" title="Trocar tenant" style="display: none;">
                     <i data-lucide="building-2"></i>
                     <span id="currentTenantLabel"></span>
->>>>>>> origin/worktree-epico9-fase2-6
                 </button>
 
                 <button id="appsBtn" class="btn btn-outline" title="Apps">

@@ -120,8 +120,12 @@ async function fetchProfiles() {
   }
 }
 
-async function fetchUsers(includeInactive = false) {
-  const url = `${ApiConstants.BASE_URL}/Users${includeInactive ? "?includeInactive=true" : ""}`;
+async function fetchUsers(includeInactive = false, global = false) {
+  const params = new URLSearchParams();
+  if (includeInactive) params.set("includeInactive", "true");
+  if (global) params.set("global", "true");
+  const query = params.toString();
+  const url = `${ApiConstants.BASE_URL}/Users${query ? `?${query}` : ""}`;
 
   try {
     const response = await fetch(url, {
@@ -156,9 +160,9 @@ async function createPR(prData) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await response.json().catch(() => ({}));
       throw new Error(
-        `Erro ao criar PR: ${errorBody.message || response.statusText}`,
+        `Erro ao criar PR: ${errorBody.error || errorBody.message || response.statusText}`,
       );
     }
 
@@ -911,12 +915,6 @@ export {
   deleteMonitorStatusApp,
   checkMonitorStatusApp,
   getMonitorStatusAppDetails,
-<<<<<<< HEAD
-  fetchOrganizations,
-  createOrganization,
-  updateOrganization,
-  deactivateOrganization,
-=======
   fetchMe,
   fetchTenants,
   createTenant,
@@ -934,5 +932,4 @@ export {
   addTenantMember,
   fetchNotifications,
   markNotificationRead,
->>>>>>> origin/worktree-epico9-fase2-6
 };

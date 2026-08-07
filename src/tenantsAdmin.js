@@ -30,6 +30,7 @@ function traduzErro(error) {
         name_taken: 'Já existe um tenant com esse nome.',
         admin_name_required: 'Nome do administrador é obrigatório.',
         admin_password_required: 'Senha inicial do administrador é obrigatória.',
+        admin_email_required: 'Informe o e-mail do administrador ou deixe tudo em branco para criar só o tenant.',
         admin_email_invalid: 'Email do administrador é inválido.',
         admin_email_taken: 'Este email já está em uso por outro usuário.',
         status_invalid: 'Status inválido.',
@@ -124,7 +125,11 @@ async function changeTenantStatus(id, status) {
 // em vez de pedir nome/senha pra criar conta duplicada.
 async function ensureUsersLoaded() {
     if (usersLoaded) return;
-    usersState = await API.fetchUsers(true);
+    // global: esta tela é PlatformAdmin-only e precisa enxergar usuários de QUALQUER tenant
+    // (vincular por e-mail ou selecionar dos existentes) — API.fetchUsers(true) sozinho
+    // filtra pela coluna legada User.TenantId do tenant atual da sessão, escondendo quem só
+    // tem vínculo com outro tenant via TenantMembership.
+    usersState = await API.fetchUsers(true, true);
     usersLoaded = true;
     renderMembersList();
 }

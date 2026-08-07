@@ -32,7 +32,7 @@
             </div>
             <div class="module-toolbar-actions">
                 <span id="appsCount" class="tag module-count">0 itens</span>
-                <button id="appNewBtn" class="btn btn-primary admin-only" type="button" style="display: none;">
+                <button id="appNewBtn" class="btn btn-primary" type="button" style="display: none;">
                     Novo App
                 </button>
             </div>
@@ -77,11 +77,11 @@
                 <h2 id="membersTitle">Membros</h2>
                 <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
             </div>
-            <div id="membersAdminBar" class="module-toolbar-actions admin-only"
+            <div id="membersAdminBar" class="module-toolbar-actions"
                 style="display: none; gap: 0.5rem; margin-bottom: 0.9rem;">
                 <select id="memberUserSelect" style="flex: 1;"></select>
                 <select id="memberRoleSelect" style="width: 110px;">
-                    <option value="Dev">Dev</option>
+                    <option value="Developer">Dev</option>
                     <option value="Gestor">Gestor</option>
                     <option value="QA">QA</option>
                 </select>
@@ -98,6 +98,19 @@
                     </thead>
                     <tbody id="membersTableBody"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diálogo de aviso em UI (00-principles.md proíbe alert() nativo) -->
+    <div id="alertDialog" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2 id="alertDialogTitle">Aviso</h2>
+            </div>
+            <p id="alertDialogMessage" style="color: var(--text-secondary);"></p>
+            <div class="module-form-actions">
+                <button id="alertDialogOk" class="btn btn-primary" type="button">OK</button>
             </div>
         </div>
     </div>

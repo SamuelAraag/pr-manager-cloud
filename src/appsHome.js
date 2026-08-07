@@ -15,7 +15,13 @@ LocalStorage.init?.();
 if (!LocalStorage.getItem('token')) {
     window.location.href = 'index.html';
 }
-const isAdmin = AuthService.isAdmin();
+// isAdmin decide quem edita/desativa apps e gerencia membros — precisa bater exatamente com
+// a policy RequireTenantAdmin do backend (PlatformAdmin OU TenantAdmin do tenant atual), não
+// com o papel legado global (User.Role) que AuthService.isAdmin() lê do JWT. Um usuário pode
+// ser "Admin" nesse campo legado e ainda assim ser só Developer/Member no tenant atual — o
+// backend já rejeita (403) esse caso, mas o botão de editar não pode nem aparecer pra ele.
+// Setado por init() abaixo, depois de refreshMe() popular o papel no tenant atual.
+let isAdmin = false;
 
 const appsGrid = document.getElementById('appsGrid');
 const appsCount = document.getElementById('appsCount');
@@ -91,7 +97,7 @@ async function renderApps() {
                     await API.deactivateApp(app.id);
                     await renderApps();
                 } catch (error) {
-                    alert(traduzErro(error));
+                    await DOM.alertDialog(traduzErro(error));
                 }
             }));
     }
@@ -124,7 +130,7 @@ document.getElementById('appForm')?.addEventListener('submit', async (e) => {
         appFormModal.style.display = 'none';
         await renderApps();
     } catch (error) {
-        alert(traduzErro(error));
+        await DOM.alertDialog(traduzErro(error));
     }
 });
 
@@ -139,14 +145,24 @@ async function openMembers(appId) {
         const bar = document.getElementById('membersAdminBar');
         bar.style.display = 'flex';
         const select = document.getElementById('memberUserSelect');
-        const users = await API.fetchUsers();
+        // Candidatos são os membros ativos do tenant atual (TenantMembership), não
+        // API.fetchUsers() — essa lista é filtrada pela coluna legada User.TenantId e não
+        // enxerga usuários vinculados a este tenant só via convite/TenantMembership.
+        // AuthService.getMe() não serve aqui: essa rota nunca chama refreshMe(), então o
+        // cache em memória do módulo authService fica nulo neste carregamento de página.
+        // currentTenantId persiste em localStorage desde o último refreshMe() (login/troca
+        // de tenant), então é a fonte confiável fora das páginas que chamam refreshMe().
+        const tenantId = LocalStorage.getItem('currentTenantId');
+        const tenantMembers = tenantId ? await API.fetchTenantMemberships(tenantId) : [];
         select.innerHTML = '<option value="">Selecione um usuário</option>';
-        users.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u.id;
-            opt.textContent = u.name;
-            select.appendChild(opt);
-        });
+        tenantMembers
+            .filter(m => m.status === 'Active')
+            .forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.userId;
+                opt.textContent = m.userName;
+                select.appendChild(opt);
+            });
     }
 
     await renderMembers();
@@ -164,8 +180,8 @@ async function renderMembers() {
             <td>${m.userName}</td>
             <td>${isAdmin
                 ? `<select class="member-role-select" data-user="${m.userId}">
-                        ${['Dev', 'Gestor', 'QA'].map(r =>
-                            `<option value="${r}" ${m.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+                        ${[['Developer', 'Dev'], ['Gestor', 'Gestor'], ['QA', 'QA']].map(([value, label]) =>
+                            `<option value="${value}" ${m.role === value ? 'selected' : ''}>${label}</option>`).join('')}
                    </select>`
                 : m.role}</td>
             <td>${isAdmin ? `<button class="btn btn-outline member-remove-btn" data-user="${m.userId}" title="Remover"><i data-lucide="user-minus"></i></button>` : ''}</td>`;
@@ -179,7 +195,7 @@ async function renderMembers() {
                 try {
                     await API.updateAppMember(membersAppId, sel.dataset.user, { role: sel.value });
                 } catch (error) {
-                    alert(traduzErro(error));
+                    await DOM.alertDialog(traduzErro(error));
                     await renderMembers();
                 }
             }));
@@ -191,7 +207,7 @@ async function renderMembers() {
                     await renderMembers();
                     await renderApps();
                 } catch (error) {
-                    alert(traduzErro(error));
+                    await DOM.alertDialog(traduzErro(error));
                 }
             }));
     }
@@ -206,7 +222,7 @@ document.getElementById('memberAddBtn')?.addEventListener('click', async () => {
         await renderMembers();
         await renderApps();
     } catch (error) {
-        alert(traduzErro(error));
+        await DOM.alertDialog(traduzErro(error));
     }
 });
 
@@ -224,21 +240,30 @@ function traduzErro(error) {
     return friendly[error.message] || `Erro: ${error.message}`;
 }
 
-if (isAdmin) {
-    const newBtn = document.getElementById('appNewBtn');
-    newBtn.style.display = 'inline-flex';
-    newBtn.addEventListener('click', () => openAppForm());
-
-    // Acesso rápido a partir do "?" de ajuda no formulário de PR (apps.html?new=1).
-    if (new URLSearchParams(window.location.search).get('new') === '1') {
-        openAppForm();
-    }
-}
-
 document.querySelectorAll('.close-btn, .close-modal').forEach(btn =>
     btn.addEventListener('click', () => {
         appFormModal.style.display = 'none';
         membersModal.style.display = 'none';
     }));
 
-renderApps();
+async function init() {
+    // Identidade fresca (fonte: /Users/me, não o JWT) pra resolver o papel no tenant atual —
+    // sem isso getRoleInCurrentTenant()/isPlatformAdmin() ficam nulos nesta página.
+    await AuthService.refreshMe();
+    isAdmin = AuthService.isAdminGlobal();
+
+    if (isAdmin) {
+        const newBtn = document.getElementById('appNewBtn');
+        newBtn.style.display = 'inline-flex';
+        newBtn.addEventListener('click', () => openAppForm());
+
+        // Acesso rápido a partir do "?" de ajuda no formulário de PR (apps.html?new=1).
+        if (new URLSearchParams(window.location.search).get('new') === '1') {
+            openAppForm();
+        }
+    }
+
+    await renderApps();
+}
+
+init();

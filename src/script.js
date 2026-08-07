@@ -108,6 +108,49 @@ function getUserIdByName(userName) {
     return user ? user.id : null;
 }
 
+function setPrCreationRequiredState(isCreate) {
+    const fields = ['project', 'dev', 'summary', 'prLink', 'taskLink', 'teamsLink'];
+    fields.forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.required = isCreate;
+    });
+}
+
+function validatePrCreationForm() {
+    const requiredFields = [
+        { id: 'project', label: 'Projeto' },
+        { id: 'dev', label: 'Desenvolvedor' },
+        { id: 'summary', label: 'Resumo' },
+        { id: 'prLink', label: 'Link PR' },
+        { id: 'taskLink', label: 'Link Task (Jira)' },
+        { id: 'teamsLink', label: 'Post no Teams' },
+    ];
+
+    for (const fieldInfo of requiredFields) {
+        const value = document.getElementById(fieldInfo.id)?.value.trim();
+        if (!value) {
+            DOM.showToast(`${fieldInfo.label} é obrigatório.`, 'warning');
+            document.getElementById(fieldInfo.id)?.focus();
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function getPrErrorMessage(errorMessage) {
+    const friendlyMessages = {
+        project_required: 'Projeto é obrigatório.',
+        summary_required: 'Resumo é obrigatório.',
+        dev_required: 'Desenvolvedor é obrigatório.',
+        pr_link_required: 'Link PR é obrigatório.',
+        task_link_required: 'Link Task (Jira) é obrigatório.',
+        teams_link_required: 'Post no Teams é obrigatório.',
+    };
+
+    return friendlyMessages[errorMessage] || errorMessage;
+}
+
 const prModal = document.getElementById('prModal');
 const setupModal = document.getElementById('setupModal');
 const shortcutsModal = document.getElementById('shortcutsModal');
@@ -300,11 +343,29 @@ async function ensureTenantContext() {
     return true;
 }
 
-function showTenantSelector(tenants) {
+// dismissValue: tenantId a resolver quando o usuário fecha via Esc/clique fora, sem escolher
+// nada. Só faz sentido quando já existe um tenant atual válido (troca voluntária pelo
+// tenantSwitchBtn) — na seleção obrigatória do primeiro login (ensureTenantContext) não há
+// tenant atual pra cair de volta, então o parâmetro fica de fora e o modal não é dispensável.
+function showTenantSelector(tenants, dismissValue = null) {
     return new Promise(resolve => {
         const screen = document.getElementById('tenantSelectScreen');
         const list = document.getElementById('tenantSelectList');
         if (!screen || !list) { resolve(tenants[0].tenantId); return; }
+
+        const finish = (tenantId) => {
+            screen.style.display = 'none';
+            screen.removeEventListener('click', onOverlayClick);
+            document.removeEventListener('keydown', onKeydown);
+            resolve(tenantId);
+        };
+
+        const onOverlayClick = (e) => {
+            if (e.target === screen && dismissValue !== null) finish(dismissValue);
+        };
+        const onKeydown = (e) => {
+            if (e.key === 'Escape' && dismissValue !== null) finish(dismissValue);
+        };
 
         list.innerHTML = '';
         tenants.forEach(t => {
@@ -313,12 +374,12 @@ function showTenantSelector(tenants) {
             btn.className = 'btn btn-outline';
             btn.style.cssText = 'width:100%; justify-content:space-between; margin-bottom:0.5rem;';
             btn.innerHTML = `<span>${t.tenantName}</span><span style="color: var(--text-secondary); font-size: 0.75rem;">${t.role === 'TenantAdmin' ? 'Administrador' : 'Membro'}</span>`;
-            btn.addEventListener('click', () => {
-                screen.style.display = 'none';
-                resolve(t.tenantId);
-            });
+            btn.addEventListener('click', () => finish(t.tenantId));
             list.appendChild(btn);
         });
+
+        screen.addEventListener('click', onOverlayClick);
+        document.addEventListener('keydown', onKeydown);
         screen.style.display = 'flex';
     });
 }
@@ -339,7 +400,7 @@ document.getElementById('tenantSwitchBtn')?.addEventListener('click', async () =
     const me = AuthService.getMe();
     if (!me || !(me.tenants || []).length) return;
 
-    const chosenId = await showTenantSelector(me.tenants);
+    const chosenId = await showTenantSelector(me.tenants, LocalStorage.getItem('currentTenantId'));
     if (chosenId === LocalStorage.getItem('currentTenantId')) return;
 
     LocalStorage.setItem('currentTenantId', chosenId);
@@ -760,6 +821,7 @@ function refreshApprovedPrs(animate = false) {
 
 function openEditModal(pr) {
     document.getElementById('modalTitle').textContent = 'Editar Pull Request';
+    setPrCreationRequiredState(false);
     document.getElementById('prId').value = pr.id;
     document.getElementById('project').value = pr.project || '';
     document.getElementById('dev').value = pr.dev || '';
@@ -825,16 +887,26 @@ function openEditModal(pr) {
     prModal.style.display = 'flex';
 }
 
-function openAddModal() {
+async function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Novo Pull Request';
+    setPrCreationRequiredState(true);
     prForm.reset();
     document.getElementById('prId').value = '';
     
     updateSummaryLabel();
     
     document.getElementById('relatedTasksContainer').innerHTML = '';
-    
-    const appUser = LocalStorage.getItem('appUser');
+
+    let currentMe = null;
+    try {
+        currentMe = await AuthService.refreshMe();
+    } catch (error) {
+        console.error('Erro ao buscar identidade atual para o modal de PR:', error);
+    }
+
+    await loadUsers();
+
+    const appUser = currentMe?.name || LocalStorage.getItem('appUser');
     if (appUser) {
         document.getElementById('dev').value = appUser;
     }
@@ -875,17 +947,10 @@ if (document.getElementById('usersBtn')) {
     });
 }
 
-<<<<<<< HEAD
-// Gestão de Organizações (Épico 8b): tela administrativa é ROTA própria, nunca modal.
-if (document.getElementById('orgsBtn')) {
-    document.getElementById('orgsBtn').addEventListener('click', () => {
-        window.location.href = 'organizacoes.html';
-=======
 // Gestão de Tenants (Épico 9): tela administrativa do PlatformAdmin, rota própria.
 if (document.getElementById('tenantsBtn')) {
     document.getElementById('tenantsBtn').addEventListener('click', () => {
         window.location.href = 'tenants.html';
->>>>>>> origin/worktree-epico9-fase2-6
     });
 }
 
@@ -1302,6 +1367,10 @@ prForm.addEventListener('submit', async (e) => {
     const prIdInput = document.getElementById('prId').value;
     const devName = devInputForForm.value;
 
+    if (!prIdInput && !validatePrCreationForm()) {
+        return;
+    }
+
     if (!availableUsers.find(u => u.name === devName)) {
         DOM.showToast('Por favor, selecione um desenvolvedor válido da lista.', 'warning');
         devInputForForm.focus();
@@ -1362,7 +1431,7 @@ prForm.addEventListener('submit', async (e) => {
         prForm.reset();
     } catch (error) {
         console.error('Erro detalhado ao salvar:', error);
-        DOM.showToast('Erro ao salvar: ' + error.message, 'error');
+        DOM.showToast('Erro ao salvar: ' + getPrErrorMessage(error.message), 'error');
     } finally {
         DOM.showLoading(false);
     }
