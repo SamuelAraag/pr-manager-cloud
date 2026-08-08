@@ -661,20 +661,6 @@ function updateUserDisplay(userName) {
     if (orgsBtn) {
         orgsBtn.style.display = AuthService.isPlatformAdmin() ? 'inline-flex' : 'none';
     }
-
-    const appTitle = document.getElementById('appTitle');
-    if (appTitle) {
-        if (isAdmin) {
-            appTitle.style.background = 'none';
-            appTitle.style.webkitTextFillColor = 'var(--accent-color)';
-            appTitle.style.color = 'var(--accent-color)';
-        } else {
-            appTitle.style.background = 'linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 72%, white))';
-            appTitle.style.webkitBackgroundClip = 'text';
-            appTitle.style.backgroundClip = 'text';
-            appTitle.style.webkitTextFillColor = 'transparent';
-        }
-    }
 }
 
 function getVersionAssignableUsers() {
