@@ -38,6 +38,31 @@ function parseDisplay(str) {
 const stripTime = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const sameDay = (a, b) => !!a && !!b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
+// Máscara DD/MM/AAAA: insere as barras sozinho enquanto o usuário digita só números,
+// mantendo o cursor na posição certa (conta dígitos antes do cursor, não caracteres).
+function applyDateMask(input) {
+    input.addEventListener('input', () => {
+        const digitsBeforeCursor = input.value.slice(0, input.selectionStart).replace(/\D/g, '').length;
+
+        const digits = input.value.replace(/\D/g, '').slice(0, 8);
+        let formatted = digits;
+        if (digits.length > 4) {
+            formatted = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+        } else if (digits.length > 2) {
+            formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+        }
+        input.value = formatted;
+
+        let digitsSeen = 0;
+        let cursorPos = formatted.length;
+        for (let i = 0; i < formatted.length; i++) {
+            if (digitsSeen === digitsBeforeCursor) { cursorPos = i; break; }
+            if (/\d/.test(formatted[i])) digitsSeen++;
+        }
+        input.setSelectionRange(cursorPos, cursorPos);
+    });
+}
+
 export function initDateRangePicker({
     fieldEl, startInput, endInput, calendarBtn, popoverEl,
     prevBtn, nextBtn, monthLabelEl, daysGridEl,
@@ -223,6 +248,8 @@ export function initDateRangePicker({
         notifyChange();
     }
 
+    applyDateMask(startInput);
+    applyDateMask(endInput);
     startInput.addEventListener('blur', () => handleManualInput(startInput, true));
     endInput.addEventListener('blur', () => handleManualInput(endInput, false));
     startInput.addEventListener('input', clearError);
