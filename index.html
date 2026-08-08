@@ -290,6 +290,7 @@
                 <div class="form-group full-width">
                     <label for="newSprintNameInput">Nome da Sprint</label>
                     <input type="text" id="newSprintNameInput" placeholder="ex: Sprint 28">
+                    <span class="field-error" id="newSprintNameError">Informe o nome da sprint.</span>
                 </div>
                 <div class="form-group full-width">
                     <label for="newSprintStartDateInput">Data de início (opcional)</label>
@@ -298,6 +299,7 @@
                 <div class="form-group full-width">
                     <label for="newSprintEndDateInput">Data de término (opcional)</label>
                     <input type="date" id="newSprintEndDateInput">
+                    <span class="field-error" id="newSprintEndDateError">Data de término não pode ser antes da data de início.</span>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
                     <button id="cancelNewSprintModalBtn" class="btn btn-outline close-modal" type="button">Cancelar</button>

@@ -162,8 +162,10 @@ const requestVersionModalDescription = document.getElementById('requestVersionMo
 const confirmRequestVersionModalBtn = document.getElementById('confirmRequestVersionModalBtn');
 const newSprintModal = document.getElementById('newSprintModal');
 const newSprintNameInput = document.getElementById('newSprintNameInput');
+const newSprintNameError = document.getElementById('newSprintNameError');
 const newSprintStartDateInput = document.getElementById('newSprintStartDateInput');
 const newSprintEndDateInput = document.getElementById('newSprintEndDateInput');
+const newSprintEndDateError = document.getElementById('newSprintEndDateError');
 const confirmNewSprintBtn = document.getElementById('confirmNewSprintBtn');
 const prForm = document.getElementById('prForm');
 const profileScreen = document.getElementById('profileScreen');
@@ -1109,25 +1111,56 @@ if (monitorStatusBtn) {
 document.getElementById('logoutBtn').addEventListener('click', handleLogout);
 
 
+function clearNewSprintValidation() {
+    newSprintNameInput?.classList.remove('is-invalid');
+    newSprintNameError?.classList.remove('visible');
+    newSprintStartDateInput?.classList.remove('is-invalid');
+    newSprintEndDateInput?.classList.remove('is-invalid');
+    newSprintEndDateError?.classList.remove('visible');
+}
+
 document.getElementById('newSprintBtn').addEventListener('click', () => {
     if (newSprintNameInput) newSprintNameInput.value = '';
     if (newSprintStartDateInput) newSprintStartDateInput.value = '';
     if (newSprintEndDateInput) newSprintEndDateInput.value = '';
+    clearNewSprintValidation();
     if (newSprintModal) newSprintModal.style.display = 'flex';
 });
 
+newSprintNameInput?.addEventListener('input', () => {
+    if (newSprintNameInput.value.trim()) {
+        newSprintNameInput.classList.remove('is-invalid');
+        newSprintNameError?.classList.remove('visible');
+    }
+});
+
+function clearNewSprintDateError() {
+    newSprintStartDateInput?.classList.remove('is-invalid');
+    newSprintEndDateInput?.classList.remove('is-invalid');
+    newSprintEndDateError?.classList.remove('visible');
+}
+newSprintStartDateInput?.addEventListener('input', clearNewSprintDateError);
+newSprintEndDateInput?.addEventListener('input', clearNewSprintDateError);
+
 if (confirmNewSprintBtn) {
     confirmNewSprintBtn.addEventListener('click', async () => {
+        clearNewSprintValidation();
+
         const sprintName = newSprintNameInput?.value.trim();
         if (!sprintName) {
-            DOM.showToast('Informe o nome da sprint.', 'warning');
+            newSprintNameInput?.classList.add('is-invalid');
+            newSprintNameError?.classList.add('visible');
+            newSprintNameInput?.focus();
             return;
         }
 
         const startDate = newSprintStartDateInput?.value || null;
         const endDate = newSprintEndDateInput?.value || null;
         if (startDate && endDate && endDate < startDate) {
-            DOM.showToast('Data de término não pode ser antes da data de início.', 'warning');
+            newSprintStartDateInput?.classList.add('is-invalid');
+            newSprintEndDateInput?.classList.add('is-invalid');
+            newSprintEndDateError?.classList.add('visible');
+            newSprintEndDateInput?.focus();
             return;
         }
 

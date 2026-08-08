@@ -3072,6 +3072,28 @@ input:focus, select:focus {
   box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
+/* Validação inline de formulário (preferencias.md §12): borda vermelha + texto no
+   próprio campo, em vez de só um toast genérico depois de bater na API. */
+input.is-invalid, select.is-invalid, textarea.is-invalid {
+  border-color: var(--danger-color);
+}
+
+input.is-invalid:focus, select.is-invalid:focus, textarea.is-invalid:focus {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger-color) 35%, transparent);
+}
+
+.field-error {
+  display: none;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--danger-color);
+}
+
+.field-error.visible {
+  display: block;
+}
+
 /* Loading Spinner */
 .loader {
   width: 48px;
