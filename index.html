@@ -464,9 +464,12 @@
         </div>
     </div>
 
-    <!-- Confirmação contextual para arquivamento de PR (sem confirm() nativo). -->
+    <!-- Confirmação contextual reutilizável (sem confirm() nativo): arquivar PR, deslogar etc.
+         z-index acima das telas bloqueantes (profileScreen/tenantSelectScreen/noTenantScreen),
+         senão a confirmação de logout da tela "sem tenant" abriria atrás dela. -->
     <div id="confirmDialog" class="modal-overlay" role="dialog" aria-modal="true"
-        aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage" aria-hidden="true">
+        aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage" aria-hidden="true"
+        style="z-index: 2200;">
         <div class="modal-content" style="max-width: 420px;">
             <div class="modal-header">
                 <h2 id="confirmDialogTitle">Arquivar PR</h2>

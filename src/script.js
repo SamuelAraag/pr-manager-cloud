@@ -444,7 +444,13 @@ document.getElementById('tenantSwitchBtn')?.addEventListener('click', async () =
     }
 });
 
-document.getElementById('noTenantLogoutBtn')?.addEventListener('click', () => {
+document.getElementById('noTenantLogoutBtn')?.addEventListener('click', async () => {
+    const confirmado = await confirmarLogout();
+
+    if (!confirmado) {
+        return;
+    }
+
     document.getElementById('noTenantScreen').style.display = 'none';
     LocalStorage.clearSession();
     showProfileSelection();
@@ -573,11 +579,23 @@ if (loginForm) {
     });
 }
 
-function handleLogout() {
-    if (!confirm('Tem certeza que deseja deslogar?')) {
+// Confirmação de logout no modal padrão da página (#confirmDialog), compartilhada pelos dois
+// pontos de saída: o botão do header e o "Sair" da tela de "sem tenant".
+function confirmarLogout() {
+    return DOM.confirmDialog(
+        'Tem certeza que deseja deslogar?',
+        'Deslogar',
+        { confirmLabel: 'Deslogar', danger: true }
+    );
+}
+
+async function handleLogout() {
+    const confirmado = await confirmarLogout();
+
+    if (!confirmado) {
         return;
     }
-    
+
     LocalStorage.clearSession();
     showProfileSelection();
     
