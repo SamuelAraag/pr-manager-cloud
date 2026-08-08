@@ -128,17 +128,16 @@
                     <input id="userFormAvatar" type="text" placeholder="src/assets/profiles/...">
                 </label>
 
-                <label class="module-field" style="flex-direction: row; align-items: center; gap: 0.4rem;">
-                    <input type="checkbox" id="userFormIsAdmin" style="width: auto;">
-                    <span>Admin do sistema</span>
-                </label>
-
-                <!-- Só PlatformAdmin pode marcar outro PlatformAdmin (o backend recusa com 403).
-                     Exibido apenas para eles — ver usersAdmin.js. -->
+                <!-- Issue #41: o checkbox "Admin do sistema" foi removido — era redundante com
+                     Papel = Admin, que já define o administrador desta organização, e a dupla
+                     permitia o estado torto de um Dev marcado como admin.
+                     O campo abaixo é de outro nível (global, todas as organizações) e só
+                     aparece para quem já é admin da plataforma: o backend recusa com 403 se
+                     qualquer outro perfil enviá-lo. Ver usersAdmin.js. -->
                 <label class="module-field" id="userFormIsPlatformAdminField"
                     style="flex-direction: row; align-items: center; gap: 0.4rem; display: none;">
                     <input type="checkbox" id="userFormIsPlatformAdmin" style="width: auto;">
-                    <span>Admin da plataforma</span>
+                    <span>Admin da plataforma (todas as organizações)</span>
                 </label>
 
                 <div class="module-form-actions">
