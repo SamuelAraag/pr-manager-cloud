@@ -173,7 +173,7 @@ function showToast(message, type = 'success', title = '', isRestored = false) {
 // Diálogo de confirmação em UI (00-principles.md proíbe confirm()/alert() nativos). Espera
 // os elementos #confirmDialog/#confirmDialogTitle/#confirmDialogMessage/#confirmDialogYes/
 // #confirmDialogNo na página (ver tenants.html). Resolve true/false, nunca rejeita.
-function confirmDialog(message, title = 'Confirmar ação') {
+function confirmDialog(message, title = 'Confirmar ação', options = {}) {
     return new Promise(resolve => {
         const overlay = document.getElementById('confirmDialog');
         if (!overlay) { resolve(window.confirm(message)); return; }
@@ -183,19 +183,57 @@ function confirmDialog(message, title = 'Confirmar ação') {
 
         const yesBtn = document.getElementById('confirmDialogYes');
         const noBtn = document.getElementById('confirmDialogNo');
+        const previouslyFocused = document.activeElement;
+        const confirmLabel = options.confirmLabel || 'Confirmar';
+
+        yesBtn.textContent = confirmLabel;
+        yesBtn.classList.toggle('btn-danger', options.danger === true);
+        yesBtn.classList.toggle('btn-primary', options.danger !== true);
 
         const cleanup = (result) => {
             overlay.style.display = 'none';
+            overlay.setAttribute('aria-hidden', 'true');
             yesBtn.removeEventListener('click', onYes);
             noBtn.removeEventListener('click', onNo);
+            overlay.removeEventListener('click', onOverlayClick);
+            document.removeEventListener('keydown', onKeyDown);
+
+            if (previouslyFocused instanceof HTMLElement && previouslyFocused.isConnected) {
+                previouslyFocused.focus({ preventScroll: true });
+            }
+
             resolve(result);
         };
         const onYes = () => cleanup(true);
         const onNo = () => cleanup(false);
+        const onOverlayClick = (event) => {
+            if (event.target === overlay) cleanup(false);
+        };
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                cleanup(false);
+                return;
+            }
+
+            if (event.key !== 'Tab') return;
+
+            if (event.shiftKey && document.activeElement === noBtn) {
+                event.preventDefault();
+                yesBtn.focus();
+            } else if (!event.shiftKey && document.activeElement === yesBtn) {
+                event.preventDefault();
+                noBtn.focus();
+            }
+        };
 
         yesBtn.addEventListener('click', onYes);
         noBtn.addEventListener('click', onNo);
+        overlay.addEventListener('click', onOverlayClick);
+        document.addEventListener('keydown', onKeyDown);
+        overlay.setAttribute('aria-hidden', 'false');
         overlay.style.display = 'flex';
+        noBtn.focus({ preventScroll: true });
     });
 }
 
