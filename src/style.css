@@ -2255,10 +2255,7 @@ header {
 h1 {
   font-size: 2rem;
   font-weight: 700;
-  background: linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 72%, white));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent-color);
 }
 
 .btn {
@@ -2360,8 +2357,6 @@ h1 {
   margin-bottom: 3rem;
   font-size: 2.5rem;
   color: white;
-  background: none;
-  -webkit-text-fill-color: initial;
 }
 
 .profiles-grid {
