@@ -74,7 +74,10 @@ function openUserForm(user = null) {
     document.getElementById('userFormPasswordHint').textContent = user ? '(deixe em branco para manter)' : '(obrigatória)';
     document.getElementById('userFormRole').value = user ? user.role : 'Dev';
     document.getElementById('userFormAvatar').value = user?.avatarUrl || '';
-    document.getElementById('userFormIsAdmin').checked = user ? !!user.isAdmin : false;
+    // Campo restrito a PlatformAdmin: o backend responde 403 se qualquer outro perfil enviar
+    // isPlatformAdmin, então esconder aqui evita que um TenantAdmin comum trave ao salvar.
+    document.getElementById('userFormIsPlatformAdmin').checked = user ? !!user.isPlatformAdmin : false;
+    document.getElementById('userFormIsPlatformAdminField').hidden = !AuthService.isPlatformAdmin();
 
     userModal.style.display = 'flex';
     document.getElementById('userFormName').focus();
@@ -115,9 +118,14 @@ userForm?.addEventListener('submit', async (e) => {
         name: document.getElementById('userFormName').value.trim(),
         email: document.getElementById('userFormEmail').value.trim(),
         role: document.getElementById('userFormRole').value,
-        isAdmin: document.getElementById('userFormIsAdmin').checked,
+        // Issue #41: isAdmin não é mais enviado — o backend deriva de Papel = Admin.
         avatarUrl: document.getElementById('userFormAvatar').value.trim() || null
     };
+    // Só PlatformAdmin envia o campo. Mandar sempre faria o backend recusar com 403 toda
+    // edição feita por um TenantAdmin comum, já que ele barra a presença do campo, não o valor.
+    if (AuthService.isPlatformAdmin()) {
+        payload.isPlatformAdmin = document.getElementById('userFormIsPlatformAdmin').checked;
+    }
     const password = document.getElementById('userFormPassword').value;
     if (password) payload.password = password;
 

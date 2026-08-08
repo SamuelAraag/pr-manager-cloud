@@ -123,15 +123,30 @@
                     </select>
                 </label>
 
-                <label class="module-field">
+                <!-- Ocupa as duas colunas restantes da linha: o campo é uma URL longa e sobrava
+                     buraco ao lado dele. -->
+                <label class="module-field module-field--span2">
                     <span>Avatar (URL)</span>
                     <input id="userFormAvatar" type="text" placeholder="src/assets/profiles/...">
                 </label>
 
-                <label class="module-field" style="flex-direction: row; align-items: center; gap: 0.4rem;">
-                    <input type="checkbox" id="userFormIsAdmin" style="width: auto;">
-                    <span>Admin da plataforma</span>
-                </label>
+                <!-- Issue #41: o checkbox "Admin do sistema" foi removido — era redundante com
+                     Papel = Admin, que já define o administrador desta organização, e a dupla
+                     permitia o estado torto de um Dev marcado como admin.
+                     O que sobrou é de outro nível (global, todas as organizações), então ganha
+                     linha inteira e explicação do alcance em vez de disputar uma célula com os
+                     campos comuns. Só aparece para quem já é admin da plataforma: o backend
+                     recusa com 403 se qualquer outro perfil enviá-lo. Ver usersAdmin.js. -->
+                <div class="module-field module-field--full" id="userFormIsPlatformAdminField" hidden>
+                    <span>Acesso</span>
+                    <label class="checkbox-container module-toggle">
+                        <input type="checkbox" id="userFormIsPlatformAdmin">
+                        <span class="module-toggle-text">
+                            Admin da plataforma
+                            <small>Gerencia todas as organizações da instalação, não só esta.</small>
+                        </span>
+                    </label>
+                </div>
 
                 <div class="module-form-actions">
                     <button class="btn btn-outline close-modal" type="button">Cancelar</button>

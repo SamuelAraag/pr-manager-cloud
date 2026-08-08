@@ -1333,6 +1333,54 @@ footer p {
     box-shadow: 0 0 0 4px var(--module-input-focus-ring);
 }
 
+/* Modificadores de largura no grid de 3 colunas do formulário: campo longo (URL) ou bloco
+   que precisa de destaque não deve disputar uma célula estreita. */
+.module-field--span2 {
+    grid-column: span 2;
+}
+
+.module-field--full {
+    grid-column: 1 / -1;
+}
+
+/* Opção com explicação, reusando .checkbox-container. Ganha a mesma moldura dos inputs para
+   não ficar solta no meio dos campos. */
+.module-toggle {
+    align-items: flex-start;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background-color: var(--module-input-bg);
+    padding: 0.85rem 0.95rem;
+}
+
+/* `.module-field input` (largura 100%, altura 46px) vem depois de `.checkbox-container input`
+   na folha e esticaria a caixinha até virar um retângulo. Precisa de mais especificidade para
+   devolver o tamanho de checkbox. */
+.module-field .module-toggle input {
+    width: 1.4rem;
+    height: 1.4rem;
+    min-height: 0;
+    padding: 0;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* Precisa vencer `.module-field span`, que deixa todo span secundário e menor. */
+.module-field .module-toggle-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.module-field .module-toggle-text small {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
 .module-form-actions {
     grid-column: 1 / -1;
     display: flex;
@@ -1558,5 +1606,11 @@ footer p {
 
     .module-form {
         grid-template-columns: 1fr;
+    }
+
+    /* Em uma coluna, `span 2` criaria uma segunda coluna implícita e estouraria o modal —
+       os modificadores de largura viram linha inteira. */
+    .module-field--span2 {
+        grid-column: 1 / -1;
     }
 }
