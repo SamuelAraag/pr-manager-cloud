@@ -293,13 +293,36 @@
                     <span class="field-error" id="newSprintNameError">Informe o nome da sprint.</span>
                 </div>
                 <div class="form-group full-width">
-                    <label for="newSprintStartDateInput">Data de início (opcional)</label>
-                    <input type="date" id="newSprintStartDateInput">
-                </div>
-                <div class="form-group full-width">
-                    <label for="newSprintEndDateInput">Data de término (opcional)</label>
-                    <input type="date" id="newSprintEndDateInput">
-                    <span class="field-error" id="newSprintEndDateError">Data de término não pode ser antes da data de início.</span>
+                    <label id="sprintDateRangeLabel">Período (opcional)</label>
+                    <div class="date-range-field" id="sprintDateRangeField">
+                        <input type="text" id="newSprintStartDateInput" placeholder="Data início" inputmode="numeric" autocomplete="off">
+                        <i class="date-range-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+                        <input type="text" id="newSprintEndDateInput" placeholder="Data fim" inputmode="numeric" autocomplete="off">
+                        <button type="button" class="date-range-calendar-btn" id="sprintDateRangeCalendarBtn" aria-label="Abrir calendário" title="Abrir calendário">
+                            <i data-lucide="calendar"></i>
+                        </button>
+
+                        <div class="date-range-popover" id="sprintDateRangePopover">
+                            <div class="date-range-popover-header">
+                                <button type="button" class="date-range-nav-btn" id="sprintDrPrevMonth" aria-label="Mês anterior"><i data-lucide="chevron-left"></i></button>
+                                <span class="date-range-month-label" id="sprintDrMonthLabel"></span>
+                                <button type="button" class="date-range-nav-btn" id="sprintDrNextMonth" aria-label="Próximo mês"><i data-lucide="chevron-right"></i></button>
+                            </div>
+                            <div class="date-range-weekdays">
+                                <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+                            </div>
+                            <div class="date-range-days" id="sprintDrDaysGrid"></div>
+                            <div class="date-range-summary">
+                                <span>Início: <strong id="sprintDrSummaryStart">—</strong></span>
+                                <span>Fim: <strong id="sprintDrSummaryEnd">—</strong></span>
+                            </div>
+                            <div class="date-range-popover-actions">
+                                <button type="button" class="btn btn-outline" id="sprintDrCancelBtn">Cancelar</button>
+                                <button type="button" class="btn btn-primary" id="sprintDrApplyBtn">Aplicar</button>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="field-error" id="newSprintDateRangeError">Data fim não pode ser antes da data início.</span>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
                     <button id="cancelNewSprintModalBtn" class="btn btn-outline close-modal" type="button">Cancelar</button>

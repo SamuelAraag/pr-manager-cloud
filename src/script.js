@@ -9,6 +9,7 @@ import { extractJiraId } from './utils.js';
 import { connectSignalR } from './notificationService.js';
 import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/apiConstants.js';
 import { initializeTheme } from './themeService.js';
+import { initDateRangePicker } from './dateRangePicker.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -165,8 +166,24 @@ const newSprintNameInput = document.getElementById('newSprintNameInput');
 const newSprintNameError = document.getElementById('newSprintNameError');
 const newSprintStartDateInput = document.getElementById('newSprintStartDateInput');
 const newSprintEndDateInput = document.getElementById('newSprintEndDateInput');
-const newSprintEndDateError = document.getElementById('newSprintEndDateError');
 const confirmNewSprintBtn = document.getElementById('confirmNewSprintBtn');
+
+const sprintDateRangePicker = initDateRangePicker({
+    fieldEl: document.getElementById('sprintDateRangeField'),
+    startInput: newSprintStartDateInput,
+    endInput: newSprintEndDateInput,
+    calendarBtn: document.getElementById('sprintDateRangeCalendarBtn'),
+    popoverEl: document.getElementById('sprintDateRangePopover'),
+    prevBtn: document.getElementById('sprintDrPrevMonth'),
+    nextBtn: document.getElementById('sprintDrNextMonth'),
+    monthLabelEl: document.getElementById('sprintDrMonthLabel'),
+    daysGridEl: document.getElementById('sprintDrDaysGrid'),
+    summaryStartEl: document.getElementById('sprintDrSummaryStart'),
+    summaryEndEl: document.getElementById('sprintDrSummaryEnd'),
+    applyBtn: document.getElementById('sprintDrApplyBtn'),
+    cancelBtn: document.getElementById('sprintDrCancelBtn'),
+    errorEl: document.getElementById('newSprintDateRangeError')
+});
 const prForm = document.getElementById('prForm');
 const profileScreen = document.getElementById('profileScreen');
 const currentUserDisplay = document.getElementById('currentUserDisplay');
@@ -1114,15 +1131,11 @@ document.getElementById('logoutBtn').addEventListener('click', handleLogout);
 function clearNewSprintValidation() {
     newSprintNameInput?.classList.remove('is-invalid');
     newSprintNameError?.classList.remove('visible');
-    newSprintStartDateInput?.classList.remove('is-invalid');
-    newSprintEndDateInput?.classList.remove('is-invalid');
-    newSprintEndDateError?.classList.remove('visible');
 }
 
 document.getElementById('newSprintBtn').addEventListener('click', () => {
     if (newSprintNameInput) newSprintNameInput.value = '';
-    if (newSprintStartDateInput) newSprintStartDateInput.value = '';
-    if (newSprintEndDateInput) newSprintEndDateInput.value = '';
+    sprintDateRangePicker.reset();
     clearNewSprintValidation();
     if (newSprintModal) newSprintModal.style.display = 'flex';
 });
@@ -1133,14 +1146,6 @@ newSprintNameInput?.addEventListener('input', () => {
         newSprintNameError?.classList.remove('visible');
     }
 });
-
-function clearNewSprintDateError() {
-    newSprintStartDateInput?.classList.remove('is-invalid');
-    newSprintEndDateInput?.classList.remove('is-invalid');
-    newSprintEndDateError?.classList.remove('visible');
-}
-newSprintStartDateInput?.addEventListener('input', clearNewSprintDateError);
-newSprintEndDateInput?.addEventListener('input', clearNewSprintDateError);
 
 if (confirmNewSprintBtn) {
     confirmNewSprintBtn.addEventListener('click', async () => {
@@ -1154,15 +1159,7 @@ if (confirmNewSprintBtn) {
             return;
         }
 
-        const startDate = newSprintStartDateInput?.value || null;
-        const endDate = newSprintEndDateInput?.value || null;
-        if (startDate && endDate && endDate < startDate) {
-            newSprintStartDateInput?.classList.add('is-invalid');
-            newSprintEndDateInput?.classList.add('is-invalid');
-            newSprintEndDateError?.classList.add('visible');
-            newSprintEndDateInput?.focus();
-            return;
-        }
+        const { start: startDate, end: endDate } = sprintDateRangePicker.getRange();
 
         try {
             DOM.showLoading(true);
