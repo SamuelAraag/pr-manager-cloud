@@ -82,9 +82,11 @@ export function initDateRangePicker({
         errorEl?.classList.remove('visible');
     }
 
-    function showError(message) {
-        startInput.classList.add('is-invalid');
-        endInput.classList.add('is-invalid');
+    // fields: só os campos que causaram o erro ficam vermelhos. Marcar os dois sempre
+    // deixava borda de erro num campo vazio e opcional (ex.: erro de formato no início
+    // pintava o fim também), resíduo visual que sobrava depois de corrigir o outro campo.
+    function showError(message, fields) {
+        (fields ?? [startInput, endInput]).forEach(field => field.classList.add('is-invalid'));
         if (errorEl) {
             errorEl.textContent = message;
             errorEl.classList.add('visible');
@@ -174,7 +176,11 @@ export function initDateRangePicker({
     }
 
     function handleKeydown(e) {
-        if (e.key === 'Escape') closePopover();
+        if (e.key !== 'Escape') return;
+        closePopover();
+        // Impede que o mesmo Esc que fechou o calendário feche também o modal que o contém
+        // — o primeiro Esc fecha o popover, o segundo fecha o modal.
+        e.stopPropagation();
     }
 
     function openPopover() {
@@ -234,7 +240,7 @@ export function initDateRangePicker({
         if (startRaw) {
             startDate = parseDisplay(startRaw);
             if (!startDate) {
-                showError('Data início inválida. Use o formato DD/MM/AAAA.');
+                showError('Data início inválida. Use o formato DD/MM/AAAA.', [startInput]);
                 return false;
             }
         }
@@ -242,14 +248,14 @@ export function initDateRangePicker({
         if (endRaw) {
             endDate = parseDisplay(endRaw);
             if (!endDate) {
-                showError('Data fim inválida. Use o formato DD/MM/AAAA.');
+                showError('Data fim inválida. Use o formato DD/MM/AAAA.', [endInput]);
                 return false;
             }
         }
 
         // Fim precisa ser estritamente maior que início — data igual também é inválida.
         if (startDate && endDate && endDate <= startDate) {
-            showError('Data fim precisa ser depois da data início.');
+            showError('Data fim precisa ser depois da data início.', [startInput, endInput]);
             return false;
         }
 

@@ -1147,6 +1147,16 @@ newSprintNameInput?.addEventListener('input', () => {
     }
 });
 
+// Esc fecha o modal de Nova Sprint (não usamos o enableEscapeToCloseModals global porque o
+// index.html tem modais bloqueantes de propósito — login e seleção de tenant). Quando o
+// calendário está aberto, ele consome o Esc primeiro (stopPropagation no dateRangePicker)
+// e este handler nem roda: o primeiro Esc fecha o calendário, o segundo fecha o modal.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (newSprintModal?.style.display !== 'flex') return;
+    closeAllModals();
+});
+
 if (confirmNewSprintBtn) {
     confirmNewSprintBtn.addEventListener('click', async () => {
         clearNewSprintValidation();
