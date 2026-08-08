@@ -664,17 +664,12 @@ function getVersionAssignableUsers() {
 }
 
 async function loadUsers() {
-    // Antes do login não há token: a tela "Quem está editando?" usa o endpoint
-    // anônimo de perfis (só ativos, sem email). Com token, usa a lista completa.
-    try {
-        let users = LocalStorage.getItem('token')
-            ? await API.fetchUsers()
-            : await API.fetchProfiles();
+    // Issue #34: sem token não há lista de usuários — o endpoint anônimo de perfis foi
+    // removido (vazava usuários de todos os tenants) e a tela de login já é e-mail + senha.
+    if (!LocalStorage.getItem('token')) return;
 
-        // token expirado/inválido → cai para o endpoint anônimo em vez de grade vazia
-        if (!Array.isArray(users) || users.length === 0) {
-            users = await API.fetchProfiles();
-        }
+    try {
+        const users = await API.fetchUsers();
 
         if (Array.isArray(users) && users.length > 0) {
             availableUsers = users;
