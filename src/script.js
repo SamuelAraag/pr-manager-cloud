@@ -1304,7 +1304,18 @@ window.togglePrHistory = async (prId) => {
 window.archivePr = async (prId) => {
     if (!prId) return;
 
-    if (!confirm('Tem certeza que deseja ARQUIVAR este PR? Ele sairá da lista de pendentes.')) {
+    const pr = currentData.prs.find(item => String(item.id) === String(prId));
+    const taskId = extractJiraId(pr?.taskLink);
+    const prDescription = [taskId, pr?.summary].filter(Boolean).join(' - ')
+        || pr?.project
+        || 'selecionado';
+    const confirmed = await DOM.confirmDialog(
+        `Arquivar o PR "${prDescription}"? Ele sairá da lista de pendentes.`,
+        'Arquivar PR',
+        { confirmLabel: 'Arquivar PR', danger: true }
+    );
+
+    if (!confirmed) {
         return;
     }
 

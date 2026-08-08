@@ -464,6 +464,21 @@
         </div>
     </div>
 
+    <!-- Confirmação contextual para arquivamento de PR (sem confirm() nativo). -->
+    <div id="confirmDialog" class="modal-overlay" role="dialog" aria-modal="true"
+        aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage" aria-hidden="true">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2 id="confirmDialogTitle">Arquivar PR</h2>
+            </div>
+            <p id="confirmDialogMessage" style="color: var(--text-secondary);"></p>
+            <div class="module-form-actions">
+                <button id="confirmDialogNo" class="btn btn-outline" type="button">Cancelar</button>
+                <button id="confirmDialogYes" class="btn btn-danger" type="button">Arquivar PR</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications Container -->
     <div id="toast-container" class="toast-container"></div>
 
