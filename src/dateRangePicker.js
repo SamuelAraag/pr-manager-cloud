@@ -219,41 +219,50 @@ export function initDateRangePicker({
 
     cancelBtn.addEventListener('click', closePopover);
 
-    function handleManualInput(input, isStart) {
-        const raw = input.value.trim();
+    // Valida os dois campos de texto juntos (não um de cada vez) e só então grava em
+    // dataset.iso — evita que validar o segundo campo limpe o erro que acabou de aparecer
+    // no primeiro. Usado tanto no blur (feedback ao digitar) quanto no submit do modal
+    // (validate(), abaixo), pra garantir que uma data inválida nunca escape pro getRange().
+    function commitDates() {
         clearError();
 
-        if (!raw) {
-            input.dataset.iso = '';
-            notifyChange();
-            return;
+        const startRaw = startInput.value.trim();
+        const endRaw = endInput.value.trim();
+        let startDate = null;
+        let endDate = null;
+
+        if (startRaw) {
+            startDate = parseDisplay(startRaw);
+            if (!startDate) {
+                showError('Data início inválida. Use o formato DD/MM/AAAA.');
+                return false;
+            }
         }
 
-        const parsed = parseDisplay(raw);
-        if (!parsed) {
-            showError('Data inválida. Use o formato DD/MM/AAAA.');
-            return;
+        if (endRaw) {
+            endDate = parseDisplay(endRaw);
+            if (!endDate) {
+                showError('Data fim inválida. Use o formato DD/MM/AAAA.');
+                return false;
+            }
         }
 
         // Fim precisa ser estritamente maior que início — data igual também é inválida.
-        const other = fromISO((isStart ? endInput : startInput).dataset.iso || '');
-        if (isStart && other && parsed >= other) {
-            showError('Data início precisa ser antes da data fim.');
-            return;
-        }
-        if (!isStart && other && parsed <= other) {
+        if (startDate && endDate && endDate <= startDate) {
             showError('Data fim precisa ser depois da data início.');
-            return;
+            return false;
         }
 
-        input.dataset.iso = toISO(parsed);
+        startInput.dataset.iso = startDate ? toISO(startDate) : '';
+        endInput.dataset.iso = endDate ? toISO(endDate) : '';
         notifyChange();
+        return true;
     }
 
     applyDateMask(startInput);
     applyDateMask(endInput);
-    startInput.addEventListener('blur', () => handleManualInput(startInput, true));
-    endInput.addEventListener('blur', () => handleManualInput(endInput, false));
+    startInput.addEventListener('blur', commitDates);
+    endInput.addEventListener('blur', commitDates);
     startInput.addEventListener('input', clearError);
     endInput.addEventListener('input', clearError);
 
@@ -268,6 +277,12 @@ export function initDateRangePicker({
             clearError();
             closePopover();
             setApplied(null, null);
+        },
+        // Reaplica a validação nos dois campos (cobre o caso do usuário digitar e clicar
+        // direto em "Criar Sprint" sem tirar o foco do input, sem passar pelo blur) e
+        // devolve se está tudo certo — quem chama deve bloquear o submit se vier false.
+        validate() {
+            return commitDates();
         }
     };
 }

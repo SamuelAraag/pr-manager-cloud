@@ -1159,6 +1159,9 @@ if (confirmNewSprintBtn) {
             return;
         }
 
+        if (!sprintDateRangePicker.validate()) {
+            return;
+        }
         const { start: startDate, end: endDate } = sprintDateRangePicker.getRange();
 
         try {
