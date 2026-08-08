@@ -3,6 +3,7 @@ import { ApiConstants, getDemoProject, getDemoName } from './constants/apiConsta
 import { initNotificationAudio } from './notificationAudioService.js';
 import { initBrowserNotifications, showBrowserNotification } from './browserNotificationService.js';
 import { refreshIcons } from './iconService.js';
+import { getItem } from './localStorageService.js';
 
 const STORAGE_KEY = 'pr_notifications';
 const UNREAD_KEY  = 'pr_notifications_unread';
@@ -185,12 +186,18 @@ export async function connectSignalR(onMessageReceived) {
     }
 
     const hubUrl = ApiConstants.BASE_URL.replace('/api', '/notificationHub');
-    const rawUserId = localStorage.getItem('appUserId');
-    const userId = rawUserId ? JSON.parse(rawUserId) : '';
-    const hubUrlWithUser = userId ? `${hubUrl}?userId=${userId}` : hubUrl;
+
+    // Issue #34: a identidade ia no ?userId= e o backend confiava nela — qualquer um entrava
+    // no grupo de qualquer usuário. Agora o hub exige JWT; o SignalR manda o token em
+    // ?access_token= (o WebSocket do navegador não aceita header Authorization).
+    const token = getItem('token');
+    if (!token) {
+        console.warn('Sem token: conexão de notificações não iniciada.');
+        return;
+    }
 
     connection = new signalR.HubConnectionBuilder()
-        .withUrl(hubUrlWithUser)
+        .withUrl(hubUrl, { accessTokenFactory: () => token })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000, 60000])
         .build();
 

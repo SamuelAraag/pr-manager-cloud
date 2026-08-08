@@ -107,18 +107,8 @@ async function fetchSprints() {
   }
 }
 
-// Perfis para a tela pré-login "Quem está editando?" (endpoint anônimo, sem email)
-async function fetchProfiles() {
-  const url = `${ApiConstants.BASE_URL}/Users/profiles`;
-  try {
-    const response = await fetch(url, { headers: getBackendHeaders(), cache: "no-store" });
-    if (!response.ok) return [];
-    return await response.json();
-  } catch (error) {
-    console.error("Falha ao buscar perfis:", error);
-    return [];
-  }
-}
+// Issue #34: fetchProfiles foi removido junto com GET /Users/profiles — era anônimo e
+// listava usuários de todos os tenants. A tela pré-login que o usava não existe mais.
 
 async function fetchUsers(includeInactive = false, global = false) {
   const params = new URLSearchParams();
@@ -892,7 +882,6 @@ export {
   saveAutomationConfig,
   adminLogin,
   login,
-  fetchProfiles,
   fetchApps,
   createApp,
   updateApp,
