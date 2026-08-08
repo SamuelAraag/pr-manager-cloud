@@ -157,11 +157,12 @@ export function initDateRangePicker({
     }
 
     function handleDayClick(date) {
-        if (!pendingStart || pendingEnd) {
+        // Fim precisa ser estritamente depois do início — clicar num dia igual ou anterior
+        // ao início já selecionado reinicia o range a partir desse dia, em vez de criar um
+        // período de 1 dia só (início === fim).
+        if (!pendingStart || pendingEnd || date <= pendingStart) {
             pendingStart = date;
             pendingEnd = null;
-        } else if (date < pendingStart) {
-            pendingStart = date;
         } else {
             pendingEnd = date;
         }
@@ -234,13 +235,14 @@ export function initDateRangePicker({
             return;
         }
 
+        // Fim precisa ser estritamente maior que início — data igual também é inválida.
         const other = fromISO((isStart ? endInput : startInput).dataset.iso || '');
-        if (isStart && other && parsed > other) {
-            showError('Data início não pode ser depois da data fim.');
+        if (isStart && other && parsed >= other) {
+            showError('Data início precisa ser antes da data fim.');
             return;
         }
-        if (!isStart && other && parsed < other) {
-            showError('Data fim não pode ser antes da data início.');
+        if (!isStart && other && parsed <= other) {
+            showError('Data fim precisa ser depois da data início.');
             return;
         }
 
