@@ -160,6 +160,11 @@ const requestVersionModal = document.getElementById('requestVersionModal');
 const requestVersionDevSelect = document.getElementById('requestVersionDevSelect');
 const requestVersionModalDescription = document.getElementById('requestVersionModalDescription');
 const confirmRequestVersionModalBtn = document.getElementById('confirmRequestVersionModalBtn');
+const newSprintModal = document.getElementById('newSprintModal');
+const newSprintNameInput = document.getElementById('newSprintNameInput');
+const newSprintStartDateInput = document.getElementById('newSprintStartDateInput');
+const newSprintEndDateInput = document.getElementById('newSprintEndDateInput');
+const confirmNewSprintBtn = document.getElementById('confirmNewSprintBtn');
 const prForm = document.getElementById('prForm');
 const profileScreen = document.getElementById('profileScreen');
 const currentUserDisplay = document.getElementById('currentUserDisplay');
@@ -431,6 +436,7 @@ function closeAllModals() {
     if (setupModal) setupModal.style.display = 'none';
     if (shortcutsModal) shortcutsModal.style.display = 'none';
     if (requestVersionModal) requestVersionModal.style.display = 'none';
+    if (newSprintModal) newSprintModal.style.display = 'none';
     pendingVersionRequestContext = null;
     
     if (LocalStorage.getItem('appUser')) {
@@ -1103,17 +1109,33 @@ if (monitorStatusBtn) {
 document.getElementById('logoutBtn').addEventListener('click', handleLogout);
 
 
-document.getElementById('newSprintBtn').addEventListener('click', async () => {
-    const sprintName = prompt('Informe o nome da nova Sprint (ex: 28):', 'Sprint ');
-    if (sprintName && sprintName.trim() !== 'Sprint ') {
+document.getElementById('newSprintBtn').addEventListener('click', () => {
+    if (newSprintNameInput) newSprintNameInput.value = '';
+    if (newSprintStartDateInput) newSprintStartDateInput.value = '';
+    if (newSprintEndDateInput) newSprintEndDateInput.value = '';
+    if (newSprintModal) newSprintModal.style.display = 'flex';
+});
+
+if (confirmNewSprintBtn) {
+    confirmNewSprintBtn.addEventListener('click', async () => {
+        const sprintName = newSprintNameInput?.value.trim();
+        if (!sprintName) {
+            DOM.showToast('Informe o nome da sprint.', 'warning');
+            return;
+        }
+
+        const startDate = newSprintStartDateInput?.value || null;
+        const endDate = newSprintEndDateInput?.value || null;
+        if (startDate && endDate && endDate < startDate) {
+            DOM.showToast('Data de término não pode ser antes da data de início.', 'warning');
+            return;
+        }
+
         try {
             DOM.showLoading(true);
-            const sprintData = {
-                name: sprintName
-            };
-
-            await API.createSprint(sprintData);
+            await API.createSprint({ name: sprintName, startDate, endDate });
             DOM.showToast(`Sprint "${sprintName}" criada com sucesso e definida como ativa!`);
+            closeAllModals();
             await loadData(true);
         } catch (error) {
             console.error('Erro ao criar sprint:', error);
@@ -1121,8 +1143,8 @@ document.getElementById('newSprintBtn').addEventListener('click', async () => {
         } finally {
             DOM.showLoading(false);
         }
-    }
-});
+    });
+}
 
 window.approvePr = async (prId) => {
     if (!prId) return;
