@@ -77,8 +77,7 @@ function openUserForm(user = null) {
     // Campo restrito a PlatformAdmin: o backend responde 403 se qualquer outro perfil enviar
     // isPlatformAdmin, então esconder aqui evita que um TenantAdmin comum trave ao salvar.
     document.getElementById('userFormIsPlatformAdmin').checked = user ? !!user.isPlatformAdmin : false;
-    document.getElementById('userFormIsPlatformAdminField').style.display =
-        AuthService.isPlatformAdmin() ? 'flex' : 'none';
+    document.getElementById('userFormIsPlatformAdminField').hidden = !AuthService.isPlatformAdmin();
 
     userModal.style.display = 'flex';
     document.getElementById('userFormName').focus();
