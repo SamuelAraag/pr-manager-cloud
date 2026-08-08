@@ -13,10 +13,12 @@ import { initializeTheme } from './themeService.js';
 let currentData = { prs: [] };
 let availableUsers = [];
 
-// Filtro por app (Épico 3): apps.html manda para index.html?app=<nome>;
-// a ligação é pelo nome do projeto até o Épico 5 trocar por FK.
+// Filtro por app (Épico 3): apps.html manda para index.html?app=<nome>. O nome na URL só
+// resolve o app (abaixo, currentAppId); a listagem de PRs/lotes filtra por AppId (FK), não
+// pelo texto de Project — PRs com Project divergente do nome atual do app (rename, dado
+// legado) não podem sumir da lista enquanto continuam contados no card da tela Apps.
 const appFilter = new URLSearchParams(window.location.search).get('app');
-// id do app filtrado (resolvido quando a lista de apps carrega) — usado pela config por app
+// id do app filtrado (resolvido quando a lista de apps carrega) — chave real do filtro de PRs/lotes
 let currentAppId = null;
 
 initializeTheme('themeToggleBtn');
@@ -743,7 +745,7 @@ async function loadPrTablesData(animate = false) {
         throw new Error('Falha ao carregar PRs');
     }
     currentData.prs = appFilter
-        ? prResult.prs.filter(p => p.project === appFilter)
+        ? prResult.prs.filter(p => p.appId === currentAppId)
         : prResult.prs;
     refreshOpenPrs(animate);
 
@@ -752,7 +754,7 @@ async function loadPrTablesData(animate = false) {
         throw new Error('Falha ao carregar lotes');
     }
     currentData.batches = appFilter
-        ? batches.filter(b => b.project === appFilter)
+        ? batches.filter(b => b.appId === currentAppId)
         : batches;
     refreshApprovedPrs(animate);
 }
