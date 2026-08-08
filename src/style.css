@@ -3072,6 +3072,198 @@ input:focus, select:focus {
   box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
+/* Validação inline de formulário (preferencias.md §12): borda vermelha + texto no
+   próprio campo, em vez de só um toast genérico depois de bater na API. */
+input.is-invalid, select.is-invalid, textarea.is-invalid {
+  border-color: var(--danger-color);
+}
+
+input.is-invalid:focus, select.is-invalid:focus, textarea.is-invalid:focus {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger-color) 35%, transparent);
+}
+
+.field-error {
+  display: none;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--danger-color);
+}
+
+.field-error.visible {
+  display: block;
+}
+
+/* Componente de período (data início/fim) — issue pr-manager-cloud#18. Calendário único
+   em popover ancorado no campo, seguindo o mesmo padrão de diálogo customizado do resto
+   do projeto (markup estático + JS liga os elementos, ver src/dateRangePicker.js). */
+.date-range-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-range-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.date-range-arrow {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.date-range-calendar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.3rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.date-range-calendar-btn:hover {
+  color: var(--accent-color);
+}
+
+.date-range-calendar-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.date-range-popover {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 20;
+  width: 280px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.date-range-popover.open {
+  display: block;
+}
+
+.date-range-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.date-range-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.date-range-nav-btn:hover {
+  color: var(--accent-color);
+}
+
+.date-range-nav-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.date-range-month-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.date-range-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.date-range-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.date-range-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+}
+
+.date-range-day:hover {
+  background: var(--accent-glow);
+}
+
+.date-range-day.is-other-month {
+  color: var(--text-secondary);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.date-range-day.is-today {
+  border: 1px solid var(--accent-color);
+}
+
+.date-range-day.in-range {
+  background: var(--accent-glow);
+  border-radius: 0;
+}
+
+.date-range-day.is-start,
+.date-range-day.is-end {
+  background: var(--accent-color);
+  color: #fff;
+}
+
+.date-range-summary {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.date-range-summary strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.date-range-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
 /* Loading Spinner */
 .loader {
   width: 48px;

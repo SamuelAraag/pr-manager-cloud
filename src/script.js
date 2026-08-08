@@ -9,6 +9,7 @@ import { extractJiraId } from './utils.js';
 import { connectSignalR } from './notificationService.js';
 import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/apiConstants.js';
 import { initializeTheme } from './themeService.js';
+import { initDateRangePicker } from './dateRangePicker.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -160,6 +161,29 @@ const requestVersionModal = document.getElementById('requestVersionModal');
 const requestVersionDevSelect = document.getElementById('requestVersionDevSelect');
 const requestVersionModalDescription = document.getElementById('requestVersionModalDescription');
 const confirmRequestVersionModalBtn = document.getElementById('confirmRequestVersionModalBtn');
+const newSprintModal = document.getElementById('newSprintModal');
+const newSprintNameInput = document.getElementById('newSprintNameInput');
+const newSprintNameError = document.getElementById('newSprintNameError');
+const newSprintStartDateInput = document.getElementById('newSprintStartDateInput');
+const newSprintEndDateInput = document.getElementById('newSprintEndDateInput');
+const confirmNewSprintBtn = document.getElementById('confirmNewSprintBtn');
+
+const sprintDateRangePicker = initDateRangePicker({
+    fieldEl: document.getElementById('sprintDateRangeField'),
+    startInput: newSprintStartDateInput,
+    endInput: newSprintEndDateInput,
+    calendarBtn: document.getElementById('sprintDateRangeCalendarBtn'),
+    popoverEl: document.getElementById('sprintDateRangePopover'),
+    prevBtn: document.getElementById('sprintDrPrevMonth'),
+    nextBtn: document.getElementById('sprintDrNextMonth'),
+    monthLabelEl: document.getElementById('sprintDrMonthLabel'),
+    daysGridEl: document.getElementById('sprintDrDaysGrid'),
+    summaryStartEl: document.getElementById('sprintDrSummaryStart'),
+    summaryEndEl: document.getElementById('sprintDrSummaryEnd'),
+    applyBtn: document.getElementById('sprintDrApplyBtn'),
+    cancelBtn: document.getElementById('sprintDrCancelBtn'),
+    errorEl: document.getElementById('newSprintDateRangeError')
+});
 const prForm = document.getElementById('prForm');
 const profileScreen = document.getElementById('profileScreen');
 const currentUserDisplay = document.getElementById('currentUserDisplay');
@@ -431,6 +455,7 @@ function closeAllModals() {
     if (setupModal) setupModal.style.display = 'none';
     if (shortcutsModal) shortcutsModal.style.display = 'none';
     if (requestVersionModal) requestVersionModal.style.display = 'none';
+    if (newSprintModal) newSprintModal.style.display = 'none';
     pendingVersionRequestContext = null;
     
     if (LocalStorage.getItem('appUser')) {
@@ -1103,17 +1128,57 @@ if (monitorStatusBtn) {
 document.getElementById('logoutBtn').addEventListener('click', handleLogout);
 
 
-document.getElementById('newSprintBtn').addEventListener('click', async () => {
-    const sprintName = prompt('Informe o nome da nova Sprint (ex: 28):', 'Sprint ');
-    if (sprintName && sprintName.trim() !== 'Sprint ') {
+function clearNewSprintValidation() {
+    newSprintNameInput?.classList.remove('is-invalid');
+    newSprintNameError?.classList.remove('visible');
+}
+
+document.getElementById('newSprintBtn').addEventListener('click', () => {
+    if (newSprintNameInput) newSprintNameInput.value = '';
+    sprintDateRangePicker.reset();
+    clearNewSprintValidation();
+    if (newSprintModal) newSprintModal.style.display = 'flex';
+});
+
+newSprintNameInput?.addEventListener('input', () => {
+    if (newSprintNameInput.value.trim()) {
+        newSprintNameInput.classList.remove('is-invalid');
+        newSprintNameError?.classList.remove('visible');
+    }
+});
+
+// Esc fecha o modal de Nova Sprint (não usamos o enableEscapeToCloseModals global porque o
+// index.html tem modais bloqueantes de propósito — login e seleção de tenant). Quando o
+// calendário está aberto, ele consome o Esc primeiro (stopPropagation no dateRangePicker)
+// e este handler nem roda: o primeiro Esc fecha o calendário, o segundo fecha o modal.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (newSprintModal?.style.display !== 'flex') return;
+    closeAllModals();
+});
+
+if (confirmNewSprintBtn) {
+    confirmNewSprintBtn.addEventListener('click', async () => {
+        clearNewSprintValidation();
+
+        const sprintName = newSprintNameInput?.value.trim();
+        if (!sprintName) {
+            newSprintNameInput?.classList.add('is-invalid');
+            newSprintNameError?.classList.add('visible');
+            newSprintNameInput?.focus();
+            return;
+        }
+
+        if (!sprintDateRangePicker.validate()) {
+            return;
+        }
+        const { start: startDate, end: endDate } = sprintDateRangePicker.getRange();
+
         try {
             DOM.showLoading(true);
-            const sprintData = {
-                name: sprintName
-            };
-
-            await API.createSprint(sprintData);
+            await API.createSprint({ name: sprintName, startDate, endDate });
             DOM.showToast(`Sprint "${sprintName}" criada com sucesso e definida como ativa!`);
+            closeAllModals();
             await loadData(true);
         } catch (error) {
             console.error('Erro ao criar sprint:', error);
@@ -1121,8 +1186,8 @@ document.getElementById('newSprintBtn').addEventListener('click', async () => {
         } finally {
             DOM.showLoading(false);
         }
-    }
-});
+    });
+}
 
 window.approvePr = async (prId) => {
     if (!prId) return;

@@ -5,6 +5,15 @@ import { DEMO_MODE, DEMO_USERS, getDemoProject, getDemoName } from './constants/
 
 const TOAST_STORAGE_KEY = 'pr_manager_toasts';
 
+// Escapa texto que vai ser interpolado em innerHTML. Usar sempre que o conteúdo puder vir
+// do usuário ou da API — o navegador faz o escape sozinho ao ler textContent de um nó
+// solto, sem precisar de regex/lista de caracteres.
+function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value ?? '';
+    return div.innerHTML;
+}
+
 const getProfileImage = (userName) => {
     const profileImages = {
         'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
@@ -129,11 +138,14 @@ function showToast(message, type = 'success', title = '', isRestored = false) {
     if (type === 'warning') iconName = 'alert-triangle';
     if (type === 'info') iconName = 'info';
 
+    // escapeHtml em title/message: o toast é montado por innerHTML e vários callers
+    // interpolam texto digitado pelo usuário (ex.: nome da sprint em script.js) — sem
+    // escapar, um nome como "<img src=x onerror=...>" executa ao exibir o toast.
     toast.innerHTML = `
         <div class="toast-icon"><i data-lucide="${iconName}" width="20"></i></div>
         <div class="toast-content">
-            <span class="toast-title">${title}</span>
-            <div class="toast-message">${message}</div>
+            <span class="toast-title">${escapeHtml(title)}</span>
+            <div class="toast-message">${escapeHtml(message)}</div>
         </div>
         <button class="toast-close">&times;</button>
     `;
