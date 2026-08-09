@@ -94,3 +94,12 @@ export function resetFormState(form) {
     clearFormErrors(form);
     endFormSubmission(form);
 }
+
+export function bindDismissButton(button, onDismiss) {
+    if (!button || typeof onDismiss !== 'function') return;
+    button.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDismiss();
+    });
+}

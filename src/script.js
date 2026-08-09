@@ -11,9 +11,11 @@ import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/a
 import { initializeTheme } from './themeService.js';
 import { initDateRangePicker } from './dateRangePicker.js';
 import * as Form from './formService.js';
+import { createTenantOperationGuard } from './tenantOperationGuard.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
+const tenantOperations = createTenantOperationGuard();
 
 // Filtro por app (Épico 3): apps.html manda para index.html?app=<nome>. O nome na URL só
 // resolve o app (abaixo, currentAppId); a listagem de PRs/lotes filtra por AppId (FK), não
@@ -29,12 +31,13 @@ initializeTheme('themeToggleBtn');
 // Épico 5.3: o <select id="project"> não tem mais lista fixa no HTML — vem inteira da
 // API (mesmos apps que a Home de Apps do Épico 3 já lista). Também resolve o papel do
 // usuário NO APP filtrado (Épico 4.3, reaproveitando o "myRole" que GET /Apps já calcula).
-async function loadProjectOptions() {
+async function loadProjectOptions(expectedRevision = tenantOperations.snapshot()) {
     const projectSelect = document.getElementById('project');
     const previousValue = projectSelect?.value;
 
     try {
         const apps = await API.fetchApps();
+        if (!tenantOperations.isCurrent(expectedRevision)) return false;
         if (!Array.isArray(apps)) return;
 
         if (projectSelect) {
@@ -69,8 +72,11 @@ async function loadProjectOptions() {
                 projectSelect.title = 'Projeto herdado do app selecionado';
             }
         }
+        return true;
     } catch (error) {
+        if (!tenantOperations.isCurrent(expectedRevision)) return false;
         console.error('Erro ao carregar lista de apps:', error);
+        return false;
     }
 }
 
@@ -451,21 +457,35 @@ function updateTenantSwitcher() {
 
 document.getElementById('tenantSwitchBtn')?.addEventListener('click', async () => {
     const me = AuthService.getMe();
-    if (!me || !(me.tenants || []).length) return;
+    if (!me || !(me.tenants || []).length || tenantOperations.isTransitioning()) return;
 
-    const chosenId = await showTenantSelector(me.tenants, LocalStorage.getItem('currentTenantId'));
-    if (chosenId === LocalStorage.getItem('currentTenantId')) return;
-
-    DOM.showLoading(true);
+    const transitionRevision = tenantOperations.beginTransition();
+    const addPrButton = document.getElementById('addPrBtn');
+    if (addPrButton) addPrButton.disabled = true;
+    closeAllModals();
     try {
-        await AuthService.activateTenant(chosenId);
+        const currentTenantId = LocalStorage.getItem('currentTenantId');
+        const chosenId = await showTenantSelector(me.tenants, currentTenantId);
+        if (chosenId === currentTenantId) return;
+
+        DOM.showLoading(true);
+        const activatedMe = await AuthService.activateTenant(chosenId);
+        if (!tenantOperations.isCurrent(transitionRevision)) return;
+        if (!activatedMe) throw new Error('Não foi possível ativar o tenant selecionado.');
         updateTenantSwitcher();
         AuthService.applyRoleBasedVisibility();
-        await loadProjectOptions();
+        await loadProjectOptions(transitionRevision);
+        if (!tenantOperations.isCurrent(transitionRevision)) return;
         applyDemoProjectsToSelect();
-        await loadData(true);
+        await loadData(true, transitionRevision);
+        if (!tenantOperations.isCurrent(transitionRevision)) return;
         DOM.showToast('Tenant alterado.');
+    } catch (error) {
+        console.error('Erro ao trocar tenant:', error);
+        DOM.showToast('Não foi possível trocar o tenant.', 'error');
     } finally {
+        tenantOperations.endTransition(transitionRevision);
+        if (addPrButton) addPrButton.disabled = false;
         DOM.showLoading(false);
     }
 });
@@ -694,18 +714,22 @@ function getVersionAssignableUsers() {
     return availableUsers.filter(user => (user.role || '').toLowerCase() === 'dev');
 }
 
-async function loadUsers() {
+async function loadUsers(expectedRevision = tenantOperations.snapshot()) {
     // Issue #34: sem token não há lista de usuários — o endpoint anônimo de perfis foi
     // removido (vazava usuários de todos os tenants) e a tela de login já é e-mail + senha.
     if (!LocalStorage.getItem('token')) return;
 
     try {
         const users = await API.fetchUsers();
+        if (!tenantOperations.isCurrent(expectedRevision)) return false;
 
         availableUsers = Array.isArray(users) ? users : [];
         populateDevList();
+        return true;
     } catch (error) {
+        if (!tenantOperations.isCurrent(expectedRevision)) return false;
         console.error('Erro ao carregar usuários:', error);
+        return false;
     }
 }
 
@@ -788,24 +812,27 @@ async function confirmRequestVersionSelection() {
     }
 }
 
-async function loadPrTablesData(animate = false) {
+async function loadPrTablesData(animate = false, expectedRevision = tenantOperations.snapshot()) {
     const prResult = await API.fetchPRs();
+    if (!tenantOperations.isCurrent(expectedRevision)) return false;
     if (!prResult || !Array.isArray(prResult.prs)) {
         throw new Error('Falha ao carregar PRs');
     }
-    currentData.prs = appFilter
-        ? prResult.prs.filter(p => p.appId === currentAppId)
-        : prResult.prs;
-    refreshOpenPrs(animate);
-
     const batches = await API.fetchBatches();
+    if (!tenantOperations.isCurrent(expectedRevision)) return false;
     if (!Array.isArray(batches)) {
         throw new Error('Falha ao carregar lotes');
     }
+
+    currentData.prs = appFilter
+        ? prResult.prs.filter(p => p.appId === currentAppId)
+        : prResult.prs;
     currentData.batches = appFilter
         ? batches.filter(b => b.appId === currentAppId)
         : batches;
+    refreshOpenPrs(animate);
     refreshApprovedPrs(animate);
+    return true;
 }
 
 function refreshTestingAndHistory(animate = false) {
@@ -819,7 +846,7 @@ function refreshTestingAndHistory(animate = false) {
     if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
 }
 
-async function loadData(skipLoading = false) {
+async function loadData(skipLoading = false, expectedRevision = tenantOperations.snapshot()) {
     const token = LocalStorage.getItem('token');
     const appUser = LocalStorage.getItem('appUser');
     
@@ -828,22 +855,26 @@ async function loadData(skipLoading = false) {
     }
     
     try {
-        await loadUsers();
+        await loadUsers(expectedRevision);
+        if (!tenantOperations.isCurrent(expectedRevision)) return;
 
         // Sequential boot: open PRs first, then approved PRs
-        await loadPrTablesData(false);
+        await loadPrTablesData(false, expectedRevision);
+        if (!tenantOperations.isCurrent(expectedRevision)) return;
 
         const sprints = await API.fetchSprints();
+        if (!tenantOperations.isCurrent(expectedRevision)) return;
         if (!Array.isArray(sprints)) {
             throw new Error('Falha ao carregar sprints');
         }
         currentData.sprints = sprints;
         refreshTestingAndHistory(false);
     } catch (error) {
+        if (!tenantOperations.isCurrent(expectedRevision)) return;
         console.error('Erro ao carregar dados:', error);
         DOM.showToast('Erro ao carregar dados da API', 'error');
     } finally {
-        if (!skipLoading) {
+        if (!skipLoading && tenantOperations.isCurrent(expectedRevision)) {
             DOM.showLoading(false);
         }
     }
@@ -939,7 +970,13 @@ function openEditModal(pr) {
     prModal.style.display = 'flex';
 }
 
-async function openAddModal() {
+function openAddModal() {
+    if (tenantOperations.isTransitioning()) {
+        DOM.showToast('Aguarde a troca de tenant terminar.', 'info');
+        return;
+    }
+
+    const openingRevision = tenantOperations.snapshot();
     document.getElementById('modalTitle').textContent = 'Novo Pull Request';
     setPrCreationRequiredState(true);
     prForm.reset();
@@ -950,15 +987,7 @@ async function openAddModal() {
     
     document.getElementById('relatedTasksContainer').innerHTML = '';
 
-    let currentMe = null;
-    try {
-        currentMe = await AuthService.refreshMe();
-    } catch (error) {
-        console.error('Erro ao buscar identidade atual para o modal de PR:', error);
-    }
-
-    await loadUsers();
-
+    const currentMe = AuthService.getMe();
     const appUser = currentMe?.name || LocalStorage.getItem('appUser');
     if (appUser) {
         document.getElementById('dev').value = appUser;
@@ -984,7 +1013,8 @@ async function openAddModal() {
 
     const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
     if (addRelatedBtn) addRelatedBtn.disabled = false;
-    
+
+    if (!tenantOperations.isCurrent(openingRevision) || tenantOperations.isTransitioning()) return;
     prModal.style.display = 'flex';
 }
 

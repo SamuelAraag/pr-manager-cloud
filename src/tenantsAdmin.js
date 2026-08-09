@@ -406,7 +406,8 @@ tenantForm?.addEventListener('submit', async (e) => {
 });
 
 document.getElementById('tenantNewBtn')?.addEventListener('click', () => openTenantForm());
-tenantModal?.querySelectorAll('.close-btn, .close-modal').forEach(btn => btn.addEventListener('click', closeTenantForm));
+Form.bindDismissButton(document.getElementById('tenantFormCancel'), closeTenantForm);
+Form.bindDismissButton(tenantModal?.querySelector('.close-btn'), closeTenantForm);
 
 // ── Convites pendentes (§8.3/§8.4 do plano — só PlatformAdmin aprova/rejeita/remove) ──────
 

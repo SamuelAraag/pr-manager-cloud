@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     beginFormSubmission,
+    bindDismissButton,
     endFormSubmission,
     isOptionalUrl,
     isRequired,
@@ -83,4 +84,23 @@ test('beginFormSubmission impede segundo envio e restaura o botão ao finalizar'
     assert.equal(beginFormSubmission(form), true);
     endFormSubmission(form);
     assert.equal(button.disabled, true);
+});
+
+test('bindDismissButton cancela o evento e executa o fechamento', () => {
+    let listener;
+    let dismissed = false;
+    const button = { addEventListener: (_event, callback) => { listener = callback; } };
+    const event = {
+        defaultPrevented: false,
+        propagationStopped: false,
+        preventDefault() { this.defaultPrevented = true; },
+        stopPropagation() { this.propagationStopped = true; }
+    };
+
+    bindDismissButton(button, () => { dismissed = true; });
+    listener(event);
+
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(event.propagationStopped, true);
+    assert.equal(dismissed, true);
 });
