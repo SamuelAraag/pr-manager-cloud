@@ -3,7 +3,7 @@
  * Centralized service for JWT token handling and role-based access control
  */
 
-import { getItem, setItem } from './localStorageService.js';
+import { clearSession, getItem, removeItem, setItem } from './localStorageService.js';
 import { ROLES, PERMISSIONS } from './constants/roles.js';
 import * as API from './apiService.js';
 
@@ -103,6 +103,14 @@ export async function refreshMe() {
     try {
         const me = await API.fetchMe();
         meCache = me;
+        if (me?.name) setItem('appUser', me.name);
+        if (me?.id) setItem('appUserId', me.id);
+
+        const tenantIds = (me?.tenants || []).map(tenant => tenant.tenantId);
+        const storedTenantId = getItem('currentTenantId');
+        if (storedTenantId && !tenantIds.includes(storedTenantId)) {
+            removeItem('currentTenantId');
+        }
         if (me?.currentTenantId) {
             setItem('currentTenantId', me.currentTenantId);
         }
@@ -112,6 +120,47 @@ export async function refreshMe() {
         meCache = null;
         return null;
     }
+}
+
+/**
+ * Restaura uma sessão persistida e garante que o tenant salvo ainda pertence ao usuário.
+ * Páginas que não possuem seletor devem redirecionar para o Dashboard quando o retorno for
+ * "tenant-selection-required" ou "no-tenant".
+ */
+export async function restoreSession() {
+    if (!getItem('token')) return { state: 'unauthenticated', me: null };
+
+    let me = await refreshMe();
+    if (!me) {
+        clearSession();
+        return { state: 'unauthenticated', me: null };
+    }
+
+    const tenants = me.tenants || [];
+    if (tenants.length === 0) {
+        removeItem('currentTenantId');
+        return { state: 'no-tenant', me };
+    }
+
+    if (!me.currentTenantId && tenants.length === 1) {
+        setItem('currentTenantId', tenants[0].tenantId);
+        me = await refreshMe();
+        if (!me) {
+            clearSession();
+            return { state: 'unauthenticated', me: null };
+        }
+    }
+
+    if (!me.currentTenantId) {
+        return { state: 'tenant-selection-required', me };
+    }
+
+    return { state: 'ready', me };
+}
+
+export async function activateTenant(tenantId) {
+    setItem('currentTenantId', tenantId);
+    return refreshMe();
 }
 
 /** @returns {object|null} último resultado cacheado de refreshMe() */
@@ -294,6 +343,12 @@ export function applyRoleBasedVisibility() {
             element.style.display = 'none';
         }
     });
+
+    document.documentElement.classList.add('auth-ready');
+}
+
+export function markAuthenticationPending() {
+    document.documentElement.classList.remove('auth-ready');
 }
 
 // Export all functions
@@ -316,5 +371,8 @@ export default {
     refreshMe,
     getMe,
     getRoleInCurrentTenant,
-    getMyTenants
+    getMyTenants,
+    restoreSession,
+    activateTenant,
+    markAuthenticationPending
 };

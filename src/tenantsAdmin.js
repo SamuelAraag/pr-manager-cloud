@@ -6,7 +6,9 @@ import * as AuthService from './authService.js';
 import * as LocalStorage from './localStorageService.js';
 import * as DOM from './domService.js';
 import { initializeTheme } from './themeService.js';
+import * as Form from './formService.js';
 
+AuthService.markAuthenticationPending();
 initializeTheme('themeToggleBtn');
 DOM.enableEscapeToCloseModals();
 
@@ -23,6 +25,8 @@ let adminUsuarioEncontrado = null;
 let membrosSelecionados = new Set();
 let editingTenantId = null;
 let editMembersState = [];
+Form.prepareForm(tenantForm);
+Form.prepareForm(approveForm);
 
 function traduzErro(error) {
     const friendly = {
@@ -316,6 +320,7 @@ function renderEditMembersAddList() {
 document.getElementById('tenantEditMembersFilter')?.addEventListener('input', renderEditMembersAddList);
 
 function openTenantForm(tenant = null) {
+    Form.resetFormState(tenantForm);
     document.getElementById('tenantFormTitle').textContent = tenant ? `Editar: ${tenant.name}` : 'Novo tenant';
     document.getElementById('tenantFormId').value = tenant ? tenant.id : '';
     document.getElementById('tenantFormName').value = tenant ? tenant.name : '';
@@ -352,6 +357,7 @@ function openTenantForm(tenant = null) {
 
 function closeTenantForm() {
     tenantModal.style.display = 'none';
+    Form.resetFormState(tenantForm);
 }
 
 document.getElementById('tenantFormAdminEmail')?.addEventListener('input', atualizarCamposConformeEmail);
@@ -359,21 +365,33 @@ document.getElementById('tenantFormAdminEmail')?.addEventListener('input', atual
 tenantForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('tenantFormId').value;
+    const nameField = document.getElementById('tenantFormName');
+    const adminEmailField = document.getElementById('tenantFormAdminEmail');
+    const adminNameField = document.getElementById('tenantFormAdminName');
+    const adminPasswordField = document.getElementById('tenantFormAdminPassword');
+    const adminEmailFilled = !id && Form.isRequired(adminEmailField.value);
+    if (!Form.validateFields([
+        { field: nameField, validate: Form.isRequired, message: 'Informe o nome do tenant.' },
+        { field: adminEmailField, validate: value => !!id || !Form.isRequired(value) || Form.isValidEmail(value), message: 'Informe um email válido.' },
+        { field: adminNameField, validate: value => !adminEmailFilled || !!adminUsuarioEncontrado || Form.isRequired(value), message: 'Informe o nome do administrador.' },
+        { field: adminPasswordField, validate: value => !adminEmailFilled || !!adminUsuarioEncontrado || Form.isRequired(value), message: 'Informe a senha inicial do administrador.' }
+    ])) return;
+    if (!Form.beginFormSubmission(tenantForm)) return;
 
     try {
         if (id) {
             await API.updateTenant(id, {
-                name: document.getElementById('tenantFormName').value.trim(),
+                name: nameField.value.trim(),
                 status: document.getElementById('tenantFormStatus').value,
             });
         } else {
             await API.createTenant({
-                name: document.getElementById('tenantFormName').value.trim(),
-                adminEmail: document.getElementById('tenantFormAdminEmail').value.trim(),
+                name: nameField.value.trim(),
+                adminEmail: adminEmailField.value.trim(),
                 // §2.3 do plano: e-mail já existente vincula sem precisar disso — o backend
                 // ignora nome/senha quando encontra o usuário pelo e-mail.
-                adminName: adminUsuarioEncontrado ? '' : document.getElementById('tenantFormAdminName').value.trim(),
-                adminPassword: adminUsuarioEncontrado ? '' : document.getElementById('tenantFormAdminPassword').value,
+                adminName: adminUsuarioEncontrado ? '' : adminNameField.value.trim(),
+                adminPassword: adminUsuarioEncontrado ? '' : adminPasswordField.value,
                 memberUserIds: [...membrosSelecionados],
             });
         }
@@ -382,6 +400,8 @@ tenantForm?.addEventListener('submit', async (e) => {
         DOM.showToast('Tenant salvo com sucesso.');
     } catch (error) {
         DOM.showToast(traduzErro(error), 'error');
+    } finally {
+        Form.endFormSubmission(tenantForm);
     }
 });
 
@@ -453,6 +473,7 @@ async function renderInvitationsTable() {
 }
 
 function openApproveForm(invitationId) {
+    Form.resetFormState(approveForm);
     document.getElementById('approveFormId').value = invitationId;
     document.getElementById('approveFormPassword').value = '';
     approveModal.style.display = 'flex';
@@ -460,12 +481,14 @@ function openApproveForm(invitationId) {
 
 function closeApproveForm() {
     approveModal.style.display = 'none';
+    Form.resetFormState(approveForm);
 }
 
 approveForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('approveFormId').value;
     const password = document.getElementById('approveFormPassword').value;
+    if (!Form.beginFormSubmission(approveForm)) return;
 
     try {
         await API.approveInvitation(id, password ? { initialPassword: password } : {});
@@ -474,6 +497,8 @@ approveForm?.addEventListener('submit', async (e) => {
         DOM.showToast('Convite aprovado.');
     } catch (error) {
         DOM.showToast(traduzErro(error), 'error');
+    } finally {
+        Form.endFormSubmission(approveForm);
     }
 });
 
@@ -481,18 +506,21 @@ approveModal?.querySelectorAll('.close-btn, .close-modal').forEach(btn => btn.ad
 
 async function boot() {
     LocalStorage.init?.();
-    if (!LocalStorage.getItem('token')) {
+    const session = await AuthService.restoreSession();
+    if (session.state !== 'ready') {
         window.location.href = 'index.html';
         return;
     }
 
     // Guarda de acesso: rota é só de PlatformAdmin. O backend (policy RequirePlatformAdmin)
     // é a fonte de verdade — isto só evita renderizar a tela pra quem não deveria vê-la.
-    const me = await AuthService.refreshMe();
+    const me = session.me;
     if (!me || !me.isPlatformAdmin) {
         window.location.href = 'index.html';
         return;
     }
+
+    AuthService.applyRoleBasedVisibility();
 
     await renderTenantsTable();
     await renderInvitationsTable();

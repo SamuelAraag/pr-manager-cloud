@@ -1,7 +1,9 @@
 {
   "name": "pr-manager-frontend",
   "private": true,
+  "type": "module",
   "scripts": {
+    "test": "node --test",
     "build:styles": "sass --load-path=node_modules --silence-deprecation=import --quiet-deps src/styles/styles.scss src/style.css --style=expanded --no-source-map",
     "watch:styles": "sass --load-path=node_modules --silence-deprecation=import --quiet-deps --watch src/styles/styles.scss:src/style.css --style=expanded --no-source-map",
     "build:styles:prod": "sass --load-path=node_modules --silence-deprecation=import --quiet-deps src/styles/styles.scss src/style.min.css --style=compressed --no-source-map",

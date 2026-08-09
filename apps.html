@@ -11,7 +11,7 @@
 </head>
 
 <body>
-    <div class="container">
+    <div class="container auth-guarded">
         <header class="module-page-header">
             <div class="logo-area">
                 <div>
@@ -53,10 +53,12 @@
                 <label class="module-field">
                     <span>Nome</span>
                     <input id="appFormName" type="text" required placeholder="Ex: YouTube">
+                    <span class="field-error">Informe o nome da aplicação.</span>
                 </label>
                 <label class="module-field">
                     <span>Repositório (URL)</span>
                     <input id="appFormRepo" type="url" placeholder="https://github.com/org/repo/">
+                    <span class="field-error">Informe uma URL válida para o repositório.</span>
                 </label>
                 <label class="module-field">
                     <span>Descrição</span>
@@ -64,7 +66,7 @@
                 </label>
                 <div class="module-form-actions">
                     <button class="btn btn-outline close-modal" type="button">Cancelar</button>
-                    <button class="btn btn-primary" type="submit">Salvar</button>
+                    <button id="appFormSubmit" class="btn btn-primary" type="submit">Salvar</button>
                 </div>
             </form>
         </div>

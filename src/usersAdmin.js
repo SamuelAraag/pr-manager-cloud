@@ -5,7 +5,9 @@ import * as AuthService from './authService.js';
 import * as LocalStorage from './localStorageService.js';
 import * as DOM from './domService.js';
 import { initializeTheme } from './themeService.js';
+import * as Form from './formService.js';
 
+AuthService.markAuthenticationPending();
 initializeTheme('themeToggleBtn');
 DOM.enableEscapeToCloseModals();
 
@@ -17,6 +19,8 @@ const inviteForm = document.getElementById('inviteForm');
 
 let usersState = [];
 let membershipsState = [];
+Form.prepareForm(userForm);
+Form.prepareForm(inviteForm);
 
 async function renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
@@ -66,6 +70,7 @@ async function renderUsersTable() {
 }
 
 function openUserForm(user = null) {
+    Form.resetFormState(userForm);
     document.getElementById('userFormTitle').textContent = user ? `Editar: ${user.name}` : 'Novo usuário';
     document.getElementById('userFormId').value = user ? user.id : '';
     document.getElementById('userFormName').value = user ? user.name : '';
@@ -85,6 +90,7 @@ function openUserForm(user = null) {
 
 function closeUserForm() {
     userModal.style.display = 'none';
+    Form.resetFormState(userForm);
 }
 
 function traduzErro(error) {
@@ -114,9 +120,19 @@ document.addEventListener('keydown', (e) => {
 userForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('userFormId').value;
+    const nameField = document.getElementById('userFormName');
+    const emailField = document.getElementById('userFormEmail');
+    const passwordField = document.getElementById('userFormPassword');
+    if (!Form.validateFields([
+        { field: nameField, validate: Form.isRequired, message: 'Informe o nome do usuário.' },
+        { field: emailField, validate: Form.isValidEmail, message: 'Informe um email válido.' },
+        { field: passwordField, validate: value => !!id || Form.isRequired(value), message: 'Informe a senha inicial.' }
+    ])) return;
+    if (!Form.beginFormSubmission(userForm)) return;
+
     const payload = {
-        name: document.getElementById('userFormName').value.trim(),
-        email: document.getElementById('userFormEmail').value.trim(),
+        name: nameField.value.trim(),
+        email: emailField.value.trim(),
         role: document.getElementById('userFormRole').value,
         // Issue #41: isAdmin não é mais enviado — o backend deriva de Papel = Admin.
         avatarUrl: document.getElementById('userFormAvatar').value.trim() || null
@@ -126,14 +142,13 @@ userForm?.addEventListener('submit', async (e) => {
     if (AuthService.isPlatformAdmin()) {
         payload.isPlatformAdmin = document.getElementById('userFormIsPlatformAdmin').checked;
     }
-    const password = document.getElementById('userFormPassword').value;
+    const password = passwordField.value;
     if (password) payload.password = password;
 
     try {
         if (id) {
             await API.updateUser(id, payload);
         } else {
-            if (!password) { DOM.showToast('Senha é obrigatória para criar usuário.', 'error'); return; }
             await API.createUser(payload);
         }
         closeUserForm();
@@ -141,6 +156,8 @@ userForm?.addEventListener('submit', async (e) => {
         DOM.showToast('Usuário salvo com sucesso.');
     } catch (error) {
         DOM.showToast(traduzErro(error), 'error');
+    } finally {
+        Form.endFormSubmission(userForm);
     }
 });
 
@@ -218,6 +235,7 @@ async function renderMembershipsTable() {
 }
 
 function openInviteForm() {
+    Form.resetFormState(inviteForm);
     document.getElementById('inviteFormEmail').value = '';
     document.getElementById('inviteFormRole').value = 'Member';
     inviteModal.style.display = 'flex';
@@ -226,6 +244,7 @@ function openInviteForm() {
 
 function closeInviteForm() {
     inviteModal.style.display = 'none';
+    Form.resetFormState(inviteForm);
 }
 
 document.getElementById('membershipInviteBtn')?.addEventListener('click', openInviteForm);
@@ -235,22 +254,30 @@ inviteForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const tenantId = AuthService.getMe()?.currentTenantId;
     if (!tenantId) return;
+    const emailField = document.getElementById('inviteFormEmail');
+    if (!Form.validateFields([
+        { field: emailField, validate: Form.isValidEmail, message: 'Informe um email válido.' }
+    ])) return;
+    if (!Form.beginFormSubmission(inviteForm)) return;
 
     try {
         await API.createTenantInvitation(tenantId, {
-            email: document.getElementById('inviteFormEmail').value.trim(),
+            email: emailField.value.trim(),
             requestedTenantRole: document.getElementById('inviteFormRole').value
         });
         closeInviteForm();
         DOM.showToast('Convite enviado — aguardando aprovação do administrador da plataforma.');
     } catch (error) {
         DOM.showToast(traduzErro(error), 'error');
+    } finally {
+        Form.endFormSubmission(inviteForm);
     }
 });
 
 async function boot() {
     LocalStorage.init?.();
-    if (!LocalStorage.getItem('token')) {
+    const session = await AuthService.restoreSession();
+    if (session.state !== 'ready') {
         window.location.href = 'index.html';
         return;
     }
@@ -258,11 +285,13 @@ async function boot() {
     // Guarda de acesso: rota é de administrador do tenant. PlatformAdmin/TenantAdmin não são
     // mais claim do JWT (Épico 9) — precisa da checagem fresca via /Users/me. O backend
     // (policy RequireTenantAdmin) é a fonte de verdade; isto só evita renderizar a tela.
-    const me = await AuthService.refreshMe();
+    const me = session.me;
     if (!me || !AuthService.isAdminGlobal()) {
         window.location.href = 'index.html';
         return;
     }
+
+    AuthService.applyRoleBasedVisibility();
 
     await renderUsersTable();
     await renderMembershipsTable();

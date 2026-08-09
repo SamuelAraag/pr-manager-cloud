@@ -10,6 +10,7 @@ import { connectSignalR } from './notificationService.js';
 import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/apiConstants.js';
 import { initializeTheme } from './themeService.js';
 import { initDateRangePicker } from './dateRangePicker.js';
+import * as Form from './formService.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -22,6 +23,7 @@ const appFilter = new URLSearchParams(window.location.search).get('app');
 // id do app filtrado (resolvido quando a lista de apps carrega) — chave real do filtro de PRs/lotes
 let currentAppId = null;
 
+AuthService.markAuthenticationPending();
 initializeTheme('themeToggleBtn');
 
 // Épico 5.3: o <select id="project"> não tem mais lista fixa no HTML — vem inteira da
@@ -51,6 +53,8 @@ async function loadProjectOptions() {
             }
         }
 
+        updateProjectEmptyState(apps);
+
         if (appFilter) {
             const app = apps.find(a => a.name === appFilter);
             AuthService.setCurrentAppRole(app?.myRole ?? null);
@@ -67,6 +71,20 @@ async function loadProjectOptions() {
         }
     } catch (error) {
         console.error('Erro ao carregar lista de apps:', error);
+    }
+}
+
+function updateProjectEmptyState(apps) {
+    const hasApps = Array.isArray(apps) && apps.length > 0;
+    const emptyState = document.getElementById('projectEmptyState');
+    const adminLink = document.getElementById('projectEmptyAdminLink');
+    const submitButton = document.getElementById('prSubmitBtn');
+
+    if (emptyState) emptyState.style.display = hasApps ? 'none' : 'block';
+    if (adminLink) adminLink.style.display = !hasApps && AuthService.isAdminGlobal() ? 'inline' : 'none';
+    if (submitButton) {
+        submitButton.dataset.permanentDisabled = hasApps ? 'false' : 'true';
+        submitButton.disabled = !hasApps;
     }
 }
 
@@ -119,26 +137,35 @@ function setPrCreationRequiredState(isCreate) {
     });
 }
 
-function validatePrCreationForm() {
-    const requiredFields = [
-        { id: 'project', label: 'Projeto' },
-        { id: 'dev', label: 'Desenvolvedor' },
-        { id: 'summary', label: 'Resumo' },
-        { id: 'prLink', label: 'Link PR' },
-        { id: 'taskLink', label: 'Link Task (Jira)' },
-        { id: 'teamsLink', label: 'Post no Teams' },
+function validatePrForm(isCreate) {
+    const project = document.getElementById('project');
+    const dev = document.getElementById('dev');
+    const summary = document.getElementById('summary');
+    const prLink = document.getElementById('prLink');
+    const taskLink = document.getElementById('taskLink');
+    const teamsLink = document.getElementById('teamsLink');
+    const rules = [
+        { field: project, validate: Form.isRequired, message: 'Selecione uma aplicação.' },
+        { field: dev, validate: Form.isRequired, message: 'Selecione o desenvolvedor.' },
+        { field: summary, validate: Form.isRequired, message: 'Informe o resumo do PR.' },
+        { field: prLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o PR.' },
+        { field: taskLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para a task.' },
+        { field: teamsLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o post no Teams.' },
     ];
 
-    for (const fieldInfo of requiredFields) {
-        const value = document.getElementById(fieldInfo.id)?.value.trim();
-        if (!value) {
-            DOM.showToast(`${fieldInfo.label} é obrigatório.`, 'warning');
-            document.getElementById(fieldInfo.id)?.focus();
-            return false;
-        }
-    }
+    document.querySelectorAll('.related-task-group').forEach(group => {
+        const urlField = group.querySelector('.related-task-input-url');
+        const summaryField = group.querySelector('.related-task-input-summary');
+        rules.push({
+            field: urlField,
+            validate: value => Form.isRequired(value)
+                ? Form.isOptionalUrl(value)
+                : !Form.isRequired(summaryField?.value),
+            message: 'Informe uma URL válida para a task relacionada.'
+        });
+    });
 
-    return true;
+    return Form.validateFields(rules);
 }
 
 function getPrErrorMessage(errorMessage) {
@@ -191,6 +218,7 @@ const currentUserDisplayRight = document.getElementById('currentUserDisplayRight
 const godModeContainer = document.getElementById('godModeContainer');
 const godModeInput = document.getElementById('godModeInput');
 let pendingVersionRequestContext = null;
+Form.prepareForm(prForm);
 
 if (currentUserDisplay) currentUserDisplay.addEventListener('click', showProfileSelection);
 if (currentUserDisplayRight) currentUserDisplayRight.addEventListener('click', showProfileSelection);
@@ -340,31 +368,30 @@ if (godModeInput) {
 // currentTenantId em localStorage aponta pra um tenant válido antes de carregar dados —
 // toda chamada à API depois disso já sai com o header X-Tenant-Id certo.
 async function ensureTenantContext() {
-    const me = await AuthService.refreshMe();
-    if (!me) {
-        // token inválido/expirado: volta pro login em vez de travar a tela
-        LocalStorage.clearSession();
+    const session = await AuthService.restoreSession();
+    if (session.state === 'unauthenticated') {
         showProfileSelection();
         return false;
     }
 
+    let me = session.me;
     const tenants = me.tenants || [];
-    if (tenants.length === 0) {
+    if (session.state === 'no-tenant') {
         document.getElementById('noTenantScreen').style.display = 'flex';
         return false;
     }
 
-    const storedId = LocalStorage.getItem('currentTenantId');
-    const storedIsValid = storedId && tenants.some(t => t.tenantId === storedId);
-
-    if (tenants.length === 1) {
-        LocalStorage.setItem('currentTenantId', tenants[0].tenantId);
-    } else if (!storedIsValid) {
+    if (session.state === 'tenant-selection-required') {
         const chosenId = await showTenantSelector(tenants);
-        LocalStorage.setItem('currentTenantId', chosenId);
-        await AuthService.refreshMe(); // refaz com o header certo pra pegar o papel no tenant escolhido
+        me = await AuthService.activateTenant(chosenId);
+        if (!me) {
+            LocalStorage.clearSession();
+            showProfileSelection();
+            return false;
+        }
     }
 
+    document.getElementById('noTenantScreen').style.display = 'none';
     updateTenantSwitcher();
     return true;
 }
@@ -429,10 +456,9 @@ document.getElementById('tenantSwitchBtn')?.addEventListener('click', async () =
     const chosenId = await showTenantSelector(me.tenants, LocalStorage.getItem('currentTenantId'));
     if (chosenId === LocalStorage.getItem('currentTenantId')) return;
 
-    LocalStorage.setItem('currentTenantId', chosenId);
     DOM.showLoading(true);
     try {
-        await AuthService.refreshMe();
+        await AuthService.activateTenant(chosenId);
         updateTenantSwitcher();
         AuthService.applyRoleBasedVisibility();
         await loadProjectOptions();
@@ -458,6 +484,7 @@ document.getElementById('noTenantLogoutBtn')?.addEventListener('click', async ()
 
 function closeAllModals() {
     prModal.style.display = 'none';
+    Form.resetFormState(prForm);
     if (setupModal) setupModal.style.display = 'none';
     if (shortcutsModal) shortcutsModal.style.display = 'none';
     if (requestVersionModal) requestVersionModal.style.display = 'none';
@@ -483,14 +510,13 @@ async function init() {
     applyDevMode();
     populateDevList();
 
-    const appUser = LocalStorage.getItem('appUser');
-    if (!appUser) {
+    if (!LocalStorage.getItem('token')) {
         showProfileSelection();
     } else {
-        updateUserDisplay(appUser);
-
         const tenantOk = await ensureTenantContext();
         if (!tenantOk) return;
+        const appUser = LocalStorage.getItem('appUser');
+        updateUserDisplay(appUser);
         AuthService.applyRoleBasedVisibility();
 
         await loadProjectOptions();
@@ -608,6 +634,7 @@ function showProfileSelection() {
     const errorEl = document.getElementById('loginError');
     if (passwordInput) passwordInput.value = '';
     if (errorEl) errorEl.style.display = 'none';
+    AuthService.markAuthenticationPending();
 
     profileScreen.style.display = 'flex';
     document.body.classList.add('no-scroll');
@@ -675,10 +702,8 @@ async function loadUsers() {
     try {
         const users = await API.fetchUsers();
 
-        if (Array.isArray(users) && users.length > 0) {
-            availableUsers = users;
-            populateDevList();
-        }
+        availableUsers = Array.isArray(users) ? users : [];
+        populateDevList();
     } catch (error) {
         console.error('Erro ao carregar usuários:', error);
     }
@@ -846,6 +871,7 @@ function refreshApprovedPrs(animate = false) {
 }
 
 function openEditModal(pr) {
+    Form.resetFormState(prForm);
     document.getElementById('modalTitle').textContent = 'Editar Pull Request';
     setPrCreationRequiredState(false);
     document.getElementById('prId').value = pr.id;
@@ -917,6 +943,7 @@ async function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Novo Pull Request';
     setPrCreationRequiredState(true);
     prForm.reset();
+    Form.resetFormState(prForm);
     document.getElementById('prId').value = '';
     
     updateSummaryLabel();
@@ -1064,8 +1091,9 @@ function addRelatedTaskInput(url = '', summary = '') {
     }
     
     const div = document.createElement('div');
-    div.className = 'related-task-group';
+    div.className = 'related-task-group form-group';
     div.style.display = 'flex';
+    div.style.flexWrap = 'wrap';
     div.style.gap = '10px';
     div.style.alignItems = 'center';
     
@@ -1110,6 +1138,9 @@ function addRelatedTaskInput(url = '', summary = '') {
     div.appendChild(summaryInput);
     div.appendChild(urlInput);
     div.appendChild(removeBtn);
+    const errorElement = document.createElement('span');
+    errorElement.className = 'field-error';
+    div.appendChild(errorElement);
     container.appendChild(div);
     
     if(window.lucide) {
@@ -1444,15 +1475,17 @@ prForm.addEventListener('submit', async (e) => {
     const prIdInput = document.getElementById('prId').value;
     const devName = devInputForForm.value;
 
-    if (!prIdInput && !validatePrCreationForm()) {
+    if (!validatePrForm(!prIdInput)) {
         return;
     }
 
     if (!availableUsers.find(u => u.name === devName)) {
-        DOM.showToast('Por favor, selecione um desenvolvedor válido da lista.', 'warning');
+        Form.setFieldError(devInputForForm, 'Selecione um desenvolvedor válido da lista.');
         devInputForForm.focus();
         return;
     }
+
+    if (!Form.beginFormSubmission(prForm)) return;
 
     try {
         DOM.showLoading(true);
@@ -1460,7 +1493,7 @@ prForm.addEventListener('submit', async (e) => {
         const devId = getUserIdByName(devName);
         
         if (!devId) {
-            DOM.showToast('Atenção: Desenvolvedor não encontrado', 'warning');
+            Form.setFieldError(devInputForForm, 'Desenvolvedor não encontrado no tenant atual.');
             return;
         }
         
@@ -1482,35 +1515,32 @@ prForm.addEventListener('submit', async (e) => {
                 .join(';')
         };
 
-        let savedPR;
-        
+        const successMessage = prIdInput
+            ? 'PR atualizado com sucesso!'
+            : 'PR criado com sucesso!';
+
         if (prIdInput) {
-            savedPR = await API.updatePR(prIdInput, prData);
-            // DOM.showToast('PR atualizado com sucesso!');
-            
-            // Local update
-            const index = currentData.prs.findIndex(p => p.id == prIdInput);
-            if (index !== -1 && savedPR) {
-                currentData.prs[index] = savedPR;
-            }
+            await API.updatePR(prIdInput, prData);
         } else {
-            savedPR = await API.createPR(prData);
-            DOM.showToast('PR criado com sucesso!');
-            
-            if (savedPR) {
-                currentData.prs.push(savedPR);
-            }
+            await API.createPR(prData);
         }
-        
-        refreshOpenPrs();
-        
+
         prModal.style.display = 'none';
         prForm.reset();
+        DOM.showToast(successMessage);
+
+        try {
+            await loadPrTablesData(true);
+        } catch (refreshError) {
+            console.error('PR salvo, mas o Dashboard não pôde ser atualizado:', refreshError);
+            DOM.showToast('PR salvo. Atualize a página para recarregar o Dashboard.', 'warning');
+        }
     } catch (error) {
         console.error('Erro detalhado ao salvar:', error);
         DOM.showToast('Erro ao salvar: ' + getPrErrorMessage(error.message), 'error');
     } finally {
         DOM.showLoading(false);
+        Form.endFormSubmission(prForm);
     }
 });
 

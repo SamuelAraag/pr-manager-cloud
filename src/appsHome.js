@@ -6,27 +6,27 @@ import * as AuthService from './authService.js';
 import * as LocalStorage from './localStorageService.js';
 import * as DOM from './domService.js';
 import { initializeTheme } from './themeService.js';
+import * as Form from './formService.js';
 
+AuthService.markAuthenticationPending();
 initializeTheme('themeToggleBtn');
 DOM.enableEscapeToCloseModals();
 
-// Rota exige sessão; papel Admin libera as ações de gestão
 LocalStorage.init?.();
-if (!LocalStorage.getItem('token')) {
-    window.location.href = 'index.html';
-}
 // isAdmin decide quem edita/desativa apps e gerencia membros — precisa bater exatamente com
 // a policy RequireTenantAdmin do backend (PlatformAdmin OU TenantAdmin do tenant atual), não
 // com o papel legado global (User.Role) que AuthService.isAdmin() lê do JWT. Um usuário pode
 // ser "Admin" nesse campo legado e ainda assim ser só Developer/Member no tenant atual — o
 // backend já rejeita (403) esse caso, mas o botão de editar não pode nem aparecer pra ele.
-// Setado por init() abaixo, depois de refreshMe() popular o papel no tenant atual.
+// Setado por init() abaixo, depois de restoreSession() popular o papel no tenant atual.
 let isAdmin = false;
 
 const appsGrid = document.getElementById('appsGrid');
 const appsCount = document.getElementById('appsCount');
 const appFormModal = document.getElementById('appFormModal');
 const membersModal = document.getElementById('membersModal');
+const appForm = document.getElementById('appForm');
+Form.prepareForm(appForm);
 
 let appsState = [];
 let membersAppId = null;
@@ -106,6 +106,7 @@ async function renderApps() {
 // ── Formulário de app (Admin) ────────────────────────────────────────────────
 
 function openAppForm(app = null) {
+    Form.resetFormState(appForm);
     document.getElementById('appFormTitle').textContent = app ? `Editar: ${app.name}` : 'Novo App';
     document.getElementById('appFormId').value = app ? app.id : '';
     document.getElementById('appFormName').value = app ? app.name : '';
@@ -118,9 +119,17 @@ function openAppForm(app = null) {
 document.getElementById('appForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('appFormId').value;
+    const nameField = document.getElementById('appFormName');
+    const repositoryField = document.getElementById('appFormRepo');
+    if (!Form.validateFields([
+        { field: nameField, validate: Form.isRequired, message: 'Informe o nome da aplicação.' },
+        { field: repositoryField, validate: Form.isOptionalUrl, message: 'Informe uma URL válida para o repositório.' }
+    ])) return;
+    if (!Form.beginFormSubmission(appForm)) return;
+
     const payload = {
-        name: document.getElementById('appFormName').value.trim(),
-        repositoryUrl: document.getElementById('appFormRepo').value.trim(),
+        name: nameField.value.trim(),
+        repositoryUrl: repositoryField.value.trim(),
         description: document.getElementById('appFormDescription').value.trim() || null
     };
 
@@ -129,8 +138,11 @@ document.getElementById('appForm')?.addEventListener('submit', async (e) => {
         else await API.createApp(payload);
         appFormModal.style.display = 'none';
         await renderApps();
+        DOM.showToast('Aplicação salva com sucesso.');
     } catch (error) {
-        await DOM.alertDialog(traduzErro(error));
+        DOM.showToast(traduzErro(error), 'error');
+    } finally {
+        Form.endFormSubmission(appForm);
     }
 });
 
@@ -148,11 +160,8 @@ async function openMembers(appId) {
         // Candidatos são os membros ativos do tenant atual (TenantMembership), não
         // API.fetchUsers() — essa lista é filtrada pela coluna legada User.TenantId e não
         // enxerga usuários vinculados a este tenant só via convite/TenantMembership.
-        // AuthService.getMe() não serve aqui: essa rota nunca chama refreshMe(), então o
-        // cache em memória do módulo authService fica nulo neste carregamento de página.
-        // currentTenantId persiste em localStorage desde o último refreshMe() (login/troca
-        // de tenant), então é a fonte confiável fora das páginas que chamam refreshMe().
-        const tenantId = LocalStorage.getItem('currentTenantId');
+        // A sessão já foi revalidada no boot; usa o tenant confirmado pelo /Users/me.
+        const tenantId = AuthService.getMe()?.currentTenantId;
         const tenantMembers = tenantId ? await API.fetchTenantMemberships(tenantId) : [];
         select.innerHTML = '<option value="">Selecione um usuário</option>';
         tenantMembers
@@ -243,14 +252,21 @@ function traduzErro(error) {
 document.querySelectorAll('.close-btn, .close-modal').forEach(btn =>
     btn.addEventListener('click', () => {
         appFormModal.style.display = 'none';
+        Form.resetFormState(appForm);
         membersModal.style.display = 'none';
     }));
 
 async function init() {
+    const session = await AuthService.restoreSession();
+    if (session.state !== 'ready') {
+        window.location.href = 'index.html';
+        return;
+    }
+
     // Identidade fresca (fonte: /Users/me, não o JWT) pra resolver o papel no tenant atual —
     // sem isso getRoleInCurrentTenant()/isPlatformAdmin() ficam nulos nesta página.
-    await AuthService.refreshMe();
     isAdmin = AuthService.isAdminGlobal();
+    AuthService.applyRoleBasedVisibility();
 
     if (isAdmin) {
         const newBtn = document.getElementById('appNewBtn');
