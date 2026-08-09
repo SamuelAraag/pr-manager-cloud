@@ -92,7 +92,11 @@ async function renderApps() {
         appsGrid.querySelectorAll('.app-deactivate-btn').forEach(btn =>
             btn.addEventListener('click', async () => {
                 const app = appsState.find(a => a.id === btn.dataset.id);
-                if (!confirm(`Desativar o app ${app.name}? PRs e versões existentes são preservados.`)) return;
+                const ok = await DOM.confirmDialog(
+                    `Desativar o app ${app.name}? PRs e versões existentes são preservados.`,
+                    'Desativar app',
+                    { danger: true, confirmLabel: 'Desativar' });
+                if (!ok) return;
                 try {
                     await API.deactivateApp(app.id);
                     await renderApps();
@@ -210,7 +214,14 @@ async function renderMembers() {
             }));
         tbody.querySelectorAll('.member-remove-btn').forEach(btn =>
             btn.addEventListener('click', async () => {
-                if (!confirm('Remover este membro do app?')) return;
+                // Nome vem do array `members` do closure, não de um data-attribute: evita
+                // interpolar texto do usuário no innerHTML da tabela (ver AGENTS.md).
+                const member = members.find(m => String(m.userId) === btn.dataset.user);
+                const ok = await DOM.confirmDialog(
+                    `Remover ${member?.userName || 'este membro'} do app? Ele perde o acesso a este app.`,
+                    'Remover membro',
+                    { danger: true, confirmLabel: 'Remover' });
+                if (!ok) return;
                 try {
                     await API.removeAppMember(membersAppId, btn.dataset.user);
                     await renderMembers();

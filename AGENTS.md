@@ -102,8 +102,10 @@ Todas exportadas por `src/domService.js`, salvo indicação.
 - `showToast(message, type = 'success', title = '', isRestored = false)` — feedback de
   resultado de chamada à API. `type`: `'success' | 'error' | 'warning' | 'info'`. Requer
   `<div id="toast-container"></div>` na página.
-- `confirmDialog(message, title, { confirmLabel, danger })` → `Promise<boolean>` — confirmação
-  de ação destrutiva. Já resolve foco preso, Esc, clique fora e retorno de foco.
+- `confirmDialog(message, title, { confirmLabel, cancelLabel, danger })` → `Promise<boolean>`
+  — confirmação de ação destrutiva. Já resolve foco preso, Esc, clique fora e retorno de foco.
+  `cancelLabel` (padrão `Cancelar`) é para quando a própria ação é um cancelamento e o par
+  [Cancelar] [Cancelar solicitação] ficaria ambíguo — ali o botão de recusa vira "Manter".
 - `alertDialog(message, title)` → `Promise<void>` — aviso bloqueante.
 - `enableEscapeToCloseModals()` — chamar uma vez por página que só tenha modais dispensáveis.
 - `showLoading(...)` — estado de carregamento de uma região.
@@ -191,21 +193,24 @@ client-side. A mesma regra existe no backend, que retorna `400` com
 O código antecede estas regras. Encontrar um padrão no código **não é prova** de que ele é o
 correto. Reconfira com `grep -rn "\balert(\|\bconfirm(" src/*.js` — a lista envelhece.
 
-- **`confirm()` nativo ainda em uso** em `appsHome.js`, `environments.js`, `monitorStatus.js`,
-  `organizationsAdmin.js` e `script.js`. Já migrados e bons como referência: `usersAdmin.js`,
-  `tenantsAdmin.js`, `dateRangePicker.js`. As ocorrências dentro do próprio `domService.js`
-  são o *fallback* intencional de `confirmDialog`/`alertDialog` quando falta o markup na
-  página — não são débito.
-- **`alert()` nativo só resta em `environments.js`** — os demais viraram `showToast()`. Erro
-  de rede/servidor e validação de formulário são **toast**, não diálogo bloqueante; use
-  `alertDialog()` só quando o fluxo precisa parar até o usuário confirmar a leitura.
-- **Markup do `confirmDialog` só existe em `index.html`, `usuarios.html` e `tenants.html`; o
-  do `alertDialog`, só em `apps.html`.** Sem ele, o diálogo cai no nativo sem erro visível.
+- **`alert()`/`confirm()` nativos só restam em `environments.js`** — todo o resto usa
+  `showToast()` e `confirmDialog()`. Boas referências: `script.js`, `usersAdmin.js`,
+  `tenantsAdmin.js`, `appsHome.js`. As ocorrências dentro do próprio `domService.js` são o
+  *fallback* intencional de `confirmDialog`/`alertDialog` quando falta o markup na página —
+  não são débito.
+  - Erro de rede/servidor e validação de formulário são **toast**; `alertDialog()` só quando
+    o fluxo precisa parar até o usuário confirmar a leitura.
+  - A mensagem do diálogo vai para um `<p>` via `textContent`: **`\n` não vira quebra de
+    linha**, vira espaço. Escreva em frases corridas.
+- **Markup do `confirmDialog` falta em `ambientes.html`, `changelog.html` e `ping.html`; o do
+  `alertDialog` existe só em `apps.html`.** Sem ele, o diálogo cai no nativo sem erro visível.
+  Coloque o bloco **depois** dos demais modais da página — sem `z-index` próprio, é a ordem no
+  DOM que decide quem fica por cima quando a confirmação abre sobre outro modal.
 - **`#toast-container` falta em `ambientes.html`, `apps.html`, `changelog.html` e
-  `ping.html`.** Sem ele,
-  `showToast()` retorna sem renderizar nada (`domService.js`) — a mensagem some em silêncio.
-  Adicione `<div id="toast-container" class="toast-container"></div>` antes do `<script>` da
-  página ao usar toast numa tela nova.
+  `ping.html`.** Sem ele, `showToast()` retorna sem renderizar nada (`domService.js`) — a
+  mensagem some em silêncio. Adicione
+  `<div id="toast-container" class="toast-container"></div>` antes do `<script>` da página ao
+  usar toast numa tela nova.
 - **`escapeHtml` existe em `domService.js` mas não está no `export {...}`** — hoje é
   impossível importá-lo de outro módulo. Se precisar, adicione ao export na mesma task; não
   duplique um escape local.

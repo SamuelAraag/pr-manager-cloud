@@ -184,9 +184,11 @@ function confirmDialog(message, title = 'Confirmar ação', options = {}) {
         const yesBtn = document.getElementById('confirmDialogYes');
         const noBtn = document.getElementById('confirmDialogNo');
         const previouslyFocused = document.activeElement;
-        const confirmLabel = options.confirmLabel || 'Confirmar';
 
-        yesBtn.textContent = confirmLabel;
+        yesBtn.textContent = options.confirmLabel || 'Confirmar';
+        // cancelLabel existe porque em ações do tipo "cancelar a solicitação de versão" o par
+        // [Cancelar] [Cancelar solicitação] fica ambíguo — ali o botão de recusa vira "Manter".
+        noBtn.textContent = options.cancelLabel || 'Cancelar';
         yesBtn.classList.toggle('btn-danger', options.danger === true);
         yesBtn.classList.toggle('btn-primary', options.danger !== true);
 

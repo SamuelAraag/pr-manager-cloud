@@ -524,7 +524,7 @@ async function handleSubmit(event) {
   }
 }
 
-function handleCardsClick(event) {
+async function handleCardsClick(event) {
   const button = event.target.closest("[data-action]");
   const card = event.target.closest(".module-card");
   
@@ -553,7 +553,10 @@ function handleCardsClick(event) {
   }
 
   if (action === "delete") {
-    const confirmed = window.confirm(`Deseja remover a aplicação "${app.name}"?`);
+    const confirmed = await DOM.confirmDialog(
+      `Remover a aplicação "${app.name}" do monitor de status?`,
+      'Remover aplicação',
+      { danger: true, confirmLabel: 'Remover' });
     if (!confirmed) return;
 
     API.deleteMonitorStatusApp(appId)

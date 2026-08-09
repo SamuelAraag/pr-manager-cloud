@@ -907,7 +907,13 @@ async function confirmRequestVersionSelection() {
 
     const { prIds, projectName } = pendingVersionRequestContext;
 
-    if (!confirm(`Solicitar versão para ${prIds.length} PRs aprovados de "${projectName}" e direcionar para ${selectedDev.name}?`)) {
+    const confirmed = await DOM.confirmDialog(
+        `Solicitar versão para ${prIds.length} PRs aprovados de "${projectName}" e direcionar para ${selectedDev.name}?`,
+        'Solicitar versão',
+        { confirmLabel: 'Solicitar' }
+    );
+
+    if (!confirmed) {
         return;
     }
 
@@ -1369,13 +1375,30 @@ if (confirmNewSprintBtn) {
     });
 }
 
+// Descrição curta de um PR para texto de confirmação — "PROJ-123 - resumo", caindo para o
+// projeto quando a task ou o resumo não vieram da API. Confirmação destrutiva tem que nomear
+// a entidade (AGENTS.md), nunca "Tem certeza?".
+function describePr(prId) {
+    const pr = currentData.prs.find(item => String(item.id) === String(prId));
+    const taskId = extractJiraId(pr?.taskLink);
+    return [taskId, pr?.summary].filter(Boolean).join(' - ')
+        || pr?.project
+        || 'selecionado';
+}
+
 window.approvePr = async (prId) => {
     if (!prId) return;
 
-    if (!confirm('Tem certeza que deseja aprovar este PR?')) {
+    const confirmed = await DOM.confirmDialog(
+        `Aprovar o PR "${describePr(prId)}"?`,
+        'Aprovar PR',
+        { confirmLabel: 'Aprovar' }
+    );
+
+    if (!confirmed) {
         return;
     }
-    
+
     const appUserId = LocalStorage.getItem('appUserId');
     if (!appUserId) {
         DOM.showToast('Erro: Usuário não identificado. Selecione um perfil na tela inicial.', 'error');
@@ -1410,7 +1433,13 @@ window.approvePr = async (prId) => {
 window.requestCorrection = async (prId) => {
     if (!prId) return;
 
-    if (!confirm('Solicitar correção para este PR?')) {
+    const confirmed = await DOM.confirmDialog(
+        `Solicitar correção para o PR "${describePr(prId)}"?`,
+        'Solicitar correção',
+        { confirmLabel: 'Solicitar' }
+    );
+
+    if (!confirmed) {
         return;
     }
 
@@ -1434,7 +1463,13 @@ window.requestCorrection = async (prId) => {
 window.markPrFixed = async (prId) => {
     if (!prId) return;
 
-    if (!confirm('Marcar este PR como corrigido e reenviar para revisão?')) {
+    const confirmed = await DOM.confirmDialog(
+        `Marcar o PR "${describePr(prId)}" como corrigido e reenviar para revisão?`,
+        'Marcar como corrigido',
+        { confirmLabel: 'Marcar corrigido' }
+    );
+
+    if (!confirmed) {
         return;
     }
 
@@ -1484,13 +1519,8 @@ window.togglePrHistory = async (prId) => {
 window.archivePr = async (prId) => {
     if (!prId) return;
 
-    const pr = currentData.prs.find(item => String(item.id) === String(prId));
-    const taskId = extractJiraId(pr?.taskLink);
-    const prDescription = [taskId, pr?.summary].filter(Boolean).join(' - ')
-        || pr?.project
-        || 'selecionado';
     const confirmed = await DOM.confirmDialog(
-        `Arquivar o PR "${prDescription}"? Ele sairá da lista de pendentes.`,
+        `Arquivar o PR "${describePr(prId)}"? Ele sairá da lista de pendentes.`,
         'Arquivar PR',
         { confirmLabel: 'Arquivar PR', danger: true }
     );
@@ -1565,7 +1595,13 @@ if (saveConfigBtn) {
             return;
         }
 
-        if (!confirm('Deseja realmente salvar essas configurações?')) {
+        const confirmed = await DOM.confirmDialog(
+            'Salvar as credenciais de integração deste app? Elas substituem as atuais.',
+            'Salvar configurações',
+            { confirmLabel: 'Salvar' }
+        );
+
+        if (!confirmed) {
             return;
         }
 
@@ -1702,7 +1738,13 @@ window.saveGroupVersion = async (batchId) => {
         return;
     }
 
-    if (confirm(`Aplicar versão ${version} para este lote?`)) {
+    const confirmed = await DOM.confirmDialog(
+        `Aplicar a versão ${version} para este lote?`,
+        'Aplicar versão',
+        { confirmLabel: 'Aplicar' }
+    );
+
+    if (confirmed) {
         try {
             DOM.showLoading(true);
             
@@ -1756,7 +1798,13 @@ window.confirmDeploy = async (batchId) => {
         return;
     }
 
-    if (confirm(`Confirmar liberação deste lote para ambiente de Teste (STG)?`)) {
+    const confirmed = await DOM.confirmDialog(
+        'Liberar este lote para o ambiente de Teste (STG)?',
+        'Liberar para Teste (STG)',
+        { confirmLabel: 'Liberar' }
+    );
+
+    if (confirmed) {
         try {
             DOM.showLoading(true);
             await API.releaseBatchToStaging(batchId);
@@ -1772,7 +1820,13 @@ window.confirmDeploy = async (batchId) => {
 };
 
 window.removeVersionFromBatch = async (batchId) => {
-    if (confirm(`ATENÇÃO: Deseja remover as informações de versão deste lote? \nIsso fará com que os PRs voltem para o status 'Aguardando Versão'.`)) {
+    const confirmed = await DOM.confirmDialog(
+        'Remover as informações de versão deste lote? Os PRs voltam para o status "Aguardando Versão".',
+        'Remover versão do lote',
+        { confirmLabel: 'Remover versão', danger: true }
+    );
+
+    if (confirmed) {
         try {
             DOM.showLoading(true);
             await API.removeVersionFromBatch(batchId);
@@ -1788,7 +1842,13 @@ window.removeVersionFromBatch = async (batchId) => {
 };
 
 window.removePrFromBatch = async (batchId, prId) => {
-    if (confirm(`DESEJA REMOVER ESSE PR DO LOTE?\nEle voltará para o status de 'Aprovado' e sairá desta versão.`)) {
+    const confirmed = await DOM.confirmDialog(
+        `Remover o PR "${describePr(prId)}" deste lote? Ele volta para o status "Aprovado" e sai desta versão.`,
+        'Remover PR do lote',
+        { confirmLabel: 'Remover PR', danger: true }
+    );
+
+    if (confirmed) {
         try {
             DOM.showLoading(true);
             await API.removePrFromBatch(batchId, prId);
@@ -1806,7 +1866,13 @@ window.removePrFromBatch = async (batchId, prId) => {
 window.cancelVersionRequestByPrIds = async (prIds) => {
     if (!prIds || !prIds.length) return;
     
-    if (confirm(`Deseja CANCELAR a solicitação de versão para estes ${prIds.length} PRs? \nEles voltarão para a lista de 'Aprovados'.`)) {
+    const confirmed = await DOM.confirmDialog(
+        `Cancelar a solicitação de versão destes ${prIds.length} PRs? Eles voltam para a lista de "Aprovados".`,
+        'Cancelar solicitação de versão',
+        { confirmLabel: 'Cancelar solicitação', cancelLabel: 'Manter', danger: true }
+    );
+
+    if (confirmed) {
         try {
             DOM.showLoading(true);
             await API.cancelVersionRequestByPrIds(prIds);
@@ -1822,7 +1888,13 @@ window.cancelVersionRequestByPrIds = async (prIds) => {
 };
 
 window.cancelVersionRequest = async (batchId) => {
-    if (confirm(`Deseja CANCELAR a solicitação de versão? \nOs PRs voltarão para a lista de 'Aprovados' e sairão deste lote.`)) {
+    const confirmed = await DOM.confirmDialog(
+        'Cancelar a solicitação de versão deste lote? Os PRs voltam para a lista de "Aprovados" e saem do lote.',
+        'Cancelar solicitação de versão',
+        { confirmLabel: 'Cancelar solicitação', cancelLabel: 'Manter', danger: true }
+    );
+
+    if (confirmed) {
         try {
             DOM.showLoading(true);
             await API.cancelVersionRequest(batchId);
@@ -1838,7 +1910,13 @@ window.cancelVersionRequest = async (batchId) => {
 };
 
 window.deleteBatch = async (batchId) => {
-    if (confirm(`ATENÇÃO: Deseja DELETAR este lote completamente?\nTodos os PRs voltarão para o status 'Aprovado' e o lote será removido.`)) {
+    const confirmed = await DOM.confirmDialog(
+        'Deletar este lote por completo? Todos os PRs voltam para o status "Aprovado" e o lote é removido.',
+        'Deletar lote',
+        { confirmLabel: 'Deletar lote', danger: true }
+    );
+
+    if (confirmed) {
         try {
             DOM.showLoading(true);
             await API.deleteBatch(batchId);
@@ -1871,7 +1949,13 @@ function showErrorModal(friendlyMsg, error) {
 }
 
 window.createGitLabIssue = async (batchId) => {
-    if (confirm(`Criar issue de deploy no GitLab para esse lote de versão?`)) {
+    const confirmed = await DOM.confirmDialog(
+        'Criar a issue de deploy no GitLab para este lote de versão?',
+        'Criar issue no GitLab',
+        { confirmLabel: 'Criar issue' }
+    );
+
+    if (confirmed) {
         try {
             DOM.showLoading(true);
             await GitLabService.createIssue(batchId);
@@ -1887,7 +1971,13 @@ window.createGitLabIssue = async (batchId) => {
 };
 
 window.completeSprint = async (sprintId) => {
-    if (confirm(`Deseja concluir esta Sprint? \nIsso moverá as versões e PRs vinculados para o Histórico.`)) {
+    const confirmed = await DOM.confirmDialog(
+        'Concluir esta Sprint? As versões e os PRs vinculados vão para o Histórico.',
+        'Concluir Sprint',
+        { confirmLabel: 'Concluir' }
+    );
+
+    if (confirmed) {
         try {
             DOM.showLoading(true);
             await API.completeSprint(sprintId);

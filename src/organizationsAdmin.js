@@ -55,7 +55,11 @@ async function renderOrgsTable() {
     tbody.querySelectorAll('.org-deactivate-btn').forEach(btn =>
         btn.addEventListener('click', async () => {
             const org = orgsState.find(o => String(o.id) === btn.dataset.id);
-            if (!confirm(`Desativar ${org.name}? Ninguém vinculado a ela conseguirá logar.`)) return;
+            const ok = await DOM.confirmDialog(
+                `Desativar ${org.name}? Ninguém vinculado a ela conseguirá logar.`,
+                'Desativar organização',
+                { danger: true, confirmLabel: 'Desativar' });
+            if (!ok) return;
             try {
                 await API.deactivateOrganization(org.id);
                 await renderOrgsTable();
