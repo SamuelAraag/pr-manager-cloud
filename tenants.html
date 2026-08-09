@@ -11,7 +11,7 @@
 </head>
 
 <body>
-    <div class="container">
+    <div class="container auth-guarded">
         <header class="module-page-header">
             <div class="logo-area">
                 <div>
@@ -95,6 +95,7 @@
                 <label class="module-field" style="grid-column: 1 / -1;">
                     <span>Nome do tenant</span>
                     <input id="tenantFormName" type="text" required placeholder="Nome da organização">
+                    <span class="field-error">Informe o nome do tenant.</span>
                 </label>
 
                 <div id="tenantFormAdminFields" style="grid-column: 1 / -1; display: contents;">
@@ -106,6 +107,7 @@
                     <label class="module-field" style="grid-column: 1 / -1;">
                         <span>Email</span>
                         <input id="tenantFormAdminEmail" type="email" placeholder="admin@empresa.com (opcional)">
+                        <span class="field-error">Informe um email válido.</span>
                     </label>
 
                     <div id="tenantFormAdminFoundNote" style="grid-column: 1 / -1; display: none; padding: 0.6rem 0.85rem; border-radius: 8px; background: color-mix(in srgb, var(--success-color) 15%, transparent); border: 1px solid var(--success-color); font-size: 0.85rem;"></div>
@@ -113,11 +115,13 @@
                     <label class="module-field" id="tenantFormAdminNameField" style="grid-column: 1 / -1;">
                         <span>Nome completo</span>
                         <input id="tenantFormAdminName" type="text" placeholder="Nome completo">
+                        <span class="field-error">Informe o nome do administrador.</span>
                     </label>
 
                     <label class="module-field" id="tenantFormAdminPasswordField" style="grid-column: 1 / -1;">
                         <span>Senha inicial</span>
                         <input id="tenantFormAdminPassword" type="password" autocomplete="new-password">
+                        <span class="field-error">Informe a senha inicial do administrador.</span>
                     </label>
 
                     <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.25rem;">
@@ -167,8 +171,8 @@
                 </div>
 
                 <div class="module-form-actions">
-                    <button class="btn btn-outline close-modal" type="button">Cancelar</button>
-                    <button class="btn btn-primary" type="submit">Salvar</button>
+                    <button id="tenantFormCancel" class="btn btn-outline" type="button">Cancelar</button>
+                    <button id="tenantFormSubmit" class="btn btn-primary" type="submit">Salvar</button>
                 </div>
             </form>
         </div>
@@ -192,7 +196,7 @@
                 </label>
                 <div class="module-form-actions">
                     <button class="btn btn-outline close-modal" type="button">Cancelar</button>
-                    <button class="btn btn-primary" type="submit">Aprovar</button>
+                    <button id="approveFormSubmit" class="btn btn-primary" type="submit">Aprovar</button>
                 </div>
             </form>
         </div>
