@@ -1,0 +1,191 @@
+// Esteira de entrega (Épico 2) — matriz de ambientes por PR, tela de detalhe e
+// configuração da esteira.
+//
+// Sem cor nova e sem escala nova: as cores por ambiente já existem
+// (--module-tag-dev/stg/prod-*), o resto sai dos tokens de superfície e da escala
+// do Bootstrap 5.3.8, que é a escala oficial do projeto enquanto não houver tokens
+// próprios de espaçamento e raio.
+
+.pipeline-matrix {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: nowrap;
+}
+
+// Um degrau da esteira. Ausente e presente se distinguem por preenchimento e opacidade,
+// nunca só por cor — daltônico e monitor ruim precisam ler a mesma coisa.
+.pipeline-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: var(--bs-border-radius-sm);
+    border: 1px solid var(--border-color);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.pipeline-step--absent {
+    background: transparent;
+    color: var(--text-secondary);
+    border-style: dashed;
+    opacity: 0.75;
+}
+
+.pipeline-step--dev {
+    background: var(--module-tag-dev-bg);
+    color: var(--module-tag-dev-color);
+    border-color: transparent;
+}
+
+.pipeline-step--stg {
+    background: var(--module-tag-stg-bg);
+    color: var(--module-tag-stg-color);
+    border-color: transparent;
+}
+
+.pipeline-step--prod {
+    background: var(--module-tag-prod-bg);
+    color: var(--module-tag-prod-color);
+    border-color: transparent;
+}
+
+// Separador entre degraus: a esteira é uma sequência, e a seta é o que carrega
+// essa informação. Decorativo para leitor de tela.
+.pipeline-arrow {
+    color: var(--text-secondary);
+    opacity: 0.5;
+    font-size: 0.7rem;
+    user-select: none;
+}
+
+.pipeline-empty {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+// ── Tela de detalhe da entrega ──────────────────────────────────────────────
+
+.entrega-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .entrega-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.entrega-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--bs-border-radius);
+    padding: 1.25rem;
+}
+
+.entrega-panel + .entrega-panel {
+    margin-top: 1.5rem;
+}
+
+.entrega-panel__title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1rem;
+}
+
+.entrega-meta {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.entrega-meta dt {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.entrega-meta dd {
+    margin: 0;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+}
+
+// Lista de vínculos: cada item é removível, que é o ponto do épico —
+// antes era uma string única que ninguém conseguia editar item a item.
+.link-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.link-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--bs-border-radius-sm);
+    background: var(--bg-color);
+}
+
+.link-item__kind {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.link-item__url {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--accent-color);
+}
+
+// ── Configuração da esteira ─────────────────────────────────────────────────
+
+.pipeline-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.pipeline-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--bs-border-radius-sm);
+    background: var(--card-bg);
+}
+
+@media (max-width: 768px) {
+    .pipeline-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.pipeline-row__order {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.8rem;
+}

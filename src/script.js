@@ -933,8 +933,12 @@ async function confirmRequestVersionSelection() {
     }
 }
 
+// Épico 2 (D6): "em voo" — integrado e ainda não entregue. É filtro de consulta, então a
+// preferência do usuário vira parâmetro da API, não um estado gravado no PR.
+let showOnlyInFlight = true;
+
 async function loadPrTablesData(animate = false, expectedRevision = tenantOperations.snapshot()) {
-    const prResult = await API.fetchPRs();
+    const prResult = await API.fetchPRs(showOnlyInFlight);
     if (!tenantOperations.isCurrent(expectedRevision)) return false;
     if (!prResult || !Array.isArray(prResult.prs)) {
         throw new Error('Falha ao carregar PRs');
@@ -1140,6 +1144,22 @@ function openAddModal() {
 }
 
 document.getElementById('addPrBtn').addEventListener('click', openAddModal);
+
+// Alterna entre "em voo" e a lista completa. Recarrega da API porque o filtro é derivado
+// lá (presença + versão no último ambiente), não uma propriedade que o cliente possa calcular.
+const inFlightToggle = document.getElementById('inFlightToggle');
+if (inFlightToggle) {
+    inFlightToggle.addEventListener('change', async (event) => {
+        showOnlyInFlight = event.target.checked;
+        try {
+            await loadPrTablesData(true);
+        } catch (error) {
+            console.error('Erro ao alternar o filtro de PRs em voo:', error);
+            DOM.showToast('Não foi possível recarregar a lista de PRs.', 'error');
+        }
+    });
+}
+
 if (document.getElementById('setupBtn')) {
     document.getElementById('setupBtn').addEventListener('click', openSetupModal);
 }

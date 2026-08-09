@@ -14,6 +14,50 @@ function escapeHtml(value) {
     return div.innerHTML;
 }
 
+// Formata a data no padrão do projeto, sem trazer dependência nova.
+function formatShortDate(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('pt-BR');
+}
+
+/**
+ * Matriz de ambientes do PR (Épico 2, 2.3). As colunas saem da esteira do app — não são
+ * fixas em três: um cliente pode ter dev+prod ou stg+prod.
+ *
+ * Ambiente de integração mostra presença ("desde quando"), porque ali não existe versão.
+ * Ambiente versionado mostra o número da versão. A assimetria é proposital: é o que
+ * diferencia "o código está mergeado" de "esta versão está implantada".
+ */
+function renderPipelineMatrix(pr) {
+    const steps = Array.isArray(pr.environments) ? pr.environments : [];
+    if (steps.length === 0) {
+        return '<span class="pipeline-empty">Sem esteira configurada</span>';
+    }
+
+    const cells = steps.map((step) => {
+        const kind = String(step.kind || '').toLowerCase();
+        const sinceLabel = formatShortDate(step.since);
+
+        if (!step.present) {
+            return `<span class="pipeline-step pipeline-step--absent" title="${escapeHtml(step.kind)}: não presente">${escapeHtml(step.kind)}</span>`;
+        }
+
+        const detalhe = step.mode === 'Individual'
+            ? (sinceLabel ? `desde ${sinceLabel}` : 'presente')
+            : (step.version || 'sem versão');
+
+        const title = step.mode === 'Individual'
+            ? `${step.kind}: integrado${sinceLabel ? ` desde ${sinceLabel}` : ''}`
+            : `${step.kind}: versão ${step.version || '—'}${sinceLabel ? ` desde ${sinceLabel}` : ''}`;
+
+        return `<span class="pipeline-step pipeline-step--${escapeHtml(kind)}" title="${escapeHtml(title)}">${escapeHtml(step.kind)} <span style="font-weight:500;">${escapeHtml(detalhe)}</span></span>`;
+    });
+
+    // A seta carrega a sequência da esteira; é decoração para quem lê a tela por áudio.
+    return `<div class="pipeline-matrix">${cells.join('<span class="pipeline-arrow" aria-hidden="true">›</span>')}</div>`;
+}
+
 const getProfileImage = (userName) => {
     const profileImages = {
         'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
@@ -308,7 +352,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
     if (!body) return;
     body.innerHTML = '';
     if (data.length === 0) {
-        body.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Nenhum PR pendente.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Nenhum PR pendente.</td></tr>';
         return;
     }
     const grouped = data.reduce((acc, pr) => {
@@ -329,7 +373,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
         if(animate) headerRow.style.animationDelay = `${animationDelay}ms`;
         if(animate) animationDelay += 50;
 
-        headerRow.innerHTML = `<td colspan="6"><div style="display:flex; justify-content:space-between; align-items:center;"><div style="font-weight: 600;">${headerContent}</div></div></td>`;
+        headerRow.innerHTML = `<td colspan="7"><div style="display:flex; justify-content:space-between; align-items:center;"><div style="font-weight: 600;">${headerContent}</div></div></td>`;
         body.appendChild(headerRow);
         
         projectPrs.forEach((pr) => {
@@ -389,6 +433,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                         ${pr.noTestingRequired ? '<span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Não requer testes de QA">Sem Teste</span>' : ''}
                     </div>
                 </td>
+                <td>${renderPipelineMatrix(pr)}</td>
                 <td><div style="display: flex; gap: 0.8rem;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 16px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 16px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>
                 <td>
                     <div style="display: flex; gap: 5px; justify-content: flex-end;">
@@ -422,6 +467,11 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                             onclick="window.togglePrHistory('${pr.id}')">
                             <i data-lucide="history" style="width: 14px;"></i>
                         </button>
+
+                        <a class="btn btn-outline" style="padding: 0.4rem;" title="Ver entrega"
+                            href="entrega.html?appId=${encodeURIComponent(pr.appId)}&prId=${encodeURIComponent(pr.id)}">
+                            <i data-lucide="git-branch" style="width: 14px;"></i>
+                        </a>
 
                         <button class="btn btn-outline" data-roles="Admin"
                             style="padding: 0.4rem; border-color: #da3633; color: #da3633;"

@@ -34,6 +34,27 @@
         </section>
 
         <section id="envGrid" class="module-cards"></section>
+
+        <!-- Esteira configurável (Épico 2, D4): nem todo cliente tem os três ambientes.
+             Antes disso, um app sem staging nunca conseguia promover para produção. -->
+        <section class="module-section-head module-toolbar" style="margin-top: 2.5rem;" data-roles="Admin">
+            <div>
+                <h2>Esteira de entrega</h2>
+                <p style="color: var(--text-secondary); margin: 0.25rem 0 0; font-size: 0.85rem;">
+                    A ordem define de onde cada promoção vem. O ambiente de integração recebe PR a
+                    PR, sem versão; os demais recebem versões.
+                </p>
+            </div>
+        </section>
+
+        <section id="pipelineSection" class="entrega-panel" style="margin-bottom: 3rem;" data-roles="Admin">
+            <div id="pipelineEditor" class="pipeline-editor"></div>
+            <div class="field-error" id="pipelineError"></div>
+            <div class="module-form-actions" style="margin-top: 1rem;">
+                <button id="pipelineResetBtn" class="btn btn-outline" type="button">Descartar alterações</button>
+                <button id="pipelineSaveBtn" class="btn btn-primary" type="button">Salvar esteira</button>
+            </div>
+        </section>
     </div>
 
     <!-- Confirmação de promoção stg → prod (modal interno da rota) -->
@@ -50,6 +71,8 @@
             </div>
         </div>
     </div>
+
+    <div id="toast-container" class="toast-container"></div>
 
     <script type="module" src="src/environments.js"></script>
     <script>

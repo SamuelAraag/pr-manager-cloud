@@ -73,8 +73,12 @@ const addTenantMember = (tenantId, data) => apiRequest(`/tenants/${tenantId}/mem
 const fetchNotifications = (onlyUnread) => apiRequest(`/Notifications${onlyUnread ? "?onlyUnread=true" : ""}`);
 const markNotificationRead = (id) => apiRequest(`/Notifications/${id}/read`, { method: "PUT" });
 
-async function fetchPRs() {
-  const url = `${ApiConstants.BASE_URL}/PullRequests`;
+/**
+ * Épico 2 (D6): a API filtra "em voo" por padrão — integrado e ainda não entregue.
+ * Nada é apagado; `inFlight = false` traz também o que já chegou ao último ambiente.
+ */
+async function fetchPRs(inFlight = true) {
+  const url = `${ApiConstants.BASE_URL}/PullRequests?inFlight=${inFlight ? "true" : "false"}`;
 
   try {
     const response = await fetch(url, {
@@ -598,9 +602,11 @@ const createOrganization = (data) => organizationsRequest("", { method: "POST", 
 const updateOrganization = (id, data) => organizationsRequest(`/${id}`, { method: "PUT", body: JSON.stringify(data) });
 const deactivateOrganization = (id) => organizationsRequest(`/${id}`, { method: "PUT", body: JSON.stringify({ isActive: false }) });
 
-// ── Ambientes (Épico 6) ─────────────────────────────────────────────────────
-// O erro carrega status e body: o chamador diferencia 403 (sem papel), 409
-// (stg_active_batch_changed / not_active) e 501 (dev sem fluxo nesta fase).
+// ── Ambientes e esteira (Épico 6 + Épico 2) ─────────────────────────────────
+// O erro carrega status e body: o chamador diferencia 403 (sem papel) e 409
+// (previous_env_batch_changed / not_active / environment_has_deployments).
+// O 501 de dev saiu: a esteira é configurável e o ambiente de integração recebe
+// PR avulso por presença, não deploy de versão.
 
 async function environmentsRequest(appId, path, options = {}) {
   const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/Environments${path}`, {
@@ -624,6 +630,64 @@ const deployToEnvironment = (appId, kind, batchId) =>
   environmentsRequest(appId, `/${kind}/deploy`, { method: "POST", body: JSON.stringify({ batchId }) });
 const rollbackDeployment = (appId, kind, deploymentId) =>
   environmentsRequest(appId, `/${kind}/deployments/${deploymentId}/rollback`, { method: "POST" });
+
+// Esteira configurável (Épico 2): substitui a configuração inteira, não faz merge parcial.
+const updatePipeline = (appId, steps) =>
+  environmentsRequest(appId, "/pipeline", { method: "PUT", body: JSON.stringify({ steps }) });
+const removeEnvironment = (appId, kind) =>
+  environmentsRequest(appId, `/${kind}`, { method: "DELETE" });
+
+// ── Presença do PR e vínculos (Épico 2) ─────────────────────────────────────
+
+async function appPrRequest(appId, path, options = {}) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/PullRequests${path}`, {
+    headers: getBackendHeaders(),
+    cache: "no-store",
+    ...options,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const error = new Error(body.error || `Erro na API de PRs: ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+  return response.status === 204 ? null : await response.json();
+}
+
+/** Registra que o PR entrou na branch de integração. Só Gestor/Admin. */
+const registerPrPresence = (appId, prId, kind) =>
+  appPrRequest(appId, `/${prId}/presence/${kind}`, { method: "POST" });
+
+/** Revert: o código saiu da branch. Motivo obrigatório. */
+const revertPrPresence = (appId, prId, kind, reason) =>
+  appPrRequest(appId, `/${prId}/presence/${kind}`, {
+    method: "DELETE",
+    body: JSON.stringify({ reason }),
+  });
+
+const fetchPrLinks = (appId, prId) => appPrRequest(appId, `/${prId}/links`);
+const addPrLink = (appId, prId, link) =>
+  appPrRequest(appId, `/${prId}/links`, { method: "POST", body: JSON.stringify(link) });
+const removePrLink = (appId, prId, linkId) =>
+  appPrRequest(appId, `/${prId}/links/${linkId}`, { method: "DELETE" });
+
+/** Marca a versão como hotfix: passa a poder pular a guarda de ordem da esteira. */
+async function markBatchAsHotfix(batchId, reason) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/VersionBatches/${batchId}/mark-hotfix`, {
+    method: "POST",
+    headers: getBackendHeaders(),
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const error = new Error(body.error || `Erro ao marcar hotfix: ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+  return await response.json();
+}
 
 // ── Gestão de usuários (Épico 2 — Admin) ────────────────────────────────────
 
@@ -900,6 +964,14 @@ export {
   fetchEnvironmentHistory,
   deployToEnvironment,
   rollbackDeployment,
+  updatePipeline,
+  removeEnvironment,
+  registerPrPresence,
+  revertPrPresence,
+  fetchPrLinks,
+  addPrLink,
+  removePrLink,
+  markBatchAsHotfix,
   createUser,
   updateUser,
   deactivateUser,
