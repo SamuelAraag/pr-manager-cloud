@@ -537,10 +537,15 @@ async function login(username, password) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
-      throw new Error(
+      // Resposta de erro nem sempre é JSON (proxy/gateway devolve HTML), então o parse
+      // não pode derrubar o tratamento. O status vai junto no erro para a tela distinguir
+      // credencial recusada de servidor indisponível.
+      const errorBody = await response.json().catch(() => ({}));
+      const error = new Error(
         `Login falhou: ${errorBody.message || response.statusText}`,
       );
+      error.status = response.status;
+      throw error;
     }
 
     return await response.json();
