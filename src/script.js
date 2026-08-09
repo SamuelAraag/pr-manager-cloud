@@ -229,17 +229,48 @@ Form.prepareForm(prForm);
 if (currentUserDisplay) currentUserDisplay.addEventListener('click', showProfileSelection);
 if (currentUserDisplayRight) currentUserDisplayRight.addEventListener('click', showProfileSelection);
 
+// Gate de login (pr-manager-cloud#36): enquanto ele está visível, o app atrás não pode ser
+// alcançado por Tab, por leitor de tela nem pelos atalhos globais. O overlay é opaco, então
+// sem `inert` o dashboard continuava navegável "por baixo" da tela de login.
+const appShell = document.querySelector('.container');
+
+function isLoginGateVisible() {
+    return !!profileScreen && profileScreen.style.display !== 'none';
+}
+
+function hideLoginGate() {
+    if (!profileScreen) return;
+    profileScreen.style.display = 'none';
+    document.body.classList.remove('no-scroll');
+    if (appShell) appShell.inert = false;
+}
+
+function showLoginGate() {
+    if (!profileScreen) return;
+    profileScreen.style.display = 'flex';
+    document.body.classList.add('no-scroll');
+    if (appShell) appShell.inert = true;
+}
+
 // Click outside to close profile selection if user already selected
 if (profileScreen) {
     profileScreen.addEventListener('click', (e) => {
         if (e.target === profileScreen && LocalStorage.getItem('appUser')) {
-            profileScreen.style.display = 'none';
-            document.body.classList.remove('no-scroll');
+            hideLoginGate();
         }
     });
 }
 
 window.addEventListener('keydown', (e) => {
+    // Sem token não há o que atalho nenhum faça: `n`, `q`, `r` e `?` abriam modais e
+    // chamavam loadData() por trás do login quando o foco não estava num campo.
+    if (isLoginGateVisible()) {
+        // Esc só dispensa o gate quando já existe sessão (troca de usuário) — no login
+        // inicial ele é bloqueante mesmo, não há para onde voltar.
+        if (e.key === 'Escape' && LocalStorage.getItem('appUser')) hideLoginGate();
+        return;
+    }
+
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
@@ -355,10 +386,7 @@ if (godModeInput) {
                     AuthService.applyRoleBasedVisibility();
 
                     // If login successful, close profile screen if open
-                    if (profileScreen) {
-                        profileScreen.style.display = 'none';
-                        document.body.classList.remove('no-scroll');
-                    }
+                    hideLoginGate();
                 }
             } catch (error) {
                 DOM.showToast('Senha incorreta!', 'error');
@@ -512,8 +540,7 @@ function closeAllModals() {
     pendingVersionRequestContext = null;
     
     if (LocalStorage.getItem('appUser')) {
-        profileScreen.style.display = 'none';
-        document.body.classList.remove('no-scroll');
+        hideLoginGate();
     }
 }
 
@@ -558,35 +585,123 @@ async function init() {
     }
 }
 
-// Botão de mostrar/esconder a senha no login.
+// Botão de mostrar/esconder a senha no login. É um toggle de verdade: `aria-pressed` reflete
+// o estado e a posição do cursor é preservada ao alternar o tipo do campo.
 const toggleLoginPasswordBtn = document.getElementById('toggleLoginPassword');
+
+// Depois de um logout com a senha revelada, o campo voltava como type="text" com o olho
+// ainda marcado — valor limpo, mas estado inconsistente na próxima entrada.
+function resetLoginPasswordToggle() {
+    const input = document.getElementById('loginPassword');
+    if (input) input.type = 'password';
+    if (!toggleLoginPasswordBtn) return;
+
+    toggleLoginPasswordBtn.setAttribute('aria-label', 'Mostrar senha');
+    toggleLoginPasswordBtn.setAttribute('title', 'Mostrar senha');
+    toggleLoginPasswordBtn.setAttribute('aria-pressed', 'false');
+    toggleLoginPasswordBtn.innerHTML = '<i data-lucide="eye"></i>';
+    if (window.lucide) lucide.createIcons();
+}
+
 if (toggleLoginPasswordBtn) {
     toggleLoginPasswordBtn.addEventListener('click', () => {
         const input = document.getElementById('loginPassword');
         const isHidden = input.type === 'password';
+        const selectionStart = input.selectionStart;
+        const selectionEnd = input.selectionEnd;
+        const hadFocus = document.activeElement === input;
+
         input.type = isHidden ? 'text' : 'password';
-        toggleLoginPasswordBtn.setAttribute('aria-label', isHidden ? 'Esconder senha' : 'Mostrar senha');
-        toggleLoginPasswordBtn.setAttribute('title', isHidden ? 'Esconder senha' : 'Mostrar senha');
+
+        const label = isHidden ? 'Esconder senha' : 'Mostrar senha';
+        toggleLoginPasswordBtn.setAttribute('aria-label', label);
+        toggleLoginPasswordBtn.setAttribute('title', label);
+        toggleLoginPasswordBtn.setAttribute('aria-pressed', String(isHidden));
         toggleLoginPasswordBtn.innerHTML = `<i data-lucide="${isHidden ? 'eye-off' : 'eye'}"></i>`;
         if (window.lucide) lucide.createIcons();
+
+        if (hadFocus) {
+            input.focus();
+            input.setSelectionRange(selectionStart, selectionEnd);
+        }
     });
 }
 
 // Login padrão (usuário/email + senha) — substitui a antiga grade de perfis
 const loginForm = document.getElementById('loginForm');
+const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+
+// Validação inline (preferencias.md §12) pelo formService, o mesmo do prForm — não uma
+// segunda implementação só para esta tela.
+const loginIdentifierInput = document.getElementById('loginIdentifier');
+const loginPasswordInput = document.getElementById('loginPassword');
+
+Form.prepareForm(loginForm);
+
+function validateLoginFields() {
+    return Form.validateFields([
+        { field: loginIdentifierInput, validate: Form.isRequired, message: 'Informe seu email ou usuário.' },
+        { field: loginPasswordInput, validate: Form.isRequired, message: 'Informe sua senha.' }
+    ]);
+}
+
+function clearLoginErrors() {
+    // resetFormState = limpa erros de campo + libera o submit travado por um envio anterior.
+    Form.resetFormState(loginForm);
+    setLoginFormError('');
+}
+
+// Erro do formulário (credencial recusada, servidor fora). `role="alert"` no markup faz o
+// leitor de tela anunciar; antes a mensagem só mudava visualmente.
+function setLoginFormError(message) {
+    const errorEl = document.getElementById('loginError');
+    const textEl = document.getElementById('loginErrorText');
+    if (!errorEl || !textEl) return;
+
+    // Revela antes de escrever: em `role="alert"` isso é o que faz o leitor de tela
+    // reanunciar quando duas tentativas seguidas dão o mesmo erro.
+    errorEl.hidden = !message;
+    textEl.textContent = message;
+    if (message && window.lucide) lucide.createIcons();
+}
+
+// O formService já cuida de `disabled` e `aria-busy`; a camada visual do botão ocupado
+// (spinner + rótulo) é o que ele não tem — ver .btn.is-loading no catálogo.
+function setLoginSubmitting(submitting) {
+    if (!loginSubmitBtn) return;
+    loginSubmitBtn.classList.toggle('is-loading', submitting);
+    loginSubmitBtn.textContent = submitting ? 'Entrando...' : 'Entrar';
+    if (!submitting) loginSubmitBtn.disabled = false;
+}
+
+// `prepareForm` limpa o erro ao digitar; validar no blur é exigência do 04-forms.md.
+[loginIdentifierInput, loginPasswordInput].forEach((input) => {
+    input?.addEventListener('blur', () => {
+        if (Form.isRequired(input.value)) return;
+        Form.setFieldError(input, input === loginPasswordInput
+            ? 'Informe sua senha.'
+            : 'Informe seu email ou usuário.');
+    });
+});
+
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        setLoginFormError('');
+
+        // Revalida tudo no submit, não só no blur — o usuário pode enviar com Enter sem
+        // nunca ter saído do campo. `validateFields` já foca o primeiro inválido.
+        if (!validateLoginFields()) return;
+
+        // Guarda de duplo envio: retorna false se já há um submit em andamento.
+        if (!Form.beginFormSubmission(loginForm)) return;
+
         const identifier = document.getElementById('loginIdentifier').value.trim();
         const password = document.getElementById('loginPassword').value;
-        const errorEl = document.getElementById('loginError');
-        if (errorEl) errorEl.style.display = 'none';
-
-        if (!identifier || !password) return;
 
         try {
-            DOM.showLoading(true);
+            setLoginSubmitting(true);
             const result = await API.login(identifier, password);
 
             LocalStorage.setItem('appUser', result.user.name);
@@ -594,7 +709,7 @@ if (loginForm) {
             LocalStorage.setItem('token', result.token);
 
             const tenantOk = await ensureTenantContext();
-            if (!tenantOk) { DOM.showLoading(false); return; }
+            if (!tenantOk) return;
 
             if (AuthService.isAdmin()) {
                 EffectService.triggerGodMode();
@@ -602,8 +717,7 @@ if (loginForm) {
 
             await loadUsers(); // lista completa (autenticada) para selects/avatares
             updateUserDisplay(result.user.name);
-            profileScreen.style.display = 'none';
-            document.body.classList.remove('no-scroll');
+            hideLoginGate();
 
             document.getElementById('loginPassword').value = '';
 
@@ -615,12 +729,19 @@ if (loginForm) {
             connectSignalR();
         } catch (error) {
             console.error('Erro no login:', error);
-            if (errorEl) {
-                errorEl.textContent = 'Usuário ou senha inválidos.';
-                errorEl.style.display = 'block';
-            }
+            // Credencial recusada e servidor indisponível têm causas e saídas diferentes —
+            // antes as duas caíam em "Usuário ou senha inválidos". Não dizemos qual dos dois
+            // campos errou, para não permitir enumeração de usuários.
+            setLoginFormError(error?.status === 401
+                ? 'Email/usuário ou senha incorretos. Verifique e tente novamente.'
+                : 'Não foi possível conectar ao servidor. Tente novamente em instantes.');
+            // `disabled` tirou o botão da árvore de foco no submit, jogando o foco no body.
+            // Devolve para onde o usuário vai corrigir, em vez de obrigá-lo a retabular.
+            document.getElementById('loginPassword')?.focus();
         } finally {
-            DOM.showLoading(false);
+            // Sem isto o dataset.submitting fica preso e o botão nunca mais reabilita.
+            Form.endFormSubmission(loginForm);
+            setLoginSubmitting(false);
         }
     });
 }
@@ -649,15 +770,15 @@ async function handleLogout() {
 }
 
 function showProfileSelection() {
-    // tela de login padrão: limpa credenciais e erro antes de exibir
+    // tela de login padrão: limpa credenciais e erros antes de exibir
     const passwordInput = document.getElementById('loginPassword');
-    const errorEl = document.getElementById('loginError');
     if (passwordInput) passwordInput.value = '';
-    if (errorEl) errorEl.style.display = 'none';
+    clearLoginErrors();
+    setLoginSubmitting(false);
+    resetLoginPasswordToggle();
     AuthService.markAuthenticationPending();
 
-    profileScreen.style.display = 'flex';
-    document.body.classList.add('no-scroll');
+    showLoginGate();
     document.getElementById('loginIdentifier')?.focus();
 }
 

@@ -15,31 +15,34 @@
 
 <body>
     <!-- Tela de login padrão (usuário/email + senha) -->
-    <div id="profileScreen" class="modal-overlay" style="display: none; background: #0d1117; z-index: 2000;">
+    <div id="profileScreen" class="modal-overlay" style="display: none;">
         <div class="login-card">
             <h1 class="login-title">PR Manager</h1>
             <p class="login-subtitle">Entre com suas credenciais</p>
-            <form id="loginForm" autocomplete="on">
-                <div class="form-group" style="margin-bottom: 1rem;">
+            <form id="loginForm" autocomplete="on" novalidate>
+                <div class="form-group login-field">
                     <label for="loginIdentifier">Email ou usuário</label>
                     <input type="text" id="loginIdentifier" placeholder="voce@empresa.com" required
-                        autocomplete="username" autofocus>
+                        autocomplete="username" autofocus aria-describedby="loginIdentifierError">
+                    <p class="field-error" id="loginIdentifierError"></p>
                 </div>
-                <div class="form-group" style="margin-bottom: 1.4rem;">
+                <div class="form-group login-field">
                     <label for="loginPassword">Senha</label>
                     <div class="input-with-action">
-                        <input type="password" id="loginPassword" placeholder="••••••••" required
-                            autocomplete="current-password">
+                        <input type="password" id="loginPassword" required
+                            autocomplete="current-password" aria-describedby="loginPasswordError">
                         <button type="button" id="toggleLoginPassword" class="input-action-btn"
-                            aria-label="Mostrar senha" title="Mostrar senha">
+                            aria-label="Mostrar senha" title="Mostrar senha" aria-pressed="false">
                             <i data-lucide="eye"></i>
                         </button>
                     </div>
+                    <p class="field-error" id="loginPasswordError"></p>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
-                    Entrar
-                </button>
-                <p id="loginError" class="login-error" style="display: none;"></p>
+                <p id="loginError" class="login-error" role="alert" hidden>
+                    <i data-lucide="alert-circle" aria-hidden="true"></i>
+                    <span id="loginErrorText"></span>
+                </p>
+                <button type="submit" id="loginSubmitBtn" class="btn btn-primary login-submit">Entrar</button>
             </form>
         </div>
     </div>
@@ -531,7 +534,11 @@
     </div>
 
     <div id="godModeContainer" style="position: fixed; top: -100px; left: -100px; opacity: 0; pointer-events: none;">
-        <input type="password" id="godModeInput">
+        <!-- Fora do .container, então o `inert` do gate de login não o alcança. Ele é
+             invisível mas focável: sem tabindex="-1" o Tab a partir do login cairia num
+             campo de senha que o usuário não vê. O foco programático do Ctrl+Shift+K segue
+             funcionando. -->
+        <input type="password" id="godModeInput" tabindex="-1">
     </div>
 </body>
 

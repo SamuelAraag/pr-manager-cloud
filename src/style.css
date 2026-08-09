@@ -2294,6 +2294,59 @@ h1 {
   border-color: var(--text-secondary);
 }
 
+/* Botão indisponível e botão "enviando" (pr-manager-cloud#36). Antes disso o projeto não
+   tinha nenhum dos dois: um submit em andamento continuava clicável e o único feedback era
+   o overlay global de loading. Ver 11-component-catalog.md. */
+.btn:disabled,
+.btn[aria-disabled=true] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* O Bootstrap já dá pointer-events: none em .btn:disabled; `aria-disabled` não é :disabled,
+   então esse precisa da regra (e do hover neutralizado, que no outro caso é código morto). */
+.btn[aria-disabled=true] {
+  pointer-events: none;
+}
+
+.btn[aria-disabled=true]:hover {
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+/* "Enviando" é ocupado, não indisponível: sem isto o `.btn:disabled` do Bootstrap (0,2,0)
+   vence o `.btn-primary` (0,1,0) e repinta o fundo com --bs-btn-disabled-bg; no tema claro
+   o resultado é rótulo e spinner brancos sobre rosa claro, ilegíveis justamente quando o
+   feedback precisa aparecer. */
+.btn.is-loading:disabled,
+.btn.is-loading[aria-disabled=true] {
+  opacity: 1;
+  cursor: progress;
+}
+
+.btn-primary.is-loading:disabled {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: white;
+}
+
+.btn.is-loading::before {
+  content: "";
+  width: 0.9em;
+  height: 0.9em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: var(--bs-border-radius-pill);
+  animation: rotation 1s linear infinite;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn.is-loading::before {
+    animation-duration: 3s;
+  }
+}
 /* Custom Checkbox Style */
 .checkbox-container {
   display: flex;
@@ -2346,127 +2399,9 @@ h1 {
   cursor: pointer;
 }
 
-.profile-login-input .profile-container {
-  text-align: center;
-  animation: fadeIn 0.5s ease;
-}
-
-.profile-container h1 {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 3rem;
-  font-size: 2.5rem;
-  color: white;
-}
-
-.profiles-grid {
-  display: flex;
-  gap: 2.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  align-items: flex-start;
-}
-
-.profile-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  width: 160px;
-}
-
-.profile-item .avatar {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: 700;
-  color: white;
-  border: 4px solid transparent;
-  transition: all 0.3s ease;
-  object-fit: cover;
-}
-
-.profile-item span {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-  transition: color 0.3s ease;
-}
-
-.profile-item:hover {
-  transform: scale(1.05);
-}
-
-.profile-item.active {
-  transform: scale(1.1);
-}
-
-.profile-item:hover .avatar, .profile-item.active .avatar {
-  border-color: white;
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
-}
-
-.profile-item:hover span, .profile-item.active span {
-  color: white;
-}
-
 .actions {
   display: flex;
   gap: 0.5rem;
-}
-
-.profile-login-container {
-  display: none;
-  width: 100%;
-  margin-top: 10px;
-  flex-direction: column;
-  gap: 8px;
-  animation: fadeIn 0.3s ease;
-}
-
-.profile-item.active .profile-login-container {
-  display: flex !important;
-}
-
-.profile-login-input {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  text-align: center;
-  width: 100%;
-  font-size: 0.9rem;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.profile-login-input:focus {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: var(--accent-color);
-  box-shadow: 0 0 10px var(--accent-glow);
-}
-
-.profile-login-btn {
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  padding: 6px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.profile-login-btn:hover {
-  filter: brightness(1.1);
 }
 
 /* Header User Avatar */
@@ -2899,19 +2834,38 @@ tr:hover {
 /* Tela de login (#profileScreen) — .login-card/.login-title/.login-subtitle/.login-error
    não tinham nenhuma regra própria antes (só herdavam estilo genérico de input/label),
    por isso os campos ficavam com a largura mínima nativa do navegador. */
+/* O gate cobre o app inteiro, então o fundo é o da própria página — antes era um
+   #0d1117 inline, resíduo da paleta anterior, que ignorava o tema claro por completo.
+   flex-start + overflow-y deixam o card rolar em viewport baixo (paisagem, zoom 200%)
+   em vez de cortar o topo; o .modal-overlay global continua centralizando. */
+#profileScreen {
+  background: var(--bg-color);
+  backdrop-filter: none;
+  z-index: 2000;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
 .login-card {
   width: 100%;
   max-width: 440px;
+  margin: auto;
   padding: 2.5rem 2.25rem;
-  border-radius: 16px;
+  border-radius: var(--bs-border-radius-xl);
   background: var(--card-bg);
   border: 1px solid var(--border-color);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--bs-box-shadow-lg);
 }
 
+/* O h1 global é --accent-color: numa tela com uma única ação, isso fazia um rótulo
+   estático competir com o botão "Entrar". O accent aqui fica só na ação principal,
+   no anel de foco e no erro. */
 .login-title {
   text-align: center;
-  margin: 0 0 0.4rem;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem;
 }
 
 .login-subtitle {
@@ -2920,17 +2874,49 @@ tr:hover {
   margin: 0 0 2rem;
 }
 
+.login-field {
+  margin-bottom: 1rem;
+}
+
+/* Texto de erro usa --module-status-error-color, não --danger-color: este último sobre o
+   card do tema escuro dá 3,35:1, abaixo de AA. A borda vermelha do input continua no
+   --danger-color, onde contraste de texto não se aplica. */
 .login-error {
-  color: var(--danger-color);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  color: var(--module-status-error-color);
   font-size: 0.85rem;
-  margin-top: 0.75rem;
-  text-align: center;
+  text-align: left;
+  margin: 0 0 1rem;
+}
+
+.login-card .field-error {
+  color: var(--module-status-error-color);
+}
+
+.login-error[hidden] {
+  display: none;
+}
+
+.login-error svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.login-submit {
+  width: 100%;
+  justify-content: center;
+  min-height: 46px;
 }
 
 .login-card .form-group input {
   width: 100%;
   min-height: 46px;
-  border-radius: 12px;
+  border-radius: var(--bs-border-radius-lg);
   padding: 0.85rem 0.95rem;
   box-sizing: border-box;
 }
@@ -2941,14 +2927,20 @@ tr:hover {
   box-shadow: 0 0 0 4px var(--module-input-focus-ring);
 }
 
+.login-card .form-group input.is-invalid:focus {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger-color) 30%, transparent);
+}
+
 /* Botão de mostrar/esconder senha, embutido no próprio campo. */
 .input-with-action {
   position: relative;
   display: flex;
 }
 
+.login-card .input-with-action input,
 .input-with-action input {
-  padding-right: 2.75rem !important;
+  padding-right: 2.75rem;
 }
 
 .input-action-btn {
@@ -2964,12 +2956,19 @@ tr:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--bs-border-radius);
+  transition: color 0.2s ease;
 }
 
+/* Hover só por cor: o rgba branco anterior era invisível sobre o input branco do tema claro. */
 .input-action-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+}
+
+.input-action-btn:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+  color: var(--text-primary);
 }
 
 .input-action-btn svg {
