@@ -12,6 +12,7 @@ import { initializeTheme } from './themeService.js';
 import { initDateRangePicker } from './dateRangePicker.js';
 import * as Form from './formService.js';
 import { createTenantOperationGuard } from './tenantOperationGuard.js';
+import { findDeveloperById, resolveDeveloperId } from './developerSelection.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
@@ -115,24 +116,21 @@ function applyDemoProjectsToSelect() {
     });
 }
 
-// Populate developer datalist
-function populateDevList() {
-    const devList = document.getElementById('devList');
-    if (!devList) return;
+function populateDeveloperSelect() {
+    const developerSelect = document.getElementById('dev');
+    if (!developerSelect) return;
 
-    devList.innerHTML = '';
+    const previousValue = developerSelect.value;
+    developerSelect.innerHTML = '<option value="">Selecione um desenvolvedor</option>';
 
     availableUsers.forEach(user => {
         const option = document.createElement('option');
-        option.value = user.name;
-        devList.appendChild(option);
+        option.value = String(user.id);
+        option.textContent = user.name;
+        developerSelect.appendChild(option);
     });
-}
 
-// Get user ID by name (usuários vêm da API — Épico 2)
-function getUserIdByName(userName) {
-    const user = availableUsers.find(u => u.name === userName);
-    return user ? user.id : null;
+    developerSelect.value = resolveDeveloperId(availableUsers, previousValue);
 }
 
 function setPrCreationRequiredState(isCreate) {
@@ -152,7 +150,7 @@ function validatePrForm(isCreate) {
     const teamsLink = document.getElementById('teamsLink');
     const rules = [
         { field: project, validate: Form.isRequired, message: 'Selecione uma aplicação.' },
-        { field: dev, validate: Form.isRequired, message: 'Selecione o desenvolvedor.' },
+        { field: dev, validate: value => Boolean(findDeveloperById(availableUsers, value)), message: 'Selecione um desenvolvedor válido da lista.' },
         { field: summary, validate: Form.isRequired, message: 'Informe o resumo do PR.' },
         { field: prLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o PR.' },
         { field: taskLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para a task.' },
@@ -555,7 +553,7 @@ async function init() {
 
     await loadUsers();
     applyDevMode();
-    populateDevList();
+    populateDeveloperSelect();
 
     if (!LocalStorage.getItem('token')) {
         showProfileSelection();
@@ -845,7 +843,7 @@ async function loadUsers(expectedRevision = tenantOperations.snapshot()) {
         if (!tenantOperations.isCurrent(expectedRevision)) return false;
 
         availableUsers = Array.isArray(users) ? users : [];
-        populateDevList();
+        populateDeveloperSelect();
         return true;
     } catch (error) {
         if (!tenantOperations.isCurrent(expectedRevision)) return false;
@@ -1032,7 +1030,7 @@ function openEditModal(pr) {
     setPrCreationRequiredState(false);
     document.getElementById('prId').value = pr.id;
     document.getElementById('project').value = pr.project || '';
-    document.getElementById('dev').value = pr.dev || '';
+    document.getElementById('dev').value = resolveDeveloperId(availableUsers, pr.devId, pr.dev);
     document.getElementById('summary').value = pr.summary || '';
     document.getElementById('prLink').value = pr.prLink || '';
     document.getElementById('taskLink').value = pr.taskLink || '';
@@ -1113,10 +1111,11 @@ function openAddModal() {
     document.getElementById('relatedTasksContainer').innerHTML = '';
 
     const currentMe = AuthService.getMe();
-    const appUser = currentMe?.name || LocalStorage.getItem('appUser');
-    if (appUser) {
-        document.getElementById('dev').value = appUser;
-    }
+    document.getElementById('dev').value = resolveDeveloperId(
+        availableUsers,
+        currentMe?.id || LocalStorage.getItem('appUserId'),
+        currentMe?.name || LocalStorage.getItem('appUser')
+    );
 
     const fieldsToLock = ['project', 'dev', 'summary', 'prLink', 'taskLink', 'teamsLink'];
     fieldsToLock.forEach(id => {
@@ -1535,36 +1534,6 @@ window.archivePr = async (prId) => {
 };
 
 
-const devInput = document.getElementById('dev');
-
-devInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        const typedValue = e.target.value.trim().toLowerCase();
-        const devNames = availableUsers.map(u => u.name);
-
-        if (!typedValue || devNames.some(d => d.toLowerCase() === typedValue)) {
-            return;
-        }
-
-        const match = devNames.find(d => d.toLowerCase().startsWith(typedValue));
-
-        if (match) {
-            e.preventDefault();
-            e.target.value = match;
-            DOM.showToast(`Auto-preenchido: ${match}`);
-        }
-    }
-});
-
-devInput.addEventListener('change', (e) => {
-    const isValid = availableUsers.find(u => u.name === e.target.value);
-
-    if (e.target.value && !isValid) {
-        DOM.showToast('Desenvolvedor inválido. Escolha um da lista.', 'warning');
-        e.target.value = '';
-    }
-});
-
 document.querySelectorAll('.close-btn, .close-modal').forEach(btn => {
     btn.addEventListener('click', closeAllModals);
 });
@@ -1642,35 +1611,23 @@ if (saveConfigBtn) {
 prForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const devInputForForm = document.getElementById('dev');
+    const developerSelect = document.getElementById('dev');
     const prIdInput = document.getElementById('prId').value;
-    const devName = devInputForForm.value;
 
     if (!validatePrForm(!prIdInput)) {
         return;
     }
 
-    if (!availableUsers.find(u => u.name === devName)) {
-        Form.setFieldError(devInputForForm, 'Selecione um desenvolvedor válido da lista.');
-        devInputForForm.focus();
-        return;
-    }
+    const selectedDeveloper = findDeveloperById(availableUsers, developerSelect.value);
 
     if (!Form.beginFormSubmission(prForm)) return;
 
     try {
         DOM.showLoading(true);
-        
-        const devId = getUserIdByName(devName);
-        
-        if (!devId) {
-            Form.setFieldError(devInputForForm, 'Desenvolvedor não encontrado no tenant atual.');
-            return;
-        }
-        
+
         const prData = {
             project: document.getElementById('project').value,
-            devId: devId,
+            devId: selectedDeveloper.id,
             summary: document.getElementById('summary').value,
             prLink: document.getElementById('prLink').value || '',
             taskLink: document.getElementById('taskLink').value || '',
