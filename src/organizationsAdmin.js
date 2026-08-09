@@ -2,6 +2,7 @@
 // Telas administrativas são sempre rotas, nunca modais no index.
 import * as API from './apiService.js';
 import * as AuthService from './authService.js';
+import * as DOM from './domService.js';
 import * as LocalStorage from './localStorageService.js';
 import { initializeTheme } from './themeService.js';
 
@@ -59,7 +60,7 @@ async function renderOrgsTable() {
                 await API.deactivateOrganization(org.id);
                 await renderOrgsTable();
             } catch (error) {
-                alert(traduzErro(error));
+                DOM.showToast(traduzErro(error), 'error');
             }
         }));
 }
@@ -123,7 +124,7 @@ orgForm?.addEventListener('submit', async (e) => {
         closeOrgForm();
         await renderOrgsTable();
     } catch (error) {
-        alert(traduzErro(error));
+        DOM.showToast(traduzErro(error), 'error');
     }
 });
 

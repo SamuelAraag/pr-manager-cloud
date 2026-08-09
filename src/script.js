@@ -1561,7 +1561,7 @@ if (saveConfigBtn) {
         const jiraToken = document.getElementById('jiraTokenInput') ? document.getElementById('jiraTokenInput').value.trim() : '';
 
         if (!glToken) {
-            alert('Por favor, insira o token do GitLab.');
+            DOM.showToast('Informe o token do GitLab.', 'warning');
             return;
         }
 

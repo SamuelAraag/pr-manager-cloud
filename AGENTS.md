@@ -191,13 +191,21 @@ client-side. A mesma regra existe no backend, que retorna `400` com
 O código antecede estas regras. Encontrar um padrão no código **não é prova** de que ele é o
 correto. Reconfira com `grep -rn "\balert(\|\bconfirm(" src/*.js` — a lista envelhece.
 
-- **`alert()`/`confirm()` nativos ainda em uso** em `appsHome.js`, `environments.js`,
-  `monitorStatus.js`, `organizationsAdmin.js` e `script.js` (parcialmente migrado). Já
-  migrados e bons como referência: `usersAdmin.js`, `tenantsAdmin.js`, `dateRangePicker.js`.
-  As ocorrências dentro do próprio `domService.js` são o *fallback* intencional de
-  `confirmDialog`/`alertDialog` quando falta o markup na página — não são débito.
-- **Markup do diálogo só existe em `index.html`, `usuarios.html` e `tenants.html`.** Sem ele,
-  `confirmDialog()` cai no nativo sem erro visível.
+- **`confirm()` nativo ainda em uso** em `appsHome.js`, `environments.js`, `monitorStatus.js`,
+  `organizationsAdmin.js` e `script.js`. Já migrados e bons como referência: `usersAdmin.js`,
+  `tenantsAdmin.js`, `dateRangePicker.js`. As ocorrências dentro do próprio `domService.js`
+  são o *fallback* intencional de `confirmDialog`/`alertDialog` quando falta o markup na
+  página — não são débito.
+- **`alert()` nativo só resta em `environments.js`** — os demais viraram `showToast()`. Erro
+  de rede/servidor e validação de formulário são **toast**, não diálogo bloqueante; use
+  `alertDialog()` só quando o fluxo precisa parar até o usuário confirmar a leitura.
+- **Markup do `confirmDialog` só existe em `index.html`, `usuarios.html` e `tenants.html`; o
+  do `alertDialog`, só em `apps.html`.** Sem ele, o diálogo cai no nativo sem erro visível.
+- **`#toast-container` falta em `ambientes.html`, `apps.html`, `changelog.html` e
+  `ping.html`.** Sem ele,
+  `showToast()` retorna sem renderizar nada (`domService.js`) — a mensagem some em silêncio.
+  Adicione `<div id="toast-container" class="toast-container"></div>` antes do `<script>` da
+  página ao usar toast numa tela nova.
 - **`escapeHtml` existe em `domService.js` mas não está no `export {...}`** — hoje é
   impossível importá-lo de outro módulo. Se precisar, adicione ao export na mesma task; não
   duplique um escape local.

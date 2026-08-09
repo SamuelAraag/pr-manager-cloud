@@ -233,7 +233,7 @@ async function openDetails(appId) {
         
         detailsModal.style.display = "flex";
     } catch (e) {
-        alert(e.message);
+        DOM.showToast(e.message || 'Não foi possível carregar os detalhes da aplicação.', 'error');
     }
 }
 
@@ -506,7 +506,7 @@ async function handleSubmit(event) {
   };
 
   if (!payload.name || !payload.url) {
-    alert("Preencha nome e link da aplicação.");
+    DOM.showToast("Preencha nome e link da aplicação.", "warning");
     return;
   }
 
@@ -520,7 +520,7 @@ async function handleSubmit(event) {
     closeModal();
     await loadApps();
   } catch (error) {
-    alert(error.message);
+    DOM.showToast(error.message || 'Não foi possível salvar a aplicação.', 'error');
   }
 }
 
@@ -558,7 +558,7 @@ function handleCardsClick(event) {
 
     API.deleteMonitorStatusApp(appId)
       .then(loadApps)
-      .catch((error) => alert(error.message));
+      .catch((error) => DOM.showToast(error.message || 'Não foi possível remover a aplicação.', 'error'));
   }
 }
 
