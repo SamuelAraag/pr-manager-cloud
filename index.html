@@ -397,18 +397,11 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Desenvolvedor</label>
-                        <input type="text" id="dev" list="devList" placeholder="Selecione ou digite..." required>
-                        <span class="field-error">Selecione o desenvolvedor.</span>
-                        <datalist id="devList">
-                            <option value="Rodrigo Barbosa">
-                            <option value="Itallo Cerqueira">
-                            <option value="Marcos Paulo">
-                            <option value="Samuel Santos">
-                            <option value="Kemilly Alvez">
-                            <option value="Fabio Cabral">
-                            <option value="Silmara Silva">
-                        </datalist>
+                        <label for="dev">Desenvolvedor</label>
+                        <select id="dev" required aria-describedby="devError">
+                            <option value="">Selecione um desenvolvedor</option>
+                        </select>
+                        <span class="field-error" id="devError">Selecione o desenvolvedor.</span>
                     </div>
                     <div class="form-group full-width">
                         <label>Resumo</label>
