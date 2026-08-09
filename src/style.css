@@ -3092,6 +3092,28 @@ input.is-invalid:focus, select.is-invalid:focus, textarea.is-invalid:focus {
   display: block;
 }
 
+html:not(.auth-ready) .auth-guarded,
+html:not(.auth-ready) [data-roles] {
+  visibility: hidden !important;
+}
+
+.form-empty-state {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--warning-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--warning-color) 10%, transparent);
+  font-size: 0.85rem;
+}
+
+.form-empty-state a {
+  display: inline-block;
+  margin-left: 0.35rem;
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
 /* Componente de período (data início/fim) — issue pr-manager-cloud#18. Calendário único
    em popover ancorado no campo, seguindo o mesmo padrão de diálogo customizado do resto
    do projeto (markup estático + JS liga os elementos, ver src/dateRangePicker.js). */

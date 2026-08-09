@@ -22,6 +22,13 @@ function getBackendHeaders() {
   return headers;
 }
 
+export async function parseResponseBody(response) {
+  if (response.status === 204) return null;
+  const text = await response.text();
+  if (!text.trim()) return null;
+  return JSON.parse(text);
+}
+
 // Helper genérico para os endpoints novos do Épico 9 (Tenants, Convites, Memberships,
 // Notificações) — mesmo padrão de appsRequest/environmentsRequest, sem repetir por recurso.
 async function apiRequest(path, options = {}) {
@@ -30,10 +37,10 @@ async function apiRequest(path, options = {}) {
     ...options,
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Erro na API: ${response.statusText}`);
+    const body = await parseResponseBody(response).catch(() => ({}));
+    throw new Error(body?.error || `Erro na API: ${response.statusText}`);
   }
-  return response.status === 204 ? null : await response.json();
+  return parseResponseBody(response);
 }
 
 // ── Identidade fresca (Épico 9 Fase 3) ──────────────────────────────────────
@@ -150,14 +157,11 @@ async function createPR(prData) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      throw new Error(
-        `Erro ao criar PR: ${errorBody.error || errorBody.message || response.statusText}`,
-      );
+      const errorBody = await parseResponseBody(response).catch(() => ({}));
+      throw new Error(errorBody?.error || errorBody?.message || `Erro ao criar PR: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data;
+    return await parseResponseBody(response);
   } catch (error) {
     console.error("Falha ao criar PR:", error);
     throw error;
@@ -175,14 +179,11 @@ async function updatePR(prId, prData) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
-      throw new Error(
-        `Erro ao atualizar PR: ${errorBody.message || response.statusText}`,
-      );
+      const errorBody = await parseResponseBody(response).catch(() => ({}));
+      throw new Error(errorBody?.error || errorBody?.message || `Erro ao atualizar PR: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data;
+    return await parseResponseBody(response);
   } catch (error) {
     console.error("Falha ao atualizar PR:", error);
     throw error;
@@ -563,10 +564,10 @@ async function appsRequest(path, options = {}) {
     ...options,
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Erro na API de apps: ${response.statusText}`);
+    const body = await parseResponseBody(response).catch(() => ({}));
+    throw new Error(body?.error || `Erro na API de apps: ${response.statusText}`);
   }
-  return response.status === 204 ? null : await response.json();
+  return parseResponseBody(response);
 }
 
 const fetchApps = () => appsRequest("");
@@ -633,10 +634,10 @@ async function createUser(userData) {
     body: JSON.stringify(userData),
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Erro ao criar usuário: ${response.statusText}`);
+    const body = await parseResponseBody(response).catch(() => ({}));
+    throw new Error(body?.error || `Erro ao criar usuário: ${response.statusText}`);
   }
-  return await response.json();
+  return parseResponseBody(response);
 }
 
 async function updateUser(id, userData) {
@@ -646,10 +647,10 @@ async function updateUser(id, userData) {
     body: JSON.stringify(userData),
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Erro ao atualizar usuário: ${response.statusText}`);
+    const body = await parseResponseBody(response).catch(() => ({}));
+    throw new Error(body?.error || `Erro ao atualizar usuário: ${response.statusText}`);
   }
-  return await response.json();
+  return parseResponseBody(response);
 }
 
 async function deactivateUser(id) {
@@ -658,10 +659,10 @@ async function deactivateUser(id) {
     headers: getBackendHeaders(),
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Erro ao desativar usuário: ${response.statusText}`);
+    const body = await parseResponseBody(response).catch(() => ({}));
+    throw new Error(body?.error || `Erro ao desativar usuário: ${response.statusText}`);
   }
-  return await response.json();
+  return parseResponseBody(response);
 }
 
 async function archivePR(prId) {

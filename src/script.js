@@ -10,9 +10,12 @@ import { connectSignalR } from './notificationService.js';
 import { isLocalDev, DEMO_MODE, DEMO_USERS, getDemoProject } from './constants/apiConstants.js';
 import { initializeTheme } from './themeService.js';
 import { initDateRangePicker } from './dateRangePicker.js';
+import * as Form from './formService.js';
+import { createTenantOperationGuard } from './tenantOperationGuard.js';
 
 let currentData = { prs: [] };
 let availableUsers = [];
+const tenantOperations = createTenantOperationGuard();
 
 // Filtro por app (Épico 3): apps.html manda para index.html?app=<nome>. O nome na URL só
 // resolve o app (abaixo, currentAppId); a listagem de PRs/lotes filtra por AppId (FK), não
@@ -22,17 +25,19 @@ const appFilter = new URLSearchParams(window.location.search).get('app');
 // id do app filtrado (resolvido quando a lista de apps carrega) — chave real do filtro de PRs/lotes
 let currentAppId = null;
 
+AuthService.markAuthenticationPending();
 initializeTheme('themeToggleBtn');
 
 // Épico 5.3: o <select id="project"> não tem mais lista fixa no HTML — vem inteira da
 // API (mesmos apps que a Home de Apps do Épico 3 já lista). Também resolve o papel do
 // usuário NO APP filtrado (Épico 4.3, reaproveitando o "myRole" que GET /Apps já calcula).
-async function loadProjectOptions() {
+async function loadProjectOptions(expectedRevision = tenantOperations.snapshot()) {
     const projectSelect = document.getElementById('project');
     const previousValue = projectSelect?.value;
 
     try {
         const apps = await API.fetchApps();
+        if (!tenantOperations.isCurrent(expectedRevision)) return false;
         if (!Array.isArray(apps)) return;
 
         if (projectSelect) {
@@ -51,6 +56,8 @@ async function loadProjectOptions() {
             }
         }
 
+        updateProjectEmptyState(apps);
+
         if (appFilter) {
             const app = apps.find(a => a.name === appFilter);
             AuthService.setCurrentAppRole(app?.myRole ?? null);
@@ -65,8 +72,25 @@ async function loadProjectOptions() {
                 projectSelect.title = 'Projeto herdado do app selecionado';
             }
         }
+        return true;
     } catch (error) {
+        if (!tenantOperations.isCurrent(expectedRevision)) return false;
         console.error('Erro ao carregar lista de apps:', error);
+        return false;
+    }
+}
+
+function updateProjectEmptyState(apps) {
+    const hasApps = Array.isArray(apps) && apps.length > 0;
+    const emptyState = document.getElementById('projectEmptyState');
+    const adminLink = document.getElementById('projectEmptyAdminLink');
+    const submitButton = document.getElementById('prSubmitBtn');
+
+    if (emptyState) emptyState.style.display = hasApps ? 'none' : 'block';
+    if (adminLink) adminLink.style.display = !hasApps && AuthService.isAdminGlobal() ? 'inline' : 'none';
+    if (submitButton) {
+        submitButton.dataset.permanentDisabled = hasApps ? 'false' : 'true';
+        submitButton.disabled = !hasApps;
     }
 }
 
@@ -119,26 +143,35 @@ function setPrCreationRequiredState(isCreate) {
     });
 }
 
-function validatePrCreationForm() {
-    const requiredFields = [
-        { id: 'project', label: 'Projeto' },
-        { id: 'dev', label: 'Desenvolvedor' },
-        { id: 'summary', label: 'Resumo' },
-        { id: 'prLink', label: 'Link PR' },
-        { id: 'taskLink', label: 'Link Task (Jira)' },
-        { id: 'teamsLink', label: 'Post no Teams' },
+function validatePrForm(isCreate) {
+    const project = document.getElementById('project');
+    const dev = document.getElementById('dev');
+    const summary = document.getElementById('summary');
+    const prLink = document.getElementById('prLink');
+    const taskLink = document.getElementById('taskLink');
+    const teamsLink = document.getElementById('teamsLink');
+    const rules = [
+        { field: project, validate: Form.isRequired, message: 'Selecione uma aplicação.' },
+        { field: dev, validate: Form.isRequired, message: 'Selecione o desenvolvedor.' },
+        { field: summary, validate: Form.isRequired, message: 'Informe o resumo do PR.' },
+        { field: prLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o PR.' },
+        { field: taskLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para a task.' },
+        { field: teamsLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o post no Teams.' },
     ];
 
-    for (const fieldInfo of requiredFields) {
-        const value = document.getElementById(fieldInfo.id)?.value.trim();
-        if (!value) {
-            DOM.showToast(`${fieldInfo.label} é obrigatório.`, 'warning');
-            document.getElementById(fieldInfo.id)?.focus();
-            return false;
-        }
-    }
+    document.querySelectorAll('.related-task-group').forEach(group => {
+        const urlField = group.querySelector('.related-task-input-url');
+        const summaryField = group.querySelector('.related-task-input-summary');
+        rules.push({
+            field: urlField,
+            validate: value => Form.isRequired(value)
+                ? Form.isOptionalUrl(value)
+                : !Form.isRequired(summaryField?.value),
+            message: 'Informe uma URL válida para a task relacionada.'
+        });
+    });
 
-    return true;
+    return Form.validateFields(rules);
 }
 
 function getPrErrorMessage(errorMessage) {
@@ -191,6 +224,7 @@ const currentUserDisplayRight = document.getElementById('currentUserDisplayRight
 const godModeContainer = document.getElementById('godModeContainer');
 const godModeInput = document.getElementById('godModeInput');
 let pendingVersionRequestContext = null;
+Form.prepareForm(prForm);
 
 if (currentUserDisplay) currentUserDisplay.addEventListener('click', showProfileSelection);
 if (currentUserDisplayRight) currentUserDisplayRight.addEventListener('click', showProfileSelection);
@@ -368,31 +402,30 @@ if (godModeInput) {
 // currentTenantId em localStorage aponta pra um tenant válido antes de carregar dados —
 // toda chamada à API depois disso já sai com o header X-Tenant-Id certo.
 async function ensureTenantContext() {
-    const me = await AuthService.refreshMe();
-    if (!me) {
-        // token inválido/expirado: volta pro login em vez de travar a tela
-        LocalStorage.clearSession();
+    const session = await AuthService.restoreSession();
+    if (session.state === 'unauthenticated') {
         showProfileSelection();
         return false;
     }
 
+    let me = session.me;
     const tenants = me.tenants || [];
-    if (tenants.length === 0) {
+    if (session.state === 'no-tenant') {
         document.getElementById('noTenantScreen').style.display = 'flex';
         return false;
     }
 
-    const storedId = LocalStorage.getItem('currentTenantId');
-    const storedIsValid = storedId && tenants.some(t => t.tenantId === storedId);
-
-    if (tenants.length === 1) {
-        LocalStorage.setItem('currentTenantId', tenants[0].tenantId);
-    } else if (!storedIsValid) {
+    if (session.state === 'tenant-selection-required') {
         const chosenId = await showTenantSelector(tenants);
-        LocalStorage.setItem('currentTenantId', chosenId);
-        await AuthService.refreshMe(); // refaz com o header certo pra pegar o papel no tenant escolhido
+        me = await AuthService.activateTenant(chosenId);
+        if (!me) {
+            LocalStorage.clearSession();
+            showProfileSelection();
+            return false;
+        }
     }
 
+    document.getElementById('noTenantScreen').style.display = 'none';
     updateTenantSwitcher();
     return true;
 }
@@ -452,22 +485,35 @@ function updateTenantSwitcher() {
 
 document.getElementById('tenantSwitchBtn')?.addEventListener('click', async () => {
     const me = AuthService.getMe();
-    if (!me || !(me.tenants || []).length) return;
+    if (!me || !(me.tenants || []).length || tenantOperations.isTransitioning()) return;
 
-    const chosenId = await showTenantSelector(me.tenants, LocalStorage.getItem('currentTenantId'));
-    if (chosenId === LocalStorage.getItem('currentTenantId')) return;
-
-    LocalStorage.setItem('currentTenantId', chosenId);
-    DOM.showLoading(true);
+    const transitionRevision = tenantOperations.beginTransition();
+    const addPrButton = document.getElementById('addPrBtn');
+    if (addPrButton) addPrButton.disabled = true;
+    closeAllModals();
     try {
-        await AuthService.refreshMe();
+        const currentTenantId = LocalStorage.getItem('currentTenantId');
+        const chosenId = await showTenantSelector(me.tenants, currentTenantId);
+        if (chosenId === currentTenantId) return;
+
+        DOM.showLoading(true);
+        const activatedMe = await AuthService.activateTenant(chosenId);
+        if (!tenantOperations.isCurrent(transitionRevision)) return;
+        if (!activatedMe) throw new Error('Não foi possível ativar o tenant selecionado.');
         updateTenantSwitcher();
         AuthService.applyRoleBasedVisibility();
-        await loadProjectOptions();
+        await loadProjectOptions(transitionRevision);
+        if (!tenantOperations.isCurrent(transitionRevision)) return;
         applyDemoProjectsToSelect();
-        await loadData(true);
+        await loadData(true, transitionRevision);
+        if (!tenantOperations.isCurrent(transitionRevision)) return;
         DOM.showToast('Tenant alterado.');
+    } catch (error) {
+        console.error('Erro ao trocar tenant:', error);
+        DOM.showToast('Não foi possível trocar o tenant.', 'error');
     } finally {
+        tenantOperations.endTransition(transitionRevision);
+        if (addPrButton) addPrButton.disabled = false;
         DOM.showLoading(false);
     }
 });
@@ -486,6 +532,7 @@ document.getElementById('noTenantLogoutBtn')?.addEventListener('click', async ()
 
 function closeAllModals() {
     prModal.style.display = 'none';
+    Form.resetFormState(prForm);
     if (setupModal) setupModal.style.display = 'none';
     if (shortcutsModal) shortcutsModal.style.display = 'none';
     if (requestVersionModal) requestVersionModal.style.display = 'none';
@@ -510,14 +557,13 @@ async function init() {
     applyDevMode();
     populateDevList();
 
-    const appUser = LocalStorage.getItem('appUser');
-    if (!appUser) {
+    if (!LocalStorage.getItem('token')) {
         showProfileSelection();
     } else {
-        updateUserDisplay(appUser);
-
         const tenantOk = await ensureTenantContext();
         if (!tenantOk) return;
+        const appUser = LocalStorage.getItem('appUser');
+        updateUserDisplay(appUser);
         AuthService.applyRoleBasedVisibility();
 
         await loadProjectOptions();
@@ -585,39 +631,23 @@ if (toggleLoginPasswordBtn) {
 const loginForm = document.getElementById('loginForm');
 const loginSubmitBtn = document.getElementById('loginSubmitBtn');
 
-// Validação inline (preferencias.md §12): erro no próprio campo, não só um resumo no rodapé.
-const LOGIN_FIELDS = [
-    { inputId: 'loginIdentifier', errorId: 'loginIdentifierError', message: 'Informe seu email ou usuário.' },
-    { inputId: 'loginPassword', errorId: 'loginPasswordError', message: 'Informe sua senha.' }
-];
+// Validação inline (preferencias.md §12) pelo formService, o mesmo do prForm — não uma
+// segunda implementação só para esta tela.
+const loginIdentifierInput = document.getElementById('loginIdentifier');
+const loginPasswordInput = document.getElementById('loginPassword');
 
-function setLoginFieldError(field, message) {
-    const input = document.getElementById(field.inputId);
-    const errorEl = document.getElementById(field.errorId);
-    if (!input || !errorEl) return;
+Form.prepareForm(loginForm);
 
-    if (message) {
-        input.classList.add('is-invalid');
-        errorEl.textContent = message;
-        errorEl.classList.add('visible');
-    } else {
-        input.classList.remove('is-invalid');
-        errorEl.textContent = '';
-        errorEl.classList.remove('visible');
-    }
-}
-
-function validateLoginField(field) {
-    const input = document.getElementById(field.inputId);
-    if (!input) return true;
-
-    const isValid = input.value.trim() !== '';
-    setLoginFieldError(field, isValid ? '' : field.message);
-    return isValid;
+function validateLoginFields() {
+    return Form.validateFields([
+        { field: loginIdentifierInput, validate: Form.isRequired, message: 'Informe seu email ou usuário.' },
+        { field: loginPasswordInput, validate: Form.isRequired, message: 'Informe sua senha.' }
+    ]);
 }
 
 function clearLoginErrors() {
-    LOGIN_FIELDS.forEach((field) => setLoginFieldError(field, ''));
+    // resetFormState = limpa erros de campo + libera o submit travado por um envio anterior.
+    Form.resetFormState(loginForm);
     setLoginFormError('');
 }
 
@@ -635,19 +665,22 @@ function setLoginFormError(message) {
     if (message && window.lucide) lucide.createIcons();
 }
 
+// O formService já cuida de `disabled` e `aria-busy`; a camada visual do botão ocupado
+// (spinner + rótulo) é o que ele não tem — ver .btn.is-loading no catálogo.
 function setLoginSubmitting(submitting) {
     if (!loginSubmitBtn) return;
-    loginSubmitBtn.disabled = submitting;
     loginSubmitBtn.classList.toggle('is-loading', submitting);
     loginSubmitBtn.textContent = submitting ? 'Entrando...' : 'Entrar';
+    if (!submitting) loginSubmitBtn.disabled = false;
 }
 
-LOGIN_FIELDS.forEach((field) => {
-    const input = document.getElementById(field.inputId);
-    if (!input) return;
-    input.addEventListener('blur', () => validateLoginField(field));
-    input.addEventListener('input', () => {
-        if (input.classList.contains('is-invalid')) validateLoginField(field);
+// `prepareForm` limpa o erro ao digitar; validar no blur é exigência do 04-forms.md.
+[loginIdentifierInput, loginPasswordInput].forEach((input) => {
+    input?.addEventListener('blur', () => {
+        if (Form.isRequired(input.value)) return;
+        Form.setFieldError(input, input === loginPasswordInput
+            ? 'Informe sua senha.'
+            : 'Informe seu email ou usuário.');
     });
 });
 
@@ -658,12 +691,11 @@ if (loginForm) {
         setLoginFormError('');
 
         // Revalida tudo no submit, não só no blur — o usuário pode enviar com Enter sem
-        // nunca ter saído do campo.
-        const invalidFields = LOGIN_FIELDS.filter((field) => !validateLoginField(field));
-        if (invalidFields.length > 0) {
-            document.getElementById(invalidFields[0].inputId)?.focus();
-            return;
-        }
+        // nunca ter saído do campo. `validateFields` já foca o primeiro inválido.
+        if (!validateLoginFields()) return;
+
+        // Guarda de duplo envio: retorna false se já há um submit em andamento.
+        if (!Form.beginFormSubmission(loginForm)) return;
 
         const identifier = document.getElementById('loginIdentifier').value.trim();
         const password = document.getElementById('loginPassword').value;
@@ -707,6 +739,8 @@ if (loginForm) {
             // Devolve para onde o usuário vai corrigir, em vez de obrigá-lo a retabular.
             document.getElementById('loginPassword')?.focus();
         } finally {
+            // Sem isto o dataset.submitting fica preso e o botão nunca mais reabilita.
+            Form.endFormSubmission(loginForm);
             setLoginSubmitting(false);
         }
     });
@@ -742,6 +776,7 @@ function showProfileSelection() {
     clearLoginErrors();
     setLoginSubmitting(false);
     resetLoginPasswordToggle();
+    AuthService.markAuthenticationPending();
 
     showLoginGate();
     document.getElementById('loginIdentifier')?.focus();
@@ -800,20 +835,22 @@ function getVersionAssignableUsers() {
     return availableUsers.filter(user => (user.role || '').toLowerCase() === 'dev');
 }
 
-async function loadUsers() {
+async function loadUsers(expectedRevision = tenantOperations.snapshot()) {
     // Issue #34: sem token não há lista de usuários — o endpoint anônimo de perfis foi
     // removido (vazava usuários de todos os tenants) e a tela de login já é e-mail + senha.
     if (!LocalStorage.getItem('token')) return;
 
     try {
         const users = await API.fetchUsers();
+        if (!tenantOperations.isCurrent(expectedRevision)) return false;
 
-        if (Array.isArray(users) && users.length > 0) {
-            availableUsers = users;
-            populateDevList();
-        }
+        availableUsers = Array.isArray(users) ? users : [];
+        populateDevList();
+        return true;
     } catch (error) {
+        if (!tenantOperations.isCurrent(expectedRevision)) return false;
         console.error('Erro ao carregar usuários:', error);
+        return false;
     }
 }
 
@@ -896,24 +933,27 @@ async function confirmRequestVersionSelection() {
     }
 }
 
-async function loadPrTablesData(animate = false) {
+async function loadPrTablesData(animate = false, expectedRevision = tenantOperations.snapshot()) {
     const prResult = await API.fetchPRs();
+    if (!tenantOperations.isCurrent(expectedRevision)) return false;
     if (!prResult || !Array.isArray(prResult.prs)) {
         throw new Error('Falha ao carregar PRs');
     }
-    currentData.prs = appFilter
-        ? prResult.prs.filter(p => p.appId === currentAppId)
-        : prResult.prs;
-    refreshOpenPrs(animate);
-
     const batches = await API.fetchBatches();
+    if (!tenantOperations.isCurrent(expectedRevision)) return false;
     if (!Array.isArray(batches)) {
         throw new Error('Falha ao carregar lotes');
     }
+
+    currentData.prs = appFilter
+        ? prResult.prs.filter(p => p.appId === currentAppId)
+        : prResult.prs;
     currentData.batches = appFilter
         ? batches.filter(b => b.appId === currentAppId)
         : batches;
+    refreshOpenPrs(animate);
     refreshApprovedPrs(animate);
+    return true;
 }
 
 function refreshTestingAndHistory(animate = false) {
@@ -927,7 +967,7 @@ function refreshTestingAndHistory(animate = false) {
     if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
 }
 
-async function loadData(skipLoading = false) {
+async function loadData(skipLoading = false, expectedRevision = tenantOperations.snapshot()) {
     const token = LocalStorage.getItem('token');
     const appUser = LocalStorage.getItem('appUser');
     
@@ -936,22 +976,26 @@ async function loadData(skipLoading = false) {
     }
     
     try {
-        await loadUsers();
+        await loadUsers(expectedRevision);
+        if (!tenantOperations.isCurrent(expectedRevision)) return;
 
         // Sequential boot: open PRs first, then approved PRs
-        await loadPrTablesData(false);
+        await loadPrTablesData(false, expectedRevision);
+        if (!tenantOperations.isCurrent(expectedRevision)) return;
 
         const sprints = await API.fetchSprints();
+        if (!tenantOperations.isCurrent(expectedRevision)) return;
         if (!Array.isArray(sprints)) {
             throw new Error('Falha ao carregar sprints');
         }
         currentData.sprints = sprints;
         refreshTestingAndHistory(false);
     } catch (error) {
+        if (!tenantOperations.isCurrent(expectedRevision)) return;
         console.error('Erro ao carregar dados:', error);
         DOM.showToast('Erro ao carregar dados da API', 'error');
     } finally {
-        if (!skipLoading) {
+        if (!skipLoading && tenantOperations.isCurrent(expectedRevision)) {
             DOM.showLoading(false);
         }
     }
@@ -979,6 +1023,7 @@ function refreshApprovedPrs(animate = false) {
 }
 
 function openEditModal(pr) {
+    Form.resetFormState(prForm);
     document.getElementById('modalTitle').textContent = 'Editar Pull Request';
     setPrCreationRequiredState(false);
     document.getElementById('prId').value = pr.id;
@@ -1046,25 +1091,24 @@ function openEditModal(pr) {
     prModal.style.display = 'flex';
 }
 
-async function openAddModal() {
+function openAddModal() {
+    if (tenantOperations.isTransitioning()) {
+        DOM.showToast('Aguarde a troca de tenant terminar.', 'info');
+        return;
+    }
+
+    const openingRevision = tenantOperations.snapshot();
     document.getElementById('modalTitle').textContent = 'Novo Pull Request';
     setPrCreationRequiredState(true);
     prForm.reset();
+    Form.resetFormState(prForm);
     document.getElementById('prId').value = '';
     
     updateSummaryLabel();
     
     document.getElementById('relatedTasksContainer').innerHTML = '';
 
-    let currentMe = null;
-    try {
-        currentMe = await AuthService.refreshMe();
-    } catch (error) {
-        console.error('Erro ao buscar identidade atual para o modal de PR:', error);
-    }
-
-    await loadUsers();
-
+    const currentMe = AuthService.getMe();
     const appUser = currentMe?.name || LocalStorage.getItem('appUser');
     if (appUser) {
         document.getElementById('dev').value = appUser;
@@ -1090,7 +1134,8 @@ async function openAddModal() {
 
     const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
     if (addRelatedBtn) addRelatedBtn.disabled = false;
-    
+
+    if (!tenantOperations.isCurrent(openingRevision) || tenantOperations.isTransitioning()) return;
     prModal.style.display = 'flex';
 }
 
@@ -1197,8 +1242,9 @@ function addRelatedTaskInput(url = '', summary = '') {
     }
     
     const div = document.createElement('div');
-    div.className = 'related-task-group';
+    div.className = 'related-task-group form-group';
     div.style.display = 'flex';
+    div.style.flexWrap = 'wrap';
     div.style.gap = '10px';
     div.style.alignItems = 'center';
     
@@ -1243,6 +1289,9 @@ function addRelatedTaskInput(url = '', summary = '') {
     div.appendChild(summaryInput);
     div.appendChild(urlInput);
     div.appendChild(removeBtn);
+    const errorElement = document.createElement('span');
+    errorElement.className = 'field-error';
+    div.appendChild(errorElement);
     container.appendChild(div);
     
     if(window.lucide) {
@@ -1577,15 +1626,17 @@ prForm.addEventListener('submit', async (e) => {
     const prIdInput = document.getElementById('prId').value;
     const devName = devInputForForm.value;
 
-    if (!prIdInput && !validatePrCreationForm()) {
+    if (!validatePrForm(!prIdInput)) {
         return;
     }
 
     if (!availableUsers.find(u => u.name === devName)) {
-        DOM.showToast('Por favor, selecione um desenvolvedor válido da lista.', 'warning');
+        Form.setFieldError(devInputForForm, 'Selecione um desenvolvedor válido da lista.');
         devInputForForm.focus();
         return;
     }
+
+    if (!Form.beginFormSubmission(prForm)) return;
 
     try {
         DOM.showLoading(true);
@@ -1593,7 +1644,7 @@ prForm.addEventListener('submit', async (e) => {
         const devId = getUserIdByName(devName);
         
         if (!devId) {
-            DOM.showToast('Atenção: Desenvolvedor não encontrado', 'warning');
+            Form.setFieldError(devInputForForm, 'Desenvolvedor não encontrado no tenant atual.');
             return;
         }
         
@@ -1615,35 +1666,32 @@ prForm.addEventListener('submit', async (e) => {
                 .join(';')
         };
 
-        let savedPR;
-        
+        const successMessage = prIdInput
+            ? 'PR atualizado com sucesso!'
+            : 'PR criado com sucesso!';
+
         if (prIdInput) {
-            savedPR = await API.updatePR(prIdInput, prData);
-            // DOM.showToast('PR atualizado com sucesso!');
-            
-            // Local update
-            const index = currentData.prs.findIndex(p => p.id == prIdInput);
-            if (index !== -1 && savedPR) {
-                currentData.prs[index] = savedPR;
-            }
+            await API.updatePR(prIdInput, prData);
         } else {
-            savedPR = await API.createPR(prData);
-            DOM.showToast('PR criado com sucesso!');
-            
-            if (savedPR) {
-                currentData.prs.push(savedPR);
-            }
+            await API.createPR(prData);
         }
-        
-        refreshOpenPrs();
-        
+
         prModal.style.display = 'none';
         prForm.reset();
+        DOM.showToast(successMessage);
+
+        try {
+            await loadPrTablesData(true);
+        } catch (refreshError) {
+            console.error('PR salvo, mas o Dashboard não pôde ser atualizado:', refreshError);
+            DOM.showToast('PR salvo. Atualize a página para recarregar o Dashboard.', 'warning');
+        }
     } catch (error) {
         console.error('Erro detalhado ao salvar:', error);
         DOM.showToast('Erro ao salvar: ' + getPrErrorMessage(error.message), 'error');
     } finally {
         DOM.showLoading(false);
+        Form.endFormSubmission(prForm);
     }
 });
 

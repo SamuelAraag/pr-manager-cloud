@@ -70,7 +70,7 @@
         </div>
     </div>
 
-    <div class="container">
+    <div class="container auth-guarded">
         <header>
             <div class="logo-area">
                 <div style="display: flex; align-items: center; gap: 1rem;">
@@ -386,14 +386,20 @@
                         </label>
                         <select id="project" required>
                         </select>
+                        <span class="field-error">Selecione uma aplicação.</span>
+                        <div id="projectEmptyState" class="form-empty-state" style="display: none;">
+                            Nenhuma aplicação está disponível neste tenant. Solicite acesso ou peça o cadastro ao administrador.
+                            <a id="projectEmptyAdminLink" href="apps.html?new=1" style="display: none;">Cadastrar aplicação</a>
+                        </div>
                         <div id="projectHelpTooltip" class="field-help-tooltip" style="display: none;">
                             Não encontrou a aplicação na lista? Ela precisa estar cadastrada no PR Manager primeiro.
-                            <a href="apps.html?new=1" target="_blank" rel="noopener">Cadastrar aplicação →</a>
+                            <a href="apps.html?new=1" target="_blank" rel="noopener" data-roles="Admin">Cadastrar aplicação →</a>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Desenvolvedor</label>
                         <input type="text" id="dev" list="devList" placeholder="Selecione ou digite..." required>
+                        <span class="field-error">Selecione o desenvolvedor.</span>
                         <datalist id="devList">
                             <option value="Rodrigo Barbosa">
                             <option value="Itallo Cerqueira">
@@ -407,18 +413,22 @@
                     <div class="form-group full-width">
                         <label>Resumo</label>
                         <input type="text" id="summary" placeholder="Ex: Correção do cálculo de imposto" required>
+                        <span class="field-error">Informe o resumo do PR.</span>
                     </div>
                     <div class="form-group">
                         <label>Link PR</label>
                         <input type="url" id="prLink" placeholder="https://bitbucket.org/...">
+                        <span class="field-error">Informe uma URL válida para o PR.</span>
                     </div>
                     <div class="form-group">
                         <label>Link Task (Jira)</label>
                         <input type="url" id="taskLink" placeholder="https://atlassian.net/...">
+                        <span class="field-error">Informe uma URL válida para a task.</span>
                     </div>
                     <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
                         <label>Post no Teams</label>
                         <input type="url" id="teamsLink" placeholder="Link da mensagem">
+                        <span class="field-error">Informe uma URL válida para o post no Teams.</span>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0.3rem;">
@@ -461,7 +471,7 @@
                 </div>
                 <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
                     <button type="button" class="btn btn-outline close-modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button id="prSubmitBtn" type="submit" class="btn btn-primary">Salvar</button>
                 </div>
             </form>
         </div>
