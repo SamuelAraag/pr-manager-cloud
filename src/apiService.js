@@ -29,6 +29,33 @@ export async function parseResponseBody(response) {
   return JSON.parse(text);
 }
 
+/**
+ * Lê o corpo de uma resposta de erro sem estourar quando ele vem vazio.
+ *
+ * O ASP.NET responde 403 (Forbid) e 401 com ZERO bytes. Um `await response.json()` direto
+ * lança SyntaxError e o erro real desaparece atrás de "Unexpected end of JSON input" — o
+ * chamador perde o status e mostra uma mensagem que não ajuda ninguém a entender o que houve.
+ */
+async function lerCorpoDeErro(response) {
+  try {
+    return (await parseResponseBody(response)) || {};
+  } catch {
+    return {};
+  }
+}
+
+/** Mensagem legível por status, para quando a API não manda corpo. */
+function descricaoDoStatus(response) {
+  switch (response.status) {
+    case 401: return "Sua sessão expirou. Entre novamente.";
+    case 403: return "Você não tem permissão para esta ação.";
+    // Ids de PR/lote são globais, não por tenant: pedir um recurso de outro tenant cai aqui.
+    case 404: return "Não encontrado neste tenant. Atualize a página e tente de novo.";
+    case 409: return "O estado mudou enquanto você olhava a tela. Atualize e tente de novo.";
+    default: return response.statusText || `Erro ${response.status}`;
+  }
+}
+
 // Helper genérico para os endpoints novos do Épico 9 (Tenants, Convites, Memberships,
 // Notificações) — mesmo padrão de appsRequest/environmentsRequest, sem repetir por recurso.
 async function apiRequest(path, options = {}) {
@@ -38,7 +65,10 @@ async function apiRequest(path, options = {}) {
   });
   if (!response.ok) {
     const body = await parseResponseBody(response).catch(() => ({}));
-    throw new Error(body?.error || `Erro na API: ${response.statusText}`);
+    const error = new Error(body?.error || `Erro na API: ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
   }
   return parseResponseBody(response);
 }
@@ -204,9 +234,9 @@ async function requestCorrection(prId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao solicitar correção: ${errorBody.message || response.statusText}`,
+        `Erro ao solicitar correção: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -237,9 +267,9 @@ async function requestVersionBatch(prIds, requestedVersionDevId, requestedVersio
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao solicitar versão em lote: ${errorBody.message || response.statusText}`,
+        `Erro ao solicitar versão em lote: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -262,9 +292,9 @@ async function saveVersionBatch(batchData) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao salvar versão em lote: ${errorBody.message || response.statusText}`,
+        `Erro ao salvar versão em lote: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -425,9 +455,9 @@ async function approvePR(prId, approverId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao aprovar: ${errorBody.message || response.statusText}`,
+        errorBody.message || errorBody.error || descricaoDoStatus(response),
       );
     }
 
@@ -449,9 +479,9 @@ async function fetchPrEvents(prId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao buscar histórico: ${errorBody.message || response.statusText}`,
+        `Erro ao buscar histórico: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -472,9 +502,9 @@ async function markPrFixed(prId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao marcar como corrigido: ${errorBody.message || response.statusText}`,
+        `Erro ao marcar como corrigido: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -509,9 +539,9 @@ async function saveAutomationConfig(configData, appId = null) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao salvar config: ${errorBody.message || response.statusText}`,
+        `Erro ao salvar config: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -545,9 +575,9 @@ async function login(username, password) {
       // Resposta de erro nem sempre é JSON (proxy/gateway devolve HTML), então o parse
       // não pode derrubar o tratamento. O status vai junto no erro para a tela distinguir
       // credencial recusada de servidor indisponível.
-      const errorBody = await response.json().catch(() => ({}));
+      const errorBody = await lerCorpoDeErro(response);
       const error = new Error(
-        `Login falhou: ${errorBody.message || response.statusText}`,
+        `Login falhou: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
       error.status = response.status;
       throw error;
@@ -739,9 +769,9 @@ async function archivePR(prId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao arquivar PR: ${errorBody.message || response.statusText}`,
+        `Erro ao arquivar PR: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -819,9 +849,9 @@ async function createMonitorStatusApp(appData) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao criar aplicação: ${errorBody.message || response.statusText}`,
+        `Erro ao criar aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -843,9 +873,9 @@ async function updateMonitorStatusApp(appId, appData) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao atualizar aplicação: ${errorBody.message || response.statusText}`,
+        `Erro ao atualizar aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -866,9 +896,9 @@ async function deleteMonitorStatusApp(appId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao remover aplicação: ${errorBody.message || response.statusText}`,
+        `Erro ao remover aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -890,9 +920,9 @@ async function checkMonitorStatusApp(appId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao verificar aplicação: ${errorBody.message || response.statusText}`,
+        `Erro ao verificar aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -914,8 +944,8 @@ async function getMonitorStatusAppDetails(appId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      throw new Error(`Erro ao buscar detalhes da aplicação: ${errorBody.message || response.statusText}`);
+      const errorBody = await lerCorpoDeErro(response);
+      throw new Error(`Erro ao buscar detalhes da aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`);
     }
 
     return await response.json();

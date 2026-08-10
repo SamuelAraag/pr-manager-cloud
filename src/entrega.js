@@ -10,6 +10,8 @@ import * as LocalStorage from './localStorageService.js';
 import * as DOM from './domService.js';
 import { initializeTheme } from './themeService.js';
 
+// Sem isto o conteúdo gated por papel pisca antes da sessão resolver.
+AuthService.markAuthenticationPending();
 initializeTheme('themeToggleBtn');
 DOM.enableEscapeToCloseModals();
 
@@ -59,6 +61,16 @@ function showError(message) {
 
 async function carregar() {
     try {
+        // Identidade fresca (/Users/me, não o JWT): desde o Épico 9 o token não carrega claim de
+        // Admin, então isAdminGlobal() depende do meCache que restoreSession popula. Sem esta
+        // chamada, um PlatformAdmin/TenantAdmin que não fosse Gestor do app ficava sem o botão
+        // de registrar presença — a tela escondia uma ação que o backend autoriza.
+        const session = await AuthService.restoreSession();
+        if (session.state !== 'ready') {
+            window.location.href = 'index.html';
+            return;
+        }
+
         const apps = await API.fetchApps();
         const app = apps.find(a => a.id === appId);
         if (!app) {

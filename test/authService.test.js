@@ -53,3 +53,15 @@ test('restoreSession solicita seleção quando o tenant salvo não pertence mais
     assert.equal(session.state, 'tenant-selection-required');
     assert.equal(LocalStorage.getItem('currentTenantId'), null);
 });
+
+test('restoreSession preserva o token quando Users/me falha temporariamente', async () => {
+    globalThis.fetch = async () => new Response('Bad Gateway', {
+        status: 502,
+        statusText: 'Bad Gateway',
+    });
+
+    const session = await AuthService.restoreSession();
+
+    assert.equal(session.state, 'unavailable');
+    assert.equal(LocalStorage.getItem('token'), 'token-de-teste');
+});

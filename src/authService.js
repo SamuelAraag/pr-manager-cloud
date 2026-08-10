@@ -92,6 +92,7 @@ export function getMembershipsFromToken() {
 // fresca é GET /api/Users/me, revalidada no backend a cada chamada — cacheada aqui em memória
 // e atualizada por refreshMe(), chamada no login e na troca de tenant.
 let meCache = null;
+let meUnavailable = false;
 
 /**
  * Busca a identidade "fresca" do usuário logado (IsPlatformAdmin, tenant atual, papel no
@@ -102,6 +103,7 @@ let meCache = null;
 export async function refreshMe() {
     try {
         const me = await API.fetchMe();
+        meUnavailable = false;
         meCache = me;
         if (me?.name) setItem('appUser', me.name);
         if (me?.id) setItem('appUserId', me.id);
@@ -118,6 +120,7 @@ export async function refreshMe() {
     } catch (error) {
         console.error('Falha ao buscar identidade atual (/Users/me):', error);
         meCache = null;
+        meUnavailable = error?.status !== 401 && error?.status !== 403;
         return null;
     }
 }
@@ -132,6 +135,7 @@ export async function restoreSession() {
 
     let me = await refreshMe();
     if (!me) {
+        if (meUnavailable) return { state: 'unavailable', me: null };
         clearSession();
         return { state: 'unauthenticated', me: null };
     }

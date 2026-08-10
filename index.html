@@ -15,9 +15,10 @@
 
 <body>
     <!-- Tela de login padrão (usuário/email + senha) -->
-    <div id="profileScreen" class="modal-overlay" style="display: none;">
+    <div id="profileScreen" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true"
+        aria-labelledby="loginTitle">
         <div class="login-card">
-            <h1 class="login-title">PR Manager</h1>
+            <h1 id="loginTitle" class="login-title">PR Manager</h1>
             <p class="login-subtitle">Entre com suas credenciais</p>
             <form id="loginForm" autocomplete="on" novalidate>
                 <div class="form-group login-field">
@@ -44,6 +45,9 @@
                 </p>
                 <button type="submit" id="loginSubmitBtn" class="btn btn-primary login-submit">Entrar</button>
             </form>
+            <button type="button" id="loginCancelBtn" class="btn btn-outline login-cancel" hidden>
+                Voltar ao sistema
+            </button>
         </div>
     </div>
 
@@ -71,7 +75,7 @@
     </div>
 
     <div class="container auth-guarded">
-        <header>
+        <header class="dashboard-header">
             <div class="logo-area">
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <div id="currentUserDisplay" class="current-user-avatar admin-only" title="Mudar Usuário">--</div>
@@ -161,21 +165,23 @@
 
             <div id="homeView">
                 <!-- PRs Em Aberto -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="dashboard-section-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h3
                         style="color: var(--text-primary); border-left: 4px solid var(--accent-color); padding-left: 10px; margin: 0;">
                         PRs em Aberto <span id="totalOpenPrs" class="tag"
                             style="margin-left: 10px; background: var(--accent-color); color: white; display: none;">0</span>
                     </h3>
                     <div style="display: flex; align-items: center; gap: 1rem;">
-                        <!-- Épico 2: "em voo" é filtro derivado, não estado gravado. Nada é
-                             apagado — desmarcar traz de volta o que já chegou em produção. -->
+                        <!-- Épico 2: filtro derivado, não estado gravado. Nada é apagado —
+                             desmarcar traz de volta o que já foi entregue.
+                             O rótulo evita citar "Produção": o último degrau da esteira é
+                             configurável por app, e um app pode terminar em outro ambiente. -->
                         <div class="form-check form-switch m-0">
                             <input class="form-check-input" type="checkbox" role="switch" id="inFlightToggle" checked>
                             <label class="form-check-label" for="inFlightToggle"
                                 style="color: var(--text-secondary); font-size: 0.85rem; white-space: nowrap;"
-                                title="Esconde o que já chegou ao último ambiente da esteira">
-                                Somente em voo
+                                title="Esconde os PRs cuja versão já chegou ao último ambiente da esteira">
+                                Ainda não entregues
                             </label>
                         </div>
                         <button id="addPrBtn" class="btn btn-primary" title="Novo PR (N)">
@@ -183,6 +189,53 @@
                         </button>
                     </div>
                 </div>
+                <!-- Filtros da esteira (Épico 2, 3.4). Ambiente é populado a partir da esteira
+                     do app selecionado — não é uma lista fixa de dev/stg/prod. -->
+                <details id="filterPanel" class="filter-panel" open>
+                    <summary><i data-lucide="sliders-horizontal" aria-hidden="true"></i> <span id="filterPanelLabel">Filtros</span></summary>
+                <div class="esteira-filters" role="group" aria-label="Filtros da lista de PRs">
+                    <div class="esteira-filters__field">
+                        <label for="filterApp">App</label>
+                        <select id="filterApp" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="esteira-filters__field">
+                        <label for="filterStatus">Status</label>
+                        <select id="filterStatus" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                            <option value="revisao">Em revisão</option>
+                            <option value="ajustes">Em ajustes</option>
+                            <option value="aprovado">Aprovado</option>
+                            <option value="versionado">Com versão</option>
+                        </select>
+                    </div>
+                    <div class="esteira-filters__field">
+                        <label for="filterEnvironment">Ambiente</label>
+                        <select id="filterEnvironment" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="esteira-filters__field">
+                        <label for="filterSprint">Sprint</label>
+                        <select id="filterSprint" class="form-select form-select-sm">
+                            <option value="">Todas</option>
+                            <option value="__sem__">Sem sprint</option>
+                        </select>
+                    </div>
+                    <button id="filterClearBtn" class="btn btn-outline btn-sm" type="button">Limpar</button>
+                </div>
+                </details>
+
+                <div id="dashboardLoadError" class="page-state page-state--error" role="alert" hidden>
+                    <i data-lucide="wifi-off" aria-hidden="true"></i>
+                    <div>
+                        <strong>Não foi possível atualizar os dados.</strong>
+                        <span id="dashboardLoadErrorText">Sua sessão foi preservada. Tente novamente.</span>
+                    </div>
+                    <button id="dashboardRetryBtn" class="btn btn-outline btn-sm" type="button">Tentar novamente</button>
+                </div>
+
                 <div id="dashboard" class="data-card" style="margin-bottom: 3rem;">
                     <div class="table-container">
                         <table id="openPrTable">
@@ -213,9 +266,12 @@
                     <!-- Tables will be injected here per project -->
                 </div>
 
+                <!-- Épico 2: o rótulo do ambiente de validação vem da esteira do app; um app
+                     dev → prod não tem staging e não pode anunciar "(STG)". Preenchido por
+                     script.js (atualizarRotuloValidacao). -->
                 <h3
                     style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-primary); border-left: 4px solid #8e44ad; padding-left: 10px;">
-                    Versões em Teste (STG) <span id="totalTestingPrs" class="tag"
+                    <span id="testingSectionLabel">Versões em validação</span> <span id="totalTestingPrs" class="tag"
                         style="margin-left: 10px; background: #8e44ad; color: white; display: none;">0</span></h3>
                 <div id="dashboardTesting" class="data-card">
                     <!-- Testing tables will be injected here -->
@@ -224,7 +280,7 @@
                 <h3
                     style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-secondary); border-left: 4px solid #30363d; padding-left: 10px;">
                     Histórico de Sprints</h3>
-                <div id="dashboardHistory" class="data-card" style="opacity: 0.8;">
+                <div id="dashboardHistory" class="data-card">
                     <!-- History tables will be injected here -->
                 </div>
             </div>
@@ -275,7 +331,7 @@
     <div id="requestVersionModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 420px;">
             <div class="modal-header">
-                <h2>Solicitar Versão</h2>
+                <h2>Empacotar PRs</h2>
                 <button class="close-btn">&times;</button>
             </div>
             <div style="display: flex; flex-direction: column; gap: 1rem;">
@@ -290,7 +346,7 @@
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
                     <button id="cancelRequestVersionModalBtn" class="btn btn-outline close-modal" type="button">Cancelar</button>
-                    <button id="confirmRequestVersionModalBtn" class="btn btn-primary" type="button">Solicitar</button>
+                    <button id="confirmRequestVersionModalBtn" class="btn btn-primary" type="button">Empacotar PRs</button>
                 </div>
             </div>
         </div>
@@ -421,22 +477,6 @@
                         <input type="text" id="summary" placeholder="Ex: Correção do cálculo de imposto" required>
                         <span class="field-error">Informe o resumo do PR.</span>
                     </div>
-                    <div class="form-group">
-                        <label>Link PR</label>
-                        <input type="url" id="prLink" placeholder="https://bitbucket.org/...">
-                        <span class="field-error">Informe uma URL válida para o PR.</span>
-                    </div>
-                    <div class="form-group">
-                        <label>Link Task (Jira)</label>
-                        <input type="url" id="taskLink" placeholder="https://atlassian.net/...">
-                        <span class="field-error">Informe uma URL válida para a task.</span>
-                    </div>
-                    <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label>Post no Teams</label>
-                        <input type="url" id="teamsLink" placeholder="Link da mensagem">
-                        <span class="field-error">Informe uma URL válida para o post no Teams.</span>
-                    </div>
-
                     <div style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0.3rem;">
                         <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
                             <label>Este PR não requer testes de QA</label>
@@ -455,24 +495,34 @@
 
                     </div>
 
-                    <div class="form-group full-width"
-                        style="margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
-                            <div style="display: flex; align-items: center;">
-                                <label
-                                    style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.8rem;">Tasks
-                                    Vinculadas (Max 5)</label>
-                                <div id="relatedTaskIdsContainer"
-                                    style="display: none; gap: 0.3rem; align-items: center; margin-left: 10px;"></div>
+                    <div class="form-group full-width" id="prLinksSection">
+                        <span class="pr-links-title">Vínculos</span>
+                        <p style="color: var(--text-secondary); font-size: 0.78rem; margin: 0.25rem 0 0.5rem;">
+                            Nenhum vínculo é obrigatório - hotfix e bugfix entram sem task.
+                        </p>
+                        <ul id="prLinksList" class="link-list"></ul>
+                        <div class="pr-link-form">
+                            <div class="pr-link-form__field">
+                                <label for="prLinkKind">Tipo</label>
+                                <select id="prLinkKind" class="form-select form-select-sm">
+                                    <option value="Task">Task</option>
+                                    <option value="Pr">Pull Request</option>
+                                    <option value="Communication">Comunicação</option>
+                                    <option value="Pipeline">Pipeline</option>
+                                    <option value="Other">Outro</option>
+                                </select>
                             </div>
-                            <button type="button" id="addRelatedTaskBtn" class="btn btn-outline">
-                                <i data-lucide="plus-circle" style="width: 14px;"></i> Nova Task
-                            </button>
+                            <div class="pr-link-form__field pr-link-form__field--url">
+                                <label for="prLinkUrl">Endereço</label>
+                                <input type="url" id="prLinkUrl" class="form-control form-control-sm" placeholder="https://..." aria-describedby="prLinkUrlError">
+                            </div>
+                            <div class="pr-link-form__field">
+                                <label for="prLinkLabel">Rótulo</label>
+                                <input type="text" id="prLinkLabel" class="form-control form-control-sm" placeholder="Opcional" maxlength="200">
+                            </div>
+                            <button type="button" id="prLinkAddBtn" class="btn btn-outline btn-sm">Adicionar</button>
                         </div>
-                        <div id="relatedTasksContainer" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            <!-- inputs addeddynamically -->
-                        </div>
+                        <div class="field-error" id="prLinkUrlError" aria-live="polite"></div>
                     </div>
                 </div>
                 <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
@@ -480,6 +530,31 @@
                     <button id="prSubmitBtn" type="submit" class="btn btn-primary">Salvar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Hotfix (Épico 2, D5): a versão passa a poder ir direto ao último ambiente, pulando a
+         guarda de ordem. A justificativa é obrigatória e vai para o histórico — é o que separa
+         um atalho auditado de um furo na esteira. -->
+    <div id="hotfixModal" class="modal-overlay" role="dialog" aria-modal="true"
+        aria-labelledby="hotfixModalTitle" style="z-index: 2200;">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3 id="hotfixModalTitle">Marcar versão como hotfix</h3>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.88rem;">
+                A versão poderá ser implantada direto no último ambiente, sem passar pelos
+                degraus anteriores da esteira. Só antes do primeiro deploy.
+            </p>
+            <div class="form-group">
+                <label for="hotfixReason">Justificativa</label>
+                <textarea id="hotfixReason" rows="3" placeholder="O que exige pular a esteira?"></textarea>
+                <div class="field-error" id="hotfixReasonError"></div>
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" class="btn btn-outline" id="hotfixCancelBtn">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="hotfixConfirmBtn">Marcar como hotfix</button>
+            </div>
         </div>
     </div>
 

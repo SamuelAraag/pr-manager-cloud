@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ambientes - PR Manager</title>
+    <title>Ambientes e esteira - PR Manager</title>
     <link rel="stylesheet" href="src/style.css">
     <link rel="icon" type="image/png" href="favicon.png">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -12,10 +12,10 @@
 
 <body>
     <div class="container">
-        <header class="module-page-header">
+        <header class="module-page-header env-page-header">
             <div class="logo-area">
                 <div>
-                    <h1 class="module-title">Ambientes</h1>
+                    <h1 class="module-title">Ambientes e esteira</h1>
                     <p id="envAppName" style="color: var(--text-secondary); margin: 0.2rem 0 0;"></p>
                 </div>
             </div>
@@ -33,7 +33,11 @@
             </div>
         </section>
 
-        <section id="envGrid" class="module-cards"></section>
+        <div id="envPageState" class="page-state" role="status" aria-live="polite">
+            <i data-lucide="loader-circle" aria-hidden="true"></i>
+            <span>Carregando ambientes...</span>
+        </div>
+        <section id="envGrid" class="module-cards" aria-live="polite"></section>
 
         <!-- Esteira configurável (Épico 2, D4): nem todo cliente tem os três ambientes.
              Antes disso, um app sem staging nunca conseguia promover para produção. -->
@@ -48,8 +52,11 @@
         </section>
 
         <section id="pipelineSection" class="entrega-panel" style="margin-bottom: 3rem;" data-roles="Admin">
+            <div class="pipeline-editor__header" aria-hidden="true">
+                <span>Ordem</span><span>Ambiente</span><span>Modo</span><span>Branch</span><span>Ações</span>
+            </div>
             <div id="pipelineEditor" class="pipeline-editor"></div>
-            <div class="field-error" id="pipelineError"></div>
+            <div class="field-error" id="pipelineError" role="alert" aria-live="polite"></div>
             <div class="module-form-actions" style="margin-top: 1rem;">
                 <button id="pipelineResetBtn" class="btn btn-outline" type="button">Descartar alterações</button>
                 <button id="pipelineSaveBtn" class="btn btn-primary" type="button">Salvar esteira</button>
@@ -57,17 +64,29 @@
         </section>
     </div>
 
-    <!-- Confirmação de promoção stg → prod (modal interno da rota) -->
-    <div id="promoteModal" class="modal-overlay">
+    <!-- Confirmação de promoção entre degraus configurados (modal interno da rota) -->
+    <div id="promoteModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="promoteTitle">
         <div class="modal-content" style="max-width: 560px;">
             <div class="modal-header">
-                <h2>Promover para produção</h2>
+                <h2 id="promoteTitle">Promover versão</h2>
                 <button class="close-btn" type="button" aria-label="Fechar">&times;</button>
             </div>
             <div id="promoteSummary" style="margin-bottom: 1rem;"></div>
             <div class="module-form-actions">
                 <button class="btn btn-outline close-modal" type="button">Cancelar</button>
                 <button id="promoteConfirmBtn" class="btn btn-primary" type="button">Promover</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmDialog" class="modal-overlay" role="dialog" aria-modal="true"
+        aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage" aria-hidden="true">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header"><h2 id="confirmDialogTitle">Confirmar ação</h2></div>
+            <p id="confirmDialogMessage" style="color: var(--text-secondary);"></p>
+            <div class="module-form-actions">
+                <button id="confirmDialogNo" class="btn btn-outline" type="button">Cancelar</button>
+                <button id="confirmDialogYes" class="btn btn-primary" type="button">Confirmar</button>
             </div>
         </div>
     </div>
