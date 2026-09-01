@@ -2252,6 +2252,18 @@ header {
   margin-bottom: 3rem;
 }
 
+.logo-area {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.tenant-switch-btn {
+  padding-left: 1rem;
+  border-left: 1px solid var(--border-color);
+}
+
 h1 {
   font-size: 2rem;
   font-weight: 700;
