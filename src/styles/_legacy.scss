@@ -674,6 +674,11 @@ tr:hover {
     min-height: 46px;
 }
 
+.login-cancel {
+    width: 100%;
+    margin-top: 0.75rem;
+}
+
 .login-card .form-group input {
     width: 100%;
     min-height: 46px;
@@ -1203,6 +1208,7 @@ footer {
 
 footer p {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 8px;

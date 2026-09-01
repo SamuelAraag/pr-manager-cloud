@@ -29,6 +29,33 @@ export async function parseResponseBody(response) {
   return JSON.parse(text);
 }
 
+/**
+ * Lê o corpo de uma resposta de erro sem estourar quando ele vem vazio.
+ *
+ * O ASP.NET responde 403 (Forbid) e 401 com ZERO bytes. Um `await response.json()` direto
+ * lança SyntaxError e o erro real desaparece atrás de "Unexpected end of JSON input" — o
+ * chamador perde o status e mostra uma mensagem que não ajuda ninguém a entender o que houve.
+ */
+async function lerCorpoDeErro(response) {
+  try {
+    return (await parseResponseBody(response)) || {};
+  } catch {
+    return {};
+  }
+}
+
+/** Mensagem legível por status, para quando a API não manda corpo. */
+function descricaoDoStatus(response) {
+  switch (response.status) {
+    case 401: return "Sua sessão expirou. Entre novamente.";
+    case 403: return "Você não tem permissão para esta ação.";
+    // Ids de PR/lote são globais, não por tenant: pedir um recurso de outro tenant cai aqui.
+    case 404: return "Não encontrado neste tenant. Atualize a página e tente de novo.";
+    case 409: return "O estado mudou enquanto você olhava a tela. Atualize e tente de novo.";
+    default: return response.statusText || `Erro ${response.status}`;
+  }
+}
+
 // Helper genérico para os endpoints novos do Épico 9 (Tenants, Convites, Memberships,
 // Notificações) — mesmo padrão de appsRequest/environmentsRequest, sem repetir por recurso.
 async function apiRequest(path, options = {}) {
@@ -38,7 +65,10 @@ async function apiRequest(path, options = {}) {
   });
   if (!response.ok) {
     const body = await parseResponseBody(response).catch(() => ({}));
-    throw new Error(body?.error || `Erro na API: ${response.statusText}`);
+    const error = new Error(body?.error || `Erro na API: ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
   }
   return parseResponseBody(response);
 }
@@ -73,8 +103,12 @@ const addTenantMember = (tenantId, data) => apiRequest(`/tenants/${tenantId}/mem
 const fetchNotifications = (onlyUnread) => apiRequest(`/Notifications${onlyUnread ? "?onlyUnread=true" : ""}`);
 const markNotificationRead = (id) => apiRequest(`/Notifications/${id}/read`, { method: "PUT" });
 
-async function fetchPRs() {
-  const url = `${ApiConstants.BASE_URL}/PullRequests`;
+/**
+ * Épico 2 (D6): a API filtra "em voo" por padrão — integrado e ainda não entregue.
+ * Nada é apagado; `inFlight = false` traz também o que já chegou ao último ambiente.
+ */
+async function fetchPRs(inFlight = true) {
+  const url = `${ApiConstants.BASE_URL}/PullRequests?inFlight=${inFlight ? "true" : "false"}`;
 
   try {
     const response = await fetch(url, {
@@ -200,9 +234,9 @@ async function requestCorrection(prId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao solicitar correção: ${errorBody.message || response.statusText}`,
+        `Erro ao solicitar correção: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -233,9 +267,9 @@ async function requestVersionBatch(prIds, requestedVersionDevId, requestedVersio
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao solicitar versão em lote: ${errorBody.message || response.statusText}`,
+        `Erro ao solicitar versão em lote: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -258,9 +292,9 @@ async function saveVersionBatch(batchData) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao salvar versão em lote: ${errorBody.message || response.statusText}`,
+        `Erro ao salvar versão em lote: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -421,9 +455,9 @@ async function approvePR(prId, approverId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao aprovar: ${errorBody.message || response.statusText}`,
+        errorBody.message || errorBody.error || descricaoDoStatus(response),
       );
     }
 
@@ -445,9 +479,9 @@ async function fetchPrEvents(prId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao buscar histórico: ${errorBody.message || response.statusText}`,
+        `Erro ao buscar histórico: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -468,9 +502,9 @@ async function markPrFixed(prId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao marcar como corrigido: ${errorBody.message || response.statusText}`,
+        `Erro ao marcar como corrigido: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -505,9 +539,9 @@ async function saveAutomationConfig(configData, appId = null) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao salvar config: ${errorBody.message || response.statusText}`,
+        `Erro ao salvar config: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -541,9 +575,9 @@ async function login(username, password) {
       // Resposta de erro nem sempre é JSON (proxy/gateway devolve HTML), então o parse
       // não pode derrubar o tratamento. O status vai junto no erro para a tela distinguir
       // credencial recusada de servidor indisponível.
-      const errorBody = await response.json().catch(() => ({}));
+      const errorBody = await lerCorpoDeErro(response);
       const error = new Error(
-        `Login falhou: ${errorBody.message || response.statusText}`,
+        `Login falhou: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
       error.status = response.status;
       throw error;
@@ -598,9 +632,11 @@ const createOrganization = (data) => organizationsRequest("", { method: "POST", 
 const updateOrganization = (id, data) => organizationsRequest(`/${id}`, { method: "PUT", body: JSON.stringify(data) });
 const deactivateOrganization = (id) => organizationsRequest(`/${id}`, { method: "PUT", body: JSON.stringify({ isActive: false }) });
 
-// ── Ambientes (Épico 6) ─────────────────────────────────────────────────────
-// O erro carrega status e body: o chamador diferencia 403 (sem papel), 409
-// (stg_active_batch_changed / not_active) e 501 (dev sem fluxo nesta fase).
+// ── Ambientes e esteira (Épico 6 + Épico 2) ─────────────────────────────────
+// O erro carrega status e body: o chamador diferencia 403 (sem papel) e 409
+// (previous_env_batch_changed / not_active / environment_has_deployments).
+// O 501 de dev saiu: a esteira é configurável e o ambiente de integração recebe
+// PR avulso por presença, não deploy de versão.
 
 async function environmentsRequest(appId, path, options = {}) {
   const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/Environments${path}`, {
@@ -624,6 +660,64 @@ const deployToEnvironment = (appId, kind, batchId) =>
   environmentsRequest(appId, `/${kind}/deploy`, { method: "POST", body: JSON.stringify({ batchId }) });
 const rollbackDeployment = (appId, kind, deploymentId) =>
   environmentsRequest(appId, `/${kind}/deployments/${deploymentId}/rollback`, { method: "POST" });
+
+// Esteira configurável (Épico 2): substitui a configuração inteira, não faz merge parcial.
+const updatePipeline = (appId, steps) =>
+  environmentsRequest(appId, "/pipeline", { method: "PUT", body: JSON.stringify({ steps }) });
+const removeEnvironment = (appId, kind) =>
+  environmentsRequest(appId, `/${kind}`, { method: "DELETE" });
+
+// ── Presença do PR e vínculos (Épico 2) ─────────────────────────────────────
+
+async function appPrRequest(appId, path, options = {}) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/PullRequests${path}`, {
+    headers: getBackendHeaders(),
+    cache: "no-store",
+    ...options,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const error = new Error(body.error || `Erro na API de PRs: ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+  return response.status === 204 ? null : await response.json();
+}
+
+/** Registra que o PR entrou na branch de integração. Só Gestor/Admin. */
+const registerPrPresence = (appId, prId, kind) =>
+  appPrRequest(appId, `/${prId}/presence/${kind}`, { method: "POST" });
+
+/** Revert: o código saiu da branch. Motivo obrigatório. */
+const revertPrPresence = (appId, prId, kind, reason) =>
+  appPrRequest(appId, `/${prId}/presence/${kind}`, {
+    method: "DELETE",
+    body: JSON.stringify({ reason }),
+  });
+
+const fetchPrLinks = (appId, prId) => appPrRequest(appId, `/${prId}/links`);
+const addPrLink = (appId, prId, link) =>
+  appPrRequest(appId, `/${prId}/links`, { method: "POST", body: JSON.stringify(link) });
+const removePrLink = (appId, prId, linkId) =>
+  appPrRequest(appId, `/${prId}/links/${linkId}`, { method: "DELETE" });
+
+/** Marca a versão como hotfix: passa a poder pular a guarda de ordem da esteira. */
+async function markBatchAsHotfix(batchId, reason) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/VersionBatches/${batchId}/mark-hotfix`, {
+    method: "POST",
+    headers: getBackendHeaders(),
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const error = new Error(body.error || `Erro ao marcar hotfix: ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+  return await response.json();
+}
 
 // ── Gestão de usuários (Épico 2 — Admin) ────────────────────────────────────
 
@@ -675,9 +769,9 @@ async function archivePR(prId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao arquivar PR: ${errorBody.message || response.statusText}`,
+        `Erro ao arquivar PR: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -755,9 +849,9 @@ async function createMonitorStatusApp(appData) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao criar aplicação: ${errorBody.message || response.statusText}`,
+        `Erro ao criar aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -779,9 +873,9 @@ async function updateMonitorStatusApp(appId, appData) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao atualizar aplicação: ${errorBody.message || response.statusText}`,
+        `Erro ao atualizar aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -802,9 +896,9 @@ async function deleteMonitorStatusApp(appId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao remover aplicação: ${errorBody.message || response.statusText}`,
+        `Erro ao remover aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -826,9 +920,9 @@ async function checkMonitorStatusApp(appId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
+      const errorBody = await lerCorpoDeErro(response);
       throw new Error(
-        `Erro ao verificar aplicação: ${errorBody.message || response.statusText}`,
+        `Erro ao verificar aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`,
       );
     }
 
@@ -850,8 +944,8 @@ async function getMonitorStatusAppDetails(appId) {
     });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      throw new Error(`Erro ao buscar detalhes da aplicação: ${errorBody.message || response.statusText}`);
+      const errorBody = await lerCorpoDeErro(response);
+      throw new Error(`Erro ao buscar detalhes da aplicação: ${errorBody.message || errorBody.error || descricaoDoStatus(response)}`);
     }
 
     return await response.json();
@@ -900,6 +994,14 @@ export {
   fetchEnvironmentHistory,
   deployToEnvironment,
   rollbackDeployment,
+  updatePipeline,
+  removeEnvironment,
+  registerPrPresence,
+  revertPrPresence,
+  fetchPrLinks,
+  addPrLink,
+  removePrLink,
+  markBatchAsHotfix,
   createUser,
   updateUser,
   deactivateUser,

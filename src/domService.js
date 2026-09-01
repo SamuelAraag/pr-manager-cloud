@@ -14,6 +14,50 @@ function escapeHtml(value) {
     return div.innerHTML;
 }
 
+// Formata a data no padrão do projeto, sem trazer dependência nova.
+function formatShortDate(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('pt-BR');
+}
+
+/**
+ * Matriz de ambientes do PR (Épico 2, 2.3). As colunas saem da esteira do app — não são
+ * fixas em três: um cliente pode ter dev+prod ou stg+prod.
+ *
+ * Ambiente de integração mostra presença ("desde quando"), porque ali não existe versão.
+ * Ambiente versionado mostra o número da versão. A assimetria é proposital: é o que
+ * diferencia "o código está mergeado" de "esta versão está implantada".
+ */
+function renderPipelineMatrix(pr) {
+    const steps = Array.isArray(pr.environments) ? pr.environments : [];
+    if (steps.length === 0) {
+        return '<span class="pipeline-empty">Sem esteira configurada</span>';
+    }
+
+    const cells = steps.map((step) => {
+        const kind = String(step.kind || '').toLowerCase();
+        const sinceLabel = formatShortDate(step.since);
+
+        if (!step.present) {
+            return `<span class="pipeline-step pipeline-step--absent" title="${escapeHtml(step.kind)}: não presente">${escapeHtml(step.kind)}</span>`;
+        }
+
+        const detalhe = step.mode === 'Individual'
+            ? (sinceLabel ? `desde ${sinceLabel}` : 'presente')
+            : (step.version || 'sem versão');
+
+        const title = step.mode === 'Individual'
+            ? `${step.kind}: integrado${sinceLabel ? ` desde ${sinceLabel}` : ''}`
+            : `${step.kind}: versão ${step.version || '—'}${sinceLabel ? ` desde ${sinceLabel}` : ''}`;
+
+        return `<span class="pipeline-step pipeline-step--${escapeHtml(kind)}" title="${escapeHtml(title)}">${escapeHtml(step.kind)} <span style="font-weight:500;">${escapeHtml(detalhe)}</span></span>`;
+    });
+
+    // A seta carrega a sequência da esteira; é decoração para quem lê a tela por áudio.
+    return `<div class="pipeline-matrix">${cells.join('<span class="pipeline-arrow" aria-hidden="true">›</span>')}</div>`;
+}
+
 const getProfileImage = (userName) => {
     const profileImages = {
         'Itallo Cerqueira': 'src/assets/profiles/itallo-cerqueira.png',
@@ -53,12 +97,58 @@ const getLinkAttrs = (uniqueId, extraClass = '') => {
     return ` onclick="window.trackLinkClick(this, '${uniqueId}')" class="${extraClass}${isLast ? ' visited-link' : ''}" `;
 };
 
+const LINK_ICONS = {
+    Task: 'clipboard-list',
+    Pr: 'git-pull-request',
+    Communication: 'message-circle',
+    Pipeline: 'workflow',
+    Other: 'link',
+};
+
+function getPrLinks(pr) {
+    if (Array.isArray(pr.links) && pr.links.length > 0) return pr.links;
+
+    // Compatibilidade somente de leitura durante a migração dos três campos antigos.
+    return [
+        pr.taskLink && { id: `task-${pr.id}`, kind: 'Task', url: pr.taskLink, label: 'Task' },
+        pr.prLink && { id: `pr-${pr.id}`, kind: 'Pr', url: pr.prLink, label: 'Pull Request' },
+        pr.teamsLink && { id: `teams-${pr.id}`, kind: 'Communication', url: pr.teamsLink, label: 'Comunicação' },
+    ].filter(Boolean);
+}
+
+function hasGenericLinks(pr) {
+    return Array.isArray(pr.links) && pr.links.length > 0;
+}
+
+function hasLegacyRelatedTasks(pr) {
+    return !hasGenericLinks(pr)
+        && pr.linksRelatedTask
+        && pr.linksRelatedTask.split(';').some(link => link.trim() !== '');
+}
+
+function renderLegacyRelatedLinks(pr) {
+    return hasGenericLinks(pr) ? '' : renderRelatedLinks(pr.linksRelatedTask);
+}
+
+function renderLinksCell(pr) {
+    const links = getPrLinks(pr).filter(link => /^https?:\/\//i.test(link.url || ''));
+    const rendered = links.map(link => {
+        const icon = LINK_ICONS[link.kind] || LINK_ICONS.Other;
+        const label = link.label || link.kind || 'Vínculo';
+        const uniqueId = `link-${link.id || `${pr.id}-${link.kind}`}`;
+        return `<a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" ${getLinkAttrs(uniqueId, 'link-icon')} title="${escapeHtml(label)}" aria-label="Abrir ${escapeHtml(label)}"><i data-lucide="${icon}" style="width: 16px;"></i></a>`;
+    }).join('');
+
+    return rendered || '<span class="pipeline-empty">Sem vínculos</span>';
+}
+
 function renderTaskIdCell(pr, { includeExpand = false } = {}) {
-    const hasRelated = pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
+    const hasRelated = hasLegacyRelatedTasks(pr);
     const expandBtn = includeExpand && hasRelated
         ? `<button class="expand-btn" onclick="window.toggleRelated('${pr.id}', this)"><i data-lucide="chevron-right" style="width: 14px;"></i></button>`
         : '';
-    const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
+    const taskLink = getPrLinks(pr).find(link => link.kind === 'Task')?.url || pr.taskLink;
+    const mainJiraId = extractJiraId(taskLink) || pr.project || '-';
 
     return `
         <td>
@@ -308,7 +398,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
     if (!body) return;
     body.innerHTML = '';
     if (data.length === 0) {
-        body.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Nenhum PR pendente.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Nenhum PR pendente.</td></tr>';
         return;
     }
     const grouped = data.reduce((acc, pr) => {
@@ -329,7 +419,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
         if(animate) headerRow.style.animationDelay = `${animationDelay}ms`;
         if(animate) animationDelay += 50;
 
-        headerRow.innerHTML = `<td colspan="6"><div style="display:flex; justify-content:space-between; align-items:center;"><div style="font-weight: 600;">${headerContent}</div></div></td>`;
+        headerRow.innerHTML = `<td colspan="7"><div style="display:flex; justify-content:space-between; align-items:center;"><div style="font-weight: 600;">${headerContent}</div></div></td>`;
         body.appendChild(headerRow);
         
         projectPrs.forEach((pr) => {
@@ -372,7 +462,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
             }
 
 
-            const hasRelated = pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
+            const hasRelated = hasLegacyRelatedTasks(pr);
 
             tr.innerHTML = `
                 ${renderTaskIdCell(pr, { includeExpand: true })}
@@ -389,7 +479,8 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                         ${pr.noTestingRequired ? '<span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Não requer testes de QA">Sem Teste</span>' : ''}
                     </div>
                 </td>
-                <td><div style="display: flex; gap: 0.8rem;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 16px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 16px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>
+                <td>${renderPipelineMatrix(pr)}</td>
+                <td><div style="display: flex; gap: 0.8rem; align-items: center;">${renderLinksCell(pr)}${renderLegacyRelatedLinks(pr)}</div></td>
                 <td>
                     <div style="display: flex; gap: 5px; justify-content: flex-end;">
                         <button class="btn btn-outline edit-btn" style="padding: 0.4rem;" title="Editar"><i data-lucide="edit-3" style="width: 14px;"></i></button>
@@ -423,6 +514,11 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                             <i data-lucide="history" style="width: 14px;"></i>
                         </button>
 
+                        <a class="btn btn-outline" style="padding: 0.4rem;" title="Ver entrega"
+                            href="entrega.html?appId=${encodeURIComponent(pr.appId)}&prId=${encodeURIComponent(pr.id)}">
+                            <i data-lucide="git-branch" style="width: 14px;"></i>
+                        </a>
+
                         <button class="btn btn-outline" data-roles="Admin"
                             style="padding: 0.4rem; border-color: #da3633; color: #da3633;"
                             title="Arquivar PR"
@@ -440,7 +536,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                 subRow.id = `related-${pr.id}`;
                 subRow.className = 'related-tasks-row';
                 subRow.style.display = 'none';
-                subRow.innerHTML = `<td colspan="6">${renderRelatedTasksList(pr.linksRelatedTask, pr.project)}</td>`;
+                subRow.innerHTML = `<td colspan="7">${renderRelatedTasksList(pr.linksRelatedTask, pr.project)}</td>`;
                 body.appendChild(subRow);
             }
 
@@ -449,7 +545,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
             historyRow.id = `history-${pr.id}`;
             historyRow.className = 'pr-history-row';
             historyRow.style.display = 'none';
-            historyRow.innerHTML = `<td colspan="6"></td>`;
+            historyRow.innerHTML = `<td colspan="7"></td>`;
             body.appendChild(historyRow);
         });
     });
@@ -510,7 +606,10 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
     let hasDeployed = false;
     let totalTestingBatches = 0;
     activeSprints.forEach(sprint => {
-        const deployedBatches = (sprint.versionBatches || []).filter(b => b.status === 'Deployed');
+        // script.js já entrega somente lotes cujo batch está ativo no ambiente real de
+        // validação. O status legado "Deployed" era específico de STG e não é atualizado
+        // pelo endpoint genérico de deploy.
+        const deployedBatches = sprint.versionBatches || [];
         if (deployedBatches.length > 0) hasDeployed = true;
         totalTestingBatches += deployedBatches.length;
     });
@@ -522,7 +621,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
     }
 
     if (!hasDeployed) {
-        container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary); background: #161b22; border: 1px solid #30363d; border-radius: 6px;">Nenhuma versão em teste (STG).</div>';
+        container.innerHTML = '<div class="empty-state">Nenhuma versão em validação.</div>';
         return;
     }
 
@@ -531,7 +630,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
     let animationDelay = 0;
 
     activeSprints.forEach(sprint => {
-        const deployedBatches = (sprint.versionBatches || []).filter(b => b.status === 'Deployed');
+        const deployedBatches = sprint.versionBatches || [];
         
         if (deployedBatches.length === 0) return;
 
@@ -573,7 +672,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
         sprintTitle.textContent = sprint.name;
         sprintTitle.style.cssText = `color: var(--text-primary); margin: 0; padding-left: 15px; border-left: 4px solid ${testingTheme.accent}; font-size: 1.1rem; opacity: 0.9;`;
         
-        const completeBtn = `
+        const completeBtn = sprint.canComplete === false ? '' : `
             <button class="btn btn-outline" data-roles="Admin,QA" style="font-size: 0.75rem; padding: 0.3rem 0.8rem; border-color: ${testingTheme.actionBorder}; background: ${testingTheme.actionBackground}; color: ${testingTheme.actionText};" onclick="window.completeSprint(${sprint.id})">
                 <i data-lucide="check-circle-2" style="width: 14px; margin-right: 5px;"></i>
                 Concluir Sprint
@@ -649,7 +748,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
                     </button>
                 `;
 
-                tr.innerHTML = `${renderTaskIdCell(pr).replace('<td>', '<td style="width: 0px; white-space: nowrap;">')}<td>${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Nao requer testes de QA">Sem Teste</span>' : ''}</td><td><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td><div style="display: flex; gap: 0.8rem; align-items: center; justify-content: end;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}${prRemoveBtn}</div></td>`;
+                tr.innerHTML = `${renderTaskIdCell(pr).replace('<td>', '<td style="width: 0px; white-space: nowrap;">')}<td>${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Nao requer testes de QA">Sem Teste</span>' : ''}</td><td><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td><div style="display: flex; gap: 0.8rem; align-items: center; justify-content: end;">${renderLinksCell(pr)}${renderLegacyRelatedLinks(pr)}${prRemoveBtn}</div></td>`;
                 tbody.appendChild(tr);
             });
 
@@ -668,7 +767,7 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit, animate = true
     container.innerHTML = '';
     
     if (inactiveSprints.length === 0) {
-        container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary); background: #161b22; border: 1px solid #30363d; border-radius: 6px; opacity: 0.6;">Nenhum histórico disponível.</div>';
+        container.innerHTML = '<div class="empty-state">Nenhum histórico disponível.</div>';
         return;
     }
 
@@ -728,7 +827,7 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit, animate = true
             const tbody = table.querySelector('tbody');
             (batch.pullRequests || []).forEach(pr => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `${renderTaskIdCell(pr)}<td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Nao requer testes de QA">Sem Teste</span>' : ''}</td><td style="padding:0.5rem; color:var(--text-secondary);"><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center; justify-content: end;">${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}${renderRelatedLinks(pr.linksRelatedTask)}</div></td>`;
+                tr.innerHTML = `${renderTaskIdCell(pr)}<td style="padding:0.5rem; color:var(--text-secondary);">${pr.summary || '-'}${pr.noTestingRequired ? ' <span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem; margin-left:5px;" title="Nao requer testes de QA">Sem Teste</span>' : ''}</td><td style="padding:0.5rem; color:var(--text-secondary);"><div style="display: flex; align-items: center; gap: 8px;"><img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">${getDemoName(pr.dev) || '-'}</div></td><td style="padding:0.5rem;"><div style="display: flex; gap: 0.8rem; align-items: center; justify-content: end;">${renderLinksCell(pr)}${renderLegacyRelatedLinks(pr)}</div></td>`;
                 tbody.appendChild(tr);
             });
 
@@ -745,7 +844,11 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate
     if (!container) return;
     container.innerHTML = '';
 
-    const pendingBatches = batches.filter(b => b.status === 'Pending' || b.status === 'Released');
+    // Cinto e suspensório do lado da tela: lote sem PR não é lote, é casca. O backend passou a
+    // dissolvê-las no cancelamento, mas as que já existem no banco continuariam virando card
+    // morto — com "Empacotar PRs" sem app, "Cancelar" e lixeira que não levam a lugar nenhum.
+    const pendingBatches = batches.filter(b =>
+        (b.status === 'Pending' || b.status === 'Released') && (b.pullRequests?.length ?? 0) > 0);
     
     const prIdsInBatches = new Set(batches.flatMap(b => b.pullRequests.map(pr => pr.id)));
     const backlogPrs = approvedPrs.filter(pr => !prIdsInBatches.has(pr.id));
@@ -773,7 +876,8 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate
             currentUser,
             batch.batchId,
             batch.gitlabIssueLink,
-            batch.requestedVersionDevName
+            batch.requestedVersionDevName,
+            batch
         );
         if(animate) card.classList.add('fade-in-row');
         if(animate) card.style.animationDelay = `${animationDelay}ms`;
@@ -783,7 +887,7 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate
 
     Object.keys(backlogByProject).sort().forEach(projectName => {
         const projectPrs = backlogByProject[projectName];
-        const card = createApprovedCard(projectName, projectPrs, currentUser, null, null, null);
+        const card = createApprovedCard(projectName, projectPrs, currentUser, null, null, null, null);
         if(animate) card.classList.add('fade-in-row');
         if(animate) card.style.animationDelay = `${animationDelay}ms`;
         if(animate) animationDelay += 50;
@@ -791,11 +895,11 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate
     });
 
     if (pendingBatches.length === 0 && backlogPrs.length === 0) {
-        container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary); background: #161b22; border: 1px solid #30363d; border-radius: 6px;">Nenhum PR aguardando liberação.</div>';
+        container.innerHTML = '<div class="empty-state">Aprove PRs para iniciar um corte de versão.</div>';
     }
 }
 
-function createApprovedCard(projectName, projectPrs, currentUser, batchId, batchLink = null, requestedVersionDevName = null) {
+function createApprovedCard(projectName, projectPrs, currentUser, batchId, batchLink = null, requestedVersionDevName = null, batchContext = null) {
     const isRequestingVersion = projectPrs.some(p => p.versionRequested);
     let headerStyle = '';
     let leftContent = `${projectName} (${projectPrs.length})`;
@@ -808,6 +912,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     let deployBtn = '';
     const info = projectPrs.find(p => p.version) || projectPrs[0];
     const gitlabIssueLink = batchLink || info?.gitlabIssueLink;
+    const target = batchContext?.deploymentTarget;
 
     if (hasVersionInfo) {
         let gitlabLink = '';
@@ -819,15 +924,22 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                 </a>
             `;
             
-            deployBtn = `
-                <button class="btn" data-roles="Admin,QA" style="background-color: #8e44ad; color: white; height: 32px; padding: 0 0.6rem; font-size: 0.75rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; border-radius: 4px; line-height: 1;" onclick="window.confirmDeploy('${batchId}')">
-                    <i data-lucide="rocket" style="width: 14px;"></i>
-                    Liberar STG
-                </button>
-            `;
         }
+
+        const deployAction = target && batchId
+            ? `<button class="btn btn-primary" data-roles="Admin" type="button" onclick="window.confirmDeploy(${batchContext.id}, '${batchContext.appId}', '${escapeHtml(target.kind)}', '${escapeHtml(target.label)}')">
+                    <i data-lucide="rocket" style="width: 14px;"></i>
+                    Deploy ${escapeHtml(target.label)}
+               </button>`
+            : '';
+        const hotfixAction = batchId && !batchContext?.isHotfix && !batchContext?.isFrozen
+            ? `<button class="btn btn-outline" data-roles="Admin" type="button" title="Pular a ordem da esteira com justificativa registrada" onclick="window.markBatchHotfix('${batchId}')">
+                    <i data-lucide="zap" style="width: 14px;"></i> Hotfix
+               </button>`
+            : (batchContext?.isHotfix ? '<span class="tag">Hotfix</span>' : '');
+        deployBtn = `${deployAction}${hotfixAction}`;
         rightContent += ` 
-            <div style="display: flex; align-items: center; gap: 15px;">
+            <div class="batch-actions">
                 <span class="tag" style="background:#238636; color:white;">v${info.version}</span>
                 ${gitlabLink}
                 ${deployBtn}
@@ -864,10 +976,14 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     let requestVersionBtn = '';
     
     if (!hasVersionInfo && !isRequestingVersion) {
+            // Passa o APP, não a lista de ids. Antes os ids do corte iam congelados aqui, no
+            // momento do render: qualquer PR aprovado depois disso ficava de fora do lote em
+            // silêncio. Quem clica resolve a lista na hora (window.requestVersionBatch).
+            const appIdDoCard = projectPrs[0]?.appId || '';
             requestVersionBtn = `
-           <button class="btn btn-primary" data-roles="Admin,QA" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; margin-left:15px;" onclick="window.requestVersionBatch([${projectPrs.map(p => p.id).join(',')}], '${projectName.replace(/'/g, "\\'")}')">
+           <button class="btn btn-primary" data-roles="Admin" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; margin-left:15px;" onclick="window.requestVersionBatch('${appIdDoCard}', '${projectName.replace(/'/g, "\\'")}')">
                 <i data-lucide="package-check" style="width: 14px;"></i>
-                Solicitar Versão
+                Empacotar PRs
             </button>`;
     }
     
@@ -924,7 +1040,10 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
     const tableContainer = document.createElement('div');
     tableContainer.className = 'table-container';
     const table = document.createElement('table');
-    table.innerHTML = `<thead><tr><th>Task</th><th>Resumo</th><th>Dev</th><th>Status</th><th>Rollback</th><th>Links</th></tr></thead><tbody></tbody>`;
+    // A coluna Esteira também aqui: um PR aprovado é justamente o que está andando pelos
+    // ambientes. Ela existir só na lista de pendentes fazia a matriz sumir no momento em que
+    // ela passa a importar.
+    table.innerHTML = `<thead><tr><th>Task</th><th>Resumo</th><th>Dev</th><th>Status</th><th>Esteira</th><th>Rollback</th><th>Links</th></tr></thead><tbody></tbody>`;
     const tbody = table.querySelector('tbody');
     
     projectPrs.forEach(pr => {
@@ -951,7 +1070,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
         }
 
         const tr = document.createElement('tr');
-        const prHasRelated = pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
+        const prHasRelated = hasLegacyRelatedTasks(pr);
         tr.innerHTML = `
             ${renderTaskIdCell(pr, { includeExpand: true })}
             <td>${pr.summary || '-'}</td>
@@ -967,13 +1086,12 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
                     ${pr.noTestingRequired ? '<span class="tag" style="background:#8250df; color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Não requer testes de QA">Sem Teste</span>' : ''}
                 </div>
             </td>
+            <td>${renderPipelineMatrix(pr)}</td>
             <td style="font-size: 0.8rem; color: var(--text-secondary);">${pr.rollback || '-'}</td>
             <td>
                 <div style="display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
-                    ${pr.teamsLink ? `<a href="${pr.teamsLink}" target="_blank" ${getLinkAttrs('teams-' + pr.id, 'link-icon')} title="Link Teams"><i data-lucide="message-circle" style="width: 16px;"></i></a>` : ''}
-                    ${pr.taskLink ? `<a href="${pr.taskLink}" target="_blank" ${getLinkAttrs('task-' + pr.id, 'link-icon')} title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}
-                    ${pr.prLink ? `<a href="${pr.prLink}" target="_blank" ${getLinkAttrs('pr-' + pr.id, 'link-icon')} title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}
-                    ${renderRelatedLinks(pr.linksRelatedTask)}
+                    ${renderLinksCell(pr)}
+                    ${renderLegacyRelatedLinks(pr)}
                     ${prRemoveBtn}
                     ${archiveBtn}
                 </div>
@@ -985,7 +1103,7 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
             subRow.id = `related-${pr.id}`;
             subRow.className = 'related-tasks-row';
             subRow.style.display = 'none';
-            subRow.innerHTML = `<td colspan="6">${renderRelatedTasksList(pr.linksRelatedTask, pr.project)}</td>`;
+            subRow.innerHTML = `<td colspan="7">${renderRelatedTasksList(pr.linksRelatedTask, pr.project)}</td>`;
             tbody.appendChild(subRow);
         }
     });
@@ -1080,4 +1198,4 @@ function showLoading(show) {
     if (dbHist) dbHist.style.display = contentDisplay;
 }
 
-export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory, confirmDialog, alertDialog, enableEscapeToCloseModals };
+export { escapeHtml, showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory, confirmDialog, alertDialog, enableEscapeToCloseModals };

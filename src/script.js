@@ -14,7 +14,7 @@ import * as Form from './formService.js';
 import { createTenantOperationGuard } from './tenantOperationGuard.js';
 import { findDeveloperById, resolveDeveloperId } from './developerSelection.js';
 
-let currentData = { prs: [] };
+let currentData = { prs: [], batches: [], sprints: [], apps: [] };
 let availableUsers = [];
 const tenantOperations = createTenantOperationGuard();
 
@@ -40,6 +40,7 @@ async function loadProjectOptions(expectedRevision = tenantOperations.snapshot()
         const apps = await API.fetchApps();
         if (!tenantOperations.isCurrent(expectedRevision)) return false;
         if (!Array.isArray(apps)) return;
+        currentData.apps = apps;
 
         if (projectSelect) {
             projectSelect.innerHTML = '';
@@ -58,6 +59,7 @@ async function loadProjectOptions(expectedRevision = tenantOperations.snapshot()
         }
 
         updateProjectEmptyState(apps);
+        popularFiltroDeApp(apps);
 
         if (appFilter) {
             const app = apps.find(a => a.name === appFilter);
@@ -72,6 +74,10 @@ async function loadProjectOptions(expectedRevision = tenantOperations.snapshot()
                 projectSelect.disabled = true;
                 projectSelect.title = 'Projeto herdado do app selecionado';
             }
+
+            await carregarEsteiraDoApp();
+        } else if (filtros.app) {
+            await carregarEsteiraDoApp(filtros.app);
         }
         return true;
     } catch (error) {
@@ -134,7 +140,7 @@ function populateDeveloperSelect() {
 }
 
 function setPrCreationRequiredState(isCreate) {
-    const fields = ['project', 'dev', 'summary', 'prLink', 'taskLink', 'teamsLink'];
+    const fields = ['project', 'dev', 'summary'];
     fields.forEach(id => {
         const field = document.getElementById(id);
         if (field) field.required = isCreate;
@@ -145,29 +151,11 @@ function validatePrForm(isCreate) {
     const project = document.getElementById('project');
     const dev = document.getElementById('dev');
     const summary = document.getElementById('summary');
-    const prLink = document.getElementById('prLink');
-    const taskLink = document.getElementById('taskLink');
-    const teamsLink = document.getElementById('teamsLink');
     const rules = [
         { field: project, validate: Form.isRequired, message: 'Selecione uma aplicação.' },
         { field: dev, validate: value => Boolean(findDeveloperById(availableUsers, value)), message: 'Selecione um desenvolvedor válido da lista.' },
         { field: summary, validate: Form.isRequired, message: 'Informe o resumo do PR.' },
-        { field: prLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o PR.' },
-        { field: taskLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para a task.' },
-        { field: teamsLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o post no Teams.' },
     ];
-
-    document.querySelectorAll('.related-task-group').forEach(group => {
-        const urlField = group.querySelector('.related-task-input-url');
-        const summaryField = group.querySelector('.related-task-input-summary');
-        rules.push({
-            field: urlField,
-            validate: value => Form.isRequired(value)
-                ? Form.isOptionalUrl(value)
-                : !Form.isRequired(summaryField?.value),
-            message: 'Informe uma URL válida para a task relacionada.'
-        });
-    });
 
     return Form.validateFields(rules);
 }
@@ -177,9 +165,6 @@ function getPrErrorMessage(errorMessage) {
         project_required: 'Projeto é obrigatório.',
         summary_required: 'Resumo é obrigatório.',
         dev_required: 'Desenvolvedor é obrigatório.',
-        pr_link_required: 'Link PR é obrigatório.',
-        task_link_required: 'Link Task (Jira) é obrigatório.',
-        teams_link_required: 'Post no Teams é obrigatório.',
     };
 
     return friendlyMessages[errorMessage] || errorMessage;
@@ -192,12 +177,27 @@ const requestVersionModal = document.getElementById('requestVersionModal');
 const requestVersionDevSelect = document.getElementById('requestVersionDevSelect');
 const requestVersionModalDescription = document.getElementById('requestVersionModalDescription');
 const confirmRequestVersionModalBtn = document.getElementById('confirmRequestVersionModalBtn');
+const hotfixModal = document.getElementById('hotfixModal');
+const hotfixReasonInput = document.getElementById('hotfixReason');
+let pendingHotfixBatchId = null;
 const newSprintModal = document.getElementById('newSprintModal');
 const newSprintNameInput = document.getElementById('newSprintNameInput');
 const newSprintNameError = document.getElementById('newSprintNameError');
 const newSprintStartDateInput = document.getElementById('newSprintStartDateInput');
 const newSprintEndDateInput = document.getElementById('newSprintEndDateInput');
 const confirmNewSprintBtn = document.getElementById('confirmNewSprintBtn');
+let modalReturnFocus = null;
+
+function openAccessibleModal(modal, preferredElement = null) {
+    if (!modal) return;
+    modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+        const target = preferredElement
+            || modal.querySelector('input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled)');
+        target?.focus({ preventScroll: true });
+    });
+}
 
 const sprintDateRangePicker = initDateRangePicker({
     fieldEl: document.getElementById('sprintDateRangeField'),
@@ -217,6 +217,7 @@ const sprintDateRangePicker = initDateRangePicker({
 });
 const prForm = document.getElementById('prForm');
 const profileScreen = document.getElementById('profileScreen');
+const loginCancelBtn = document.getElementById('loginCancelBtn');
 const currentUserDisplay = document.getElementById('currentUserDisplay');
 const currentUserDisplayRight = document.getElementById('currentUserDisplayRight');
 const godModeContainer = document.getElementById('godModeContainer');
@@ -241,14 +242,20 @@ function hideLoginGate() {
     profileScreen.style.display = 'none';
     document.body.classList.remove('no-scroll');
     if (appShell) appShell.inert = false;
+    if (loginCancelBtn) loginCancelBtn.hidden = true;
+    if (LocalStorage.getItem('token')) AuthService.applyRoleBasedVisibility();
 }
 
 function showLoginGate() {
     if (!profileScreen) return;
+    const podeCancelar = Boolean(LocalStorage.getItem('token') && LocalStorage.getItem('appUser'));
+    if (loginCancelBtn) loginCancelBtn.hidden = !podeCancelar;
     profileScreen.style.display = 'flex';
     document.body.classList.add('no-scroll');
     if (appShell) appShell.inert = true;
 }
+
+loginCancelBtn?.addEventListener('click', hideLoginGate);
 
 // Click outside to close profile selection if user already selected
 if (profileScreen) {
@@ -266,6 +273,12 @@ window.addEventListener('keydown', (e) => {
         // Esc só dispensa o gate quando já existe sessão (troca de usuário) — no login
         // inicial ele é bloqueante mesmo, não há para onde voltar.
         if (e.key === 'Escape' && LocalStorage.getItem('appUser')) hideLoginGate();
+        return;
+    }
+
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        closeAllModals();
         return;
     }
 
@@ -291,8 +304,6 @@ window.addEventListener('keydown', (e) => {
     } else if (key === '?' || (e.shiftKey && e.key === '?')) {
         e.preventDefault();
         shortcutsModal.style.display = 'flex';
-    } else if (e.key === 'Escape') {
-        closeAllModals();
     } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === 'k') {
         e.preventDefault();
         
@@ -401,6 +412,11 @@ if (godModeInput) {
 // toda chamada à API depois disso já sai com o header X-Tenant-Id certo.
 async function ensureTenantContext() {
     const session = await AuthService.restoreSession();
+    if (session.state === 'unavailable') {
+        setDashboardLoadError('A API está temporariamente indisponível. Sua sessão e seus filtros foram preservados.');
+        DOM.showLoading(false);
+        return false;
+    }
     if (session.state === 'unauthenticated') {
         showProfileSelection();
         return false;
@@ -427,6 +443,17 @@ async function ensureTenantContext() {
     updateTenantSwitcher();
     return true;
 }
+
+function setDashboardLoadError(message = '') {
+    const state = document.getElementById('dashboardLoadError');
+    const text = document.getElementById('dashboardLoadErrorText');
+    if (!state || !text) return;
+    state.hidden = !message;
+    text.textContent = message;
+    if (message && window.lucide) window.lucide.createIcons();
+}
+
+document.getElementById('dashboardRetryBtn')?.addEventListener('click', () => window.location.reload());
 
 // dismissValue: tenantId a resolver quando o usuário fecha via Esc/clique fora, sem escolher
 // nada. Só faz sentido quando já existe um tenant atual válido (troca voluntária pelo
@@ -497,6 +524,13 @@ document.getElementById('tenantSwitchBtn')?.addEventListener('click', async () =
         const chosenId = await showTenantSelector(me.tenants, currentTenantId);
         if (chosenId === currentTenantId) return;
 
+        // Nada da tela pode sobreviver à troca. Os botões renderizados carregam o id do PR no
+        // onclick, e ids de PR são GLOBAIS, não por tenant: clicar em aprovar num resto de
+        // render do tenant anterior manda um id que o backend não enxerga mais, e volta 404.
+        // Esvaziar antes de carregar é preferível a mostrar dado do tenant errado, inclusive
+        // se a carga abaixo falhar no meio.
+        limparDadosDaTela();
+
         DOM.showLoading(true);
         const activatedMe = await AuthService.activateTenant(chosenId);
         if (!tenantOperations.isCurrent(transitionRevision)) return;
@@ -531,14 +565,28 @@ document.getElementById('noTenantLogoutBtn')?.addEventListener('click', async ()
     showProfileSelection();
 });
 
+/** Zera o estado e re-renderiza vazio, para não restar botão apontando para o tenant anterior. */
+function limparDadosDaTela() {
+    currentData.prs = [];
+    currentData.batches = [];
+    currentData.sprints = [];
+    esteirasPorApp.clear();
+    refreshOpenPrs();
+    refreshApprovedPrs();
+    refreshTestingAndHistory();
+}
+
 function closeAllModals() {
     prModal.style.display = 'none';
     Form.resetFormState(prForm);
     if (setupModal) setupModal.style.display = 'none';
     if (shortcutsModal) shortcutsModal.style.display = 'none';
     if (requestVersionModal) requestVersionModal.style.display = 'none';
+    if (hotfixModal) hotfixModal.style.display = 'none';
     if (newSprintModal) newSprintModal.style.display = 'none';
     pendingVersionRequestContext = null;
+    if (modalReturnFocus?.isConnected) modalReturnFocus.focus({ preventScroll: true });
+    modalReturnFocus = null;
     
     if (LocalStorage.getItem('appUser')) {
         hideLoginGate();
@@ -777,7 +825,11 @@ function showProfileSelection() {
     clearLoginErrors();
     setLoginSubmitting(false);
     resetLoginPasswordToggle();
-    AuthService.markAuthenticationPending();
+    // Na troca voluntária o dashboard continua autenticado e pode ser restaurado.
+    // O estado pendente só é correto no login inicial ou depois de um logout.
+    if (!(LocalStorage.getItem('token') && LocalStorage.getItem('appUser'))) {
+        AuthService.markAuthenticationPending();
+    }
 
     showLoginGate();
     document.getElementById('loginIdentifier')?.focus();
@@ -882,11 +934,12 @@ function openRequestVersionModal(prIds, projectName) {
     populateRequestVersionDevSelect(currentUserId || '');
 
     if (requestVersionModalDescription) {
-        requestVersionModalDescription.textContent = `Selecione o dev que vai preencher a versão, número da release, link do pipeline e rollback do lote "${pendingVersionRequestContext.projectName}".`;
+        const total = pendingVersionRequestContext.prIds.length;
+        requestVersionModalDescription.textContent = `Selecione o dev que vai preencher a versão, número da release, link do pipeline e rollback do lote "${pendingVersionRequestContext.projectName}" (${total} PR${total === 1 ? '' : 's'}).`;
     }
 
     if (requestVersionModal) {
-        requestVersionModal.style.display = 'flex';
+        openAccessibleModal(requestVersionModal, requestVersionDevSelect);
     }
 }
 
@@ -910,21 +963,37 @@ async function confirmRequestVersionSelection() {
 
     const { prIds, projectName } = pendingVersionRequestContext;
 
-    if (!confirm(`Solicitar versão para ${prIds.length} PRs aprovados de "${projectName}" e direcionar para ${selectedDev.name}?`)) {
+    const confirmed = await DOM.confirmDialog(
+        `Empacotar ${prIds.length} PRs aprovados de "${projectName}" e direcionar para ${selectedDev.name}?`,
+        'Empacotar PRs',
+        { confirmLabel: 'Empacotar PRs' },
+    );
+    if (!confirmed) {
         return;
     }
 
     try {
         DOM.showLoading(true);
 
-        await API.requestVersionBatch(prIds, selectedDev.id, selectedDev.name);
+        const resultado = await API.requestVersionBatch(prIds, selectedDev.id, selectedDev.name);
 
         if (requestVersionModal) {
             requestVersionModal.style.display = 'none';
         }
         pendingVersionRequestContext = null;
 
-        DOM.showToast(`Versão solicitada para ${selectedDev.name}!`);
+        // O backend pula PR que já tem versão ou já está em outro lote. Sem dizer isso na tela,
+        // o lote saía menor do que o pedido e ninguém ficava sabendo.
+        const pulados = resultado?.skipped ?? [];
+        if (pulados.length > 0) {
+            DOM.showToast(
+                `Versão solicitada para ${selectedDev.name}, mas ${pulados.length} PR(s) ficaram de fora: `
+                + pulados.map(pr => pr.externalId || `#${pr.id}`).join(', '),
+                'warning',
+            );
+        } else {
+            DOM.showToast(`Versão solicitada para ${selectedDev.name}!`);
+        }
         await loadData(true);
     } catch (error) {
         console.error('Erro ao solicitar versão:', error);
@@ -934,8 +1003,82 @@ async function confirmRequestVersionSelection() {
     }
 }
 
+// Épico 2 (D6): "em voo" — integrado e ainda não entregue. É filtro de consulta, então a
+// preferência do usuário vira parâmetro da API, não um estado gravado no PR.
+const initialQuery = new URLSearchParams(window.location.search);
+let showOnlyInFlight = initialQuery.get('inFlight') !== 'false';
+
+// Esteira do app selecionado. Guardada porque a tela precisa dela em dois lugares: o rótulo
+// da seção de validação e o filtro por ambiente.
+let esteiraDoApp = [];
+const esteirasPorApp = new Map();
+
+const KIND_LABELS = { Dev: 'Desenvolvimento', Stg: 'Staging', Prod: 'Produção' };
+
+/**
+ * Carrega a esteira do app e ajusta o que dependia de "STG" fixo.
+ *
+ * O título da seção anunciava "Versões em Teste (STG)" para qualquer app — mentira num app
+ * configurado como dev → prod, que não tem staging. O rótulo passa a nomear o ambiente real
+ * onde as versões são validadas: o último degrau versionado ANTES do de produção.
+ */
+async function carregarEsteira(appId) {
+    if (!appId) return [];
+    if (esteirasPorApp.has(appId)) return esteirasPorApp.get(appId);
+    const envs = await API.fetchEnvironments(appId);
+    const esteira = Array.isArray(envs) ? [...envs].sort((a, b) => a.order - b.order) : [];
+    esteirasPorApp.set(appId, esteira);
+    return esteira;
+}
+
+async function carregarEsteiraDoApp(appId = currentAppId || filtros.app) {
+    if (!appId) {
+        esteiraDoApp = [];
+        atualizarRotuloValidacao();
+        popularFiltroDeAmbiente();
+        return;
+    }
+
+    try {
+        esteiraDoApp = await carregarEsteira(appId);
+    } catch (error) {
+        console.error('Erro ao carregar a esteira do app:', error);
+        esteiraDoApp = [];
+    }
+
+    atualizarRotuloValidacao();
+    popularFiltroDeAmbiente();
+}
+
+function ambienteDeValidacao() {
+    return ambienteDeValidacaoDaEsteira(esteiraDoApp);
+}
+
+function ambienteDeValidacaoDaEsteira(esteira) {
+    const versionados = esteira.filter(e => e.mode === 'Versioned');
+    // O último degrau é produção; o anterior é onde a versão fica em validação.
+    return versionados.length >= 2 ? versionados[versionados.length - 2] : null;
+}
+
+function atualizarRotuloValidacao() {
+    const label = document.getElementById('testingSectionLabel');
+    if (!label) return;
+
+    const env = ambienteDeValidacao();
+    if (env) {
+        label.textContent = `Versões em validação (${KIND_LABELS[env.kind] || env.kind})`;
+        return;
+    }
+    // Esteira sem degrau de validação (ex.: dev → prod) ou nenhum app selecionado: rótulo
+    // genérico, em vez de prometer um ambiente que não existe.
+    label.textContent = 'Versões em validação';
+}
+
 async function loadPrTablesData(animate = false, expectedRevision = tenantOperations.snapshot()) {
-    const prResult = await API.fetchPRs();
+    // Busca sempre a lista completa e aplica o "em voo" no cliente, usando o pr.inFlight que a
+    // própria API calcula. Dois ganhos: os PRs que chegam dentro de um lote continuam tendo de
+    // onde herdar a esteira mesmo depois de entregues, e alternar o filtro deixa de ir na rede.
+    const prResult = await API.fetchPRs(false);
     if (!tenantOperations.isCurrent(expectedRevision)) return false;
     if (!prResult || !Array.isArray(prResult.prs)) {
         throw new Error('Falha ao carregar PRs');
@@ -952,6 +1095,14 @@ async function loadPrTablesData(animate = false, expectedRevision = tenantOperat
     currentData.batches = appFilter
         ? batches.filter(b => b.appId === currentAppId)
         : batches;
+    const appIds = [...new Set([
+        ...currentData.prs.map(pr => pr.appId),
+        ...currentData.batches.map(batch => batch.appId),
+    ].filter(Boolean))];
+    await Promise.all(appIds.map(appId => carregarEsteira(appId).catch(error => {
+        console.error(`Erro ao carregar a esteira do app ${appId}:`, error);
+        return [];
+    })));
     refreshOpenPrs(animate);
     refreshApprovedPrs(animate);
     return true;
@@ -960,10 +1111,55 @@ async function loadPrTablesData(animate = false, expectedRevision = tenantOperat
 function refreshTestingAndHistory(animate = false) {
     if (!Array.isArray(currentData.sprints)) return;
 
-    const activeSprints = currentData.sprints.filter(s => s.isActive);
-    const inactiveSprints = currentData.sprints.filter(s => !s.isActive);
+    const batchEstaEmValidacao = batch => {
+        if (!esteirasPorApp.has(batch.appId)) return batch.status === 'Deployed';
+        const validationEnv = ambienteDeValidacaoDaEsteira(esteirasPorApp.get(batch.appId) || []);
+        // Cuidado: os dois DTOs usam "batchId" para coisas diferentes. No deployment é a chave
+        // numérica (VersionBatch.Id); no lote é o identificador em texto ("batch_638..."). Comparar
+        // os dois campos de mesmo nome nunca dá verdadeiro, e a seção ficava sempre vazia.
+        return validationEnv?.current?.batchId === batch.id;
+    };
+
+    const filtrarSprint = (sprint, isActive) => {
+        if (filtros.sprint && filtros.sprint !== '__sem__' && sprint.name !== filtros.sprint) return null;
+        if (filtros.sprint === '__sem__') return null;
+        const versionBatches = (sprint.versionBatches || []).map(batch => ({
+            ...batch,
+            pullRequests: aplicarFiltros((batch.pullRequests || []).map(pr => ({
+                ...pr,
+                sprint: pr.sprint || sprint.name,
+            }))),
+        })).filter(batch => {
+            if (batch.pullRequests.length === 0 && temFiltrosAtivos()) return false;
+            if (!isActive) return true;
+            return batchEstaEmValidacao(batch);
+        });
+        return { ...sprint, versionBatches };
+    };
+    const activeSprints = currentData.sprints.filter(s => s.isActive).map(s => filtrarSprint(s, true)).filter(Boolean);
+    const inactiveSprints = currentData.sprints.filter(s => !s.isActive).map(s => filtrarSprint(s, false)).filter(Boolean);
+    if (!filtros.sprint || filtros.sprint === '__sem__') {
+        const noSprintBatches = currentData.batches
+            .filter(batch => !batch.sprintId && batchEstaEmValidacao(batch))
+            .map(batch => ({
+                ...batch,
+                pullRequests: aplicarFiltros((batch.pullRequests || []).map(pr => ({ ...pr, sprint: '' }))),
+            }))
+            .filter(batch => batch.pullRequests.length > 0);
+        if (noSprintBatches.length > 0) {
+            activeSprints.push({ id: 'without-sprint', name: 'Sem sprint', canComplete: false, versionBatches: noSprintBatches });
+        }
+    }
     DOM.renderTestingTable(activeSprints, 'dashboardTesting', openEditModal, animate);
     DOM.renderHistoryTable(inactiveSprints, 'dashboardHistory', openEditModal, animate);
+    if (temFiltrosAtivos()) {
+        const hasTestingResults = activeSprints.some(sprint =>
+            (sprint.versionBatches || []).some(batch => batch.pullRequests.length > 0));
+        const hasHistoryResults = inactiveSprints.some(sprint =>
+            (sprint.versionBatches || []).some(batch => batch.pullRequests.length > 0));
+        if (!hasTestingResults) renderFilteredEmpty('dashboardTesting');
+        if (!hasHistoryResults) renderFilteredEmpty('dashboardHistory');
+    }
     if (window.lucide) window.lucide.createIcons();
     if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
 }
@@ -991,9 +1187,11 @@ async function loadData(skipLoading = false, expectedRevision = tenantOperations
         }
         currentData.sprints = sprints;
         refreshTestingAndHistory(false);
+        setDashboardLoadError('');
     } catch (error) {
         if (!tenantOperations.isCurrent(expectedRevision)) return;
         console.error('Erro ao carregar dados:', error);
+        setDashboardLoadError('A API não respondeu. Os dados que já estavam na tela foram mantidos.');
         DOM.showToast('Erro ao carregar dados da API', 'error');
     } finally {
         if (!skipLoading && tenantOperations.isCurrent(expectedRevision)) {
@@ -1002,23 +1200,374 @@ async function loadData(skipLoading = false, expectedRevision = tenantOperations
     }
 }
 
+// ── Filtros da esteira (Épico 2, 3.4) ──────────────────────────────────────
+// App, status, ambiente e sprint. Aplicados no cliente sobre a lista já carregada; o único
+// filtro que vive na API é o "em voo", porque ele depende de presença e de deployment ativo
+// no último degrau, que o cliente não tem como calcular.
+
+const filtros = {
+    app: initialQuery.get('filterApp') || '',
+    status: initialQuery.get('status') || '',
+    environment: initialQuery.get('environment') || '',
+    sprint: initialQuery.get('sprint') || '',
+};
+
+function temFiltrosAtivos() {
+    return Object.values(filtros).some(Boolean);
+}
+
+function atualizarPainelFiltros() {
+    const label = document.getElementById('filterPanelLabel');
+    if (!label) return;
+    const total = Object.values(filtros).filter(Boolean).length;
+    label.textContent = total > 0 ? `Filtros (${total})` : 'Filtros';
+}
+
+function persistirFiltrosNaUrl() {
+    const query = new URLSearchParams(window.location.search);
+    const chaves = { app: 'filterApp', status: 'status', environment: 'environment', sprint: 'sprint' };
+    Object.entries(chaves).forEach(([campo, parametro]) => {
+        if (filtros[campo]) query.set(parametro, filtros[campo]);
+        else query.delete(parametro);
+    });
+    query.set('inFlight', String(showOnlyInFlight));
+    history.replaceState(null, '', `${window.location.pathname}?${query.toString()}`);
+    atualizarPainelFiltros();
+}
+
+function renderFilteredEmpty(containerId, tableBody = false) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const content = '<div class="empty-state"><span>Nenhum resultado para os filtros selecionados.</span><button class="btn btn-outline btn-sm clear-inline-filters" type="button">Limpar filtros</button></div>';
+    container.innerHTML = tableBody ? `<tr><td colspan="7">${content}</td></tr>` : content;
+    container.querySelector('.clear-inline-filters')?.addEventListener('click', limparFiltros);
+}
+
+async function limparFiltros() {
+    Object.keys(filtros).forEach(chave => { filtros[chave] = ''; });
+    ['filterApp', 'filterStatus', 'filterEnvironment', 'filterSprint'].forEach(id => {
+        const select = document.getElementById(id);
+        if (select) select.value = '';
+    });
+    await carregarEsteiraDoApp(currentAppId);
+    persistirFiltrosNaUrl();
+    refreshOpenPrs(true);
+    refreshApprovedPrs(true);
+    refreshTestingAndHistory(true);
+}
+
+function popularFiltroDeApp(apps) {
+    const select = document.getElementById('filterApp');
+    if (!select) return;
+
+    const anterior = filtros.app || select.value;
+    select.innerHTML = '<option value="">Todos</option>';
+    apps.forEach(app => {
+        const option = document.createElement('option');
+        option.value = app.id;
+        option.textContent = app.name;
+        select.appendChild(option);
+    });
+    select.value = anterior;
+
+    // Dentro de um app (?app=), a lista já está restrita — o filtro só confundiria.
+    const wrapper = select.closest('.esteira-filters__field');
+    if (wrapper) wrapper.style.display = appFilter ? 'none' : '';
+}
+
+function popularFiltroDeAmbiente() {
+    const select = document.getElementById('filterEnvironment');
+    if (!select) return;
+
+    const anterior = filtros.environment || select.value;
+    select.innerHTML = esteiraDoApp.length > 0
+        ? '<option value="">Todos</option>'
+        : '<option value="">Selecione um app primeiro</option>';
+    select.disabled = esteiraDoApp.length === 0;
+    esteiraDoApp.forEach(env => {
+        const option = document.createElement('option');
+        option.value = env.kind;
+        option.textContent = KIND_LABELS[env.kind] || env.kind;
+        select.appendChild(option);
+    });
+    select.value = anterior;
+
+    // Sem app selecionado não há uma esteira única: cada app tem a sua, e um filtro
+    // "dev/stg/prod" fixo seria exatamente o acoplamento que o épico removeu.
+    const wrapper = select.closest('.esteira-filters__field');
+    if (wrapper) wrapper.style.display = '';
+}
+
+function popularFiltroDeSprint() {
+    const select = document.getElementById('filterSprint');
+    if (!select) return;
+
+    const anterior = filtros.sprint || select.value;
+    const sprints = [...new Set(currentData.prs.map(p => p.sprint).filter(Boolean))].sort();
+    select.innerHTML = '<option value="">Todas</option><option value="__sem__">Sem sprint</option>';
+    sprints.forEach(nome => {
+        const option = document.createElement('option');
+        option.value = nome;
+        option.textContent = nome;
+        select.appendChild(option);
+    });
+    select.value = anterior;
+}
+
+function statusDoPr(pr) {
+    if (pr.needsCorrection) return 'ajustes';
+    if (pr.version || pr.versionBatchRefId) return 'versionado';
+    if (pr.approved) return 'aprovado';
+    return 'revisao';
+}
+
+function aplicarFiltros(prs) {
+    return prs.filter(pr => {
+        if (filtros.app && pr.appId !== filtros.app) return false;
+        if (filtros.status && statusDoPr(pr) !== filtros.status) return false;
+        if (filtros.sprint === '__sem__' && pr.sprint) return false;
+        if (filtros.sprint && filtros.sprint !== '__sem__' && pr.sprint !== filtros.sprint) return false;
+        if (filtros.environment) {
+            const slot = (pr.environments || []).find(e => e.kind === filtros.environment);
+            if (!slot?.present) return false;
+        }
+        return true;
+    });
+}
+
+function proximoAmbienteDoLote(batch) {
+    const esteira = esteirasPorApp.get(batch.appId) || [];
+    const versionados = esteira.filter(env => env.mode === 'Versioned');
+    if (versionados.length === 0) return null;
+
+    // Mesma armadilha de nome descrita em refreshTestingAndHistory: o "batchId" do deployment é
+    // a chave numérica (VersionBatch.Id) e o do lote é o texto "batch_638...". Comparar os dois
+    // campos homônimos nunca dá verdadeiro, então o índice do último ambiente implantado ficava
+    // em -1 e o "próximo" era sempre o primeiro degrau: o botão repetia "Implantar em Staging" e
+    // produção ficava inalcançável pelo Dashboard.
+    if (batch.isHotfix) {
+        const ultimo = versionados[versionados.length - 1];
+        if (ultimo.current?.batchId === batch.id) return null;
+        return { kind: ultimo.kind, label: KIND_LABELS[ultimo.kind] || ultimo.kind };
+    }
+
+    const ultimoIndiceImplantado = versionados.reduce((maior, env, indice) =>
+        env.current?.batchId === batch.id ? indice : maior, -1);
+    const proximo = versionados[ultimoIndiceImplantado + 1];
+    return proximo ? { kind: proximo.kind, label: KIND_LABELS[proximo.kind] || proximo.kind } : null;
+}
+
+['filterApp', 'filterStatus', 'filterEnvironment', 'filterSprint'].forEach(id => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    select.addEventListener('change', async (event) => {
+        filtros[id.replace('filter', '').toLowerCase()] = event.target.value;
+        if (id === 'filterApp') {
+            filtros.environment = '';
+            await carregarEsteiraDoApp(filtros.app);
+        }
+        persistirFiltrosNaUrl();
+        refreshOpenPrs(true);
+        refreshApprovedPrs(true);
+        refreshTestingAndHistory(true);
+    });
+});
+
+const initialStatusFilter = document.getElementById('filterStatus');
+if (initialStatusFilter) initialStatusFilter.value = filtros.status;
+const initialInFlightToggle = document.getElementById('inFlightToggle');
+if (initialInFlightToggle) initialInFlightToggle.checked = showOnlyInFlight;
+const filterPanel = document.getElementById('filterPanel');
+if (filterPanel && window.matchMedia('(max-width: 640px)').matches) filterPanel.removeAttribute('open');
+atualizarPainelFiltros();
+
+const filterClearBtn = document.getElementById('filterClearBtn');
+if (filterClearBtn) {
+    filterClearBtn.addEventListener('click', limparFiltros);
+}
+
+// ── Vínculos genéricos do PR (Épico 2, 2.8) ────────────────────────────────
+// Substituem, na prática, os três campos fixos (Link PR / Link Task / Post Teams): aqui
+// cabe qualquer tipo, sem limite, e cada item é removível. Os campos antigos seguem no
+// formulário até a migração de dados que os remove, fora do escopo deste épico.
+
+const LINK_KIND_LABELS = {
+    Task: 'Task',
+    Pr: 'Pull Request',
+    Communication: 'Comunicação',
+    Pipeline: 'Pipeline',
+    Other: 'Outro',
+};
+
+let prLinksPr = null;
+let draftPrLinks = [];
+
+function renderPrLinks(links) {
+    const lista = document.getElementById('prLinksList');
+    if (!lista) return;
+
+    lista.innerHTML = '';
+    if (!links || links.length === 0) {
+        const vazio = document.createElement('li');
+        vazio.className = 'pipeline-empty';
+        vazio.textContent = 'Nenhum vínculo.';
+        lista.appendChild(vazio);
+        return;
+    }
+
+    links.forEach(link => {
+        const item = document.createElement('li');
+        item.className = 'link-item';
+
+        const kind = document.createElement('span');
+        kind.className = 'link-item__kind';
+        kind.textContent = LINK_KIND_LABELS[link.kind] || link.kind;
+
+        // textContent, nunca innerHTML: a URL vem da API e pode ter sido digitada por qualquer um.
+        const anchor = document.createElement('a');
+        anchor.className = 'link-item__url';
+        anchor.href = link.url;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.textContent = link.label || link.url;
+        anchor.title = link.url;
+
+        const remover = document.createElement('button');
+        remover.type = 'button';
+        remover.className = 'btn btn-outline btn-sm';
+        remover.textContent = 'Remover';
+        remover.addEventListener('click', async () => {
+            if (!prLinksPr) {
+                draftPrLinks = draftPrLinks.filter(item => item.clientId !== link.clientId);
+                renderPrLinks(draftPrLinks);
+                return;
+            }
+
+            remover.disabled = true;
+            try {
+                await API.removePrLink(prLinksPr.appId, prLinksPr.id, link.id);
+                prLinksPr.links = (prLinksPr.links || []).filter(l => l.id !== link.id);
+                renderPrLinks(prLinksPr.links);
+                DOM.showToast('Vínculo removido.', 'success');
+            } catch (error) {
+                remover.disabled = false;
+                DOM.showToast(error?.message || 'Não foi possível remover o vínculo.', 'error');
+            }
+        });
+
+        item.append(kind, anchor, remover);
+        lista.appendChild(item);
+    });
+}
+
+const prLinkAddBtn = document.getElementById('prLinkAddBtn');
+if (prLinkAddBtn) {
+    prLinkAddBtn.addEventListener('click', async () => {
+        const urlInput = document.getElementById('prLinkUrl');
+        const labelInput = document.getElementById('prLinkLabel');
+        const erro = document.getElementById('prLinkUrlError');
+        const url = urlInput.value.trim();
+
+        const limparErro = () => {
+            urlInput.classList.remove('is-invalid');
+            erro.textContent = '';
+            erro.classList.remove('visible');
+        };
+        const marcarErro = (mensagem) => {
+            urlInput.classList.add('is-invalid');
+            erro.textContent = mensagem;
+            erro.classList.add('visible'); // .field-error nasce display:none
+        };
+
+        if (!url) return marcarErro('Informe o endereço do vínculo.');
+        if (url.length > 1000) return marcarErro('O endereço passa de 1000 caracteres.');
+        if (!Form.isOptionalUrl(url)) return marcarErro('Informe um endereço HTTP ou HTTPS válido.');
+        limparErro();
+
+        const novoVinculo = {
+            kind: document.getElementById('prLinkKind').value,
+            url,
+            label: labelInput.value.trim() || null,
+        };
+
+        if (!prLinksPr) {
+            draftPrLinks = [...draftPrLinks, { ...novoVinculo, clientId: crypto.randomUUID() }];
+            renderPrLinks(draftPrLinks);
+            urlInput.value = '';
+            labelInput.value = '';
+            return;
+        }
+
+        try {
+            const criado = await API.addPrLink(prLinksPr.appId, prLinksPr.id, novoVinculo);
+            prLinksPr.links = [...(prLinksPr.links || []), criado];
+            renderPrLinks(prLinksPr.links);
+            urlInput.value = '';
+            labelInput.value = '';
+            DOM.showToast('Vínculo adicionado.', 'success');
+        } catch (error) {
+            marcarErro(error?.message || 'Não foi possível adicionar o vínculo.');
+        }
+    });
+
+    document.getElementById('prLinkUrl').addEventListener('input', () => {
+        document.getElementById('prLinkUrl').classList.remove('is-invalid');
+        const erro = document.getElementById('prLinkUrlError');
+        erro.textContent = '';
+        erro.classList.remove('visible');
+    });
+}
+
+const emVoo = pr => !showOnlyInFlight || pr.inFlight !== false;
+
 function refreshOpenPrs(animate = false) {
-    const openPrs = currentData.prs.filter(p => !p.approved);
+    popularFiltroDeSprint();
+    // "em voo" agora é filtro de cliente sobre o pr.inFlight que a API já devolve.
+    const openPrs = aplicarFiltros(currentData.prs.filter(p => !p.approved && emVoo(p)));
     const totalOpenBadge = document.getElementById('totalOpenPrs');
     if (totalOpenBadge) {
         totalOpenBadge.textContent = openPrs.length;
         totalOpenBadge.style.display = openPrs.length > 0 ? 'inline-block' : 'none';
     }
     DOM.renderOpenTable(openPrs, 'openPrTableBody', openEditModal, animate);
+    if (temFiltrosAtivos() && openPrs.length === 0) renderFilteredEmpty('openPrTableBody', true);
     if (window.lucide) window.lucide.createIcons();
     if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
+}
+
+// Espelha a regra do card de backlog em renderApprovedTables: aprovado, ainda não entregue, em
+// voo, dentro dos filtros ativos e fora de qualquer lote. Casa por appId, e não pelo nome exibido,
+// porque é o appId que o backend usa para montar o lote.
+function prsElegiveisParaCorte(appId) {
+    const idsEmLote = new Set((currentData.batches || [])
+        .flatMap(batch => (batch.pullRequests || []).map(pr => pr.id)));
+    return aplicarFiltros((currentData.prs || []).filter(pr =>
+        pr.appId === appId && pr.approved && !pr.deployedToStg && emVoo(pr) && !idsEmLote.has(pr.id)));
 }
 
 function refreshApprovedPrs(animate = false) {
     if (!Array.isArray(currentData.batches)) return;
 
-    const approvedPending = currentData.prs.filter(p => p.approved && !p.deployedToStg);
-    DOM.renderApprovedTables(approvedPending, currentData.batches, 'dashboardApproved', openEditModal, animate);
+    const approvedPending = aplicarFiltros(currentData.prs.filter(p => p.approved && !p.deployedToStg && emVoo(p)));
+
+    // Os PRs que vêm dentro do lote são serializados pelo VersionBatchService e não passam
+    // pelo enriquecimento da esteira, então chegam sem `environments` — a coluna Esteira
+    // exibia "Sem esteira configurada" para todos. Reaproveita o PR já enriquecido da lista.
+    const prsEnriquecidos = new Map(currentData.prs.map(pr => [pr.id, pr]));
+    const comEsteira = pr => {
+        const enriquecido = prsEnriquecidos.get(pr.id);
+        return enriquecido ? { ...pr, environments: enriquecido.environments, links: enriquecido.links } : pr;
+    };
+
+    const batches = currentData.batches.map(batch => ({
+        ...batch,
+        deploymentTarget: proximoAmbienteDoLote(batch),
+        pullRequests: aplicarFiltros((batch.pullRequests || []).map(comEsteira)),
+    })).filter(batch => batch.pullRequests.length > 0 || !temFiltrosAtivos());
+    DOM.renderApprovedTables(approvedPending, batches, 'dashboardApproved', openEditModal, animate);
+    if (temFiltrosAtivos() && approvedPending.length === 0 && batches.length === 0) {
+        renderFilteredEmpty('dashboardApproved');
+    }
     if (window.lucide) window.lucide.createIcons();
     if (AuthService && AuthService.applyRoleBasedVisibility) AuthService.applyRoleBasedVisibility();
 }
@@ -1031,39 +1580,19 @@ function openEditModal(pr) {
     document.getElementById('project').value = pr.project || '';
     document.getElementById('dev').value = resolveDeveloperId(availableUsers, pr.devId, pr.dev);
     document.getElementById('summary').value = pr.summary || '';
-    document.getElementById('prLink').value = pr.prLink || '';
-    document.getElementById('taskLink').value = pr.taskLink || '';
-    document.getElementById('teamsLink').value = pr.teamsLink || '';
-    
-    updateSummaryLabel(pr.taskLink || '');
-
-    const relatedContainer = document.getElementById('relatedTasksContainer');
-    relatedContainer.innerHTML = '';
-    
-    if (pr.linksRelatedTask) {
-        const links = pr.linksRelatedTask.split(';').filter(link => link.trim() !== '');
-        links.forEach(linkData => {
-            let [summary, url] = linkData.split('|');
-            if (!url) {
-                url = summary;
-                summary = '';
-            }
-            addRelatedTaskInput(url, summary);
-        });
-    }
-    
-    updateSummaryLabel();
 
     const noTestingCheckbox = document.getElementById('noTestingRequired');
     if (noTestingCheckbox) {
         noTestingCheckbox.checked = !!pr.noTestingRequired;
     }
 
-    const appUser = LocalStorage.getItem('appUser');
     const isApproved = !!pr.approved;
 
+    prLinksPr = pr;
+    draftPrLinks = [];
+    renderPrLinks(pr.links || []);
 
-    const fieldsToLock = ['project', 'dev', 'summary', 'prLink', 'taskLink', 'teamsLink'];
+    const fieldsToLock = ['project', 'dev', 'summary'];
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = isApproved;
     });
@@ -1074,22 +1603,13 @@ function openEditModal(pr) {
         noTestingCheckbox.disabled = isApproved;
     }
 
-    const relatedInputs = document.querySelectorAll('.related-task-input');
-    relatedInputs.forEach(input => input.disabled = isApproved);
-    
-    const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
-    if (addRelatedBtn) addRelatedBtn.disabled = isApproved;
-    
-    const removeRelatedBtns = document.querySelectorAll('#relatedTasksContainer button');
-    removeRelatedBtns.forEach(btn => btn.disabled = isApproved);
-
     if (isApproved) {
         document.getElementById('modalTitle').innerHTML = 'Editar Pull Request <span class="tag" style="background: color-mix(in srgb, var(--success-color) 16%, transparent); color: var(--success-color); margin-left:10px;">Aprovado</span>';
     } else {
         document.getElementById('modalTitle').textContent = 'Editar Pull Request';
     }
 
-    prModal.style.display = 'flex';
+    openAccessibleModal(prModal, prModal.querySelector('select:not(:disabled), input:not([type="hidden"]):not(:disabled), textarea:not(:disabled)'));
 }
 
 function openAddModal() {
@@ -1105,9 +1625,9 @@ function openAddModal() {
     Form.resetFormState(prForm);
     document.getElementById('prId').value = '';
     
-    updateSummaryLabel();
-    
-    document.getElementById('relatedTasksContainer').innerHTML = '';
+    prLinksPr = null;
+    draftPrLinks = [];
+    renderPrLinks(draftPrLinks);
 
     const currentMe = AuthService.getMe();
     document.getElementById('dev').value = resolveDeveloperId(
@@ -1116,7 +1636,7 @@ function openAddModal() {
         currentMe?.name || LocalStorage.getItem('appUser')
     );
 
-    const fieldsToLock = ['project', 'dev', 'summary', 'prLink', 'taskLink', 'teamsLink'];
+    const fieldsToLock = ['project', 'dev', 'summary'];
     fieldsToLock.forEach(id => {
         document.getElementById(id).disabled = false;
     });
@@ -1134,14 +1654,25 @@ function openAddModal() {
         noTestingCheckbox.disabled = false;
     }
 
-    const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
-    if (addRelatedBtn) addRelatedBtn.disabled = false;
-
     if (!tenantOperations.isCurrent(openingRevision) || tenantOperations.isTransitioning()) return;
-    prModal.style.display = 'flex';
+    openAccessibleModal(prModal, prModal.querySelector('select:not(:disabled), input:not([type="hidden"]):not(:disabled), textarea:not(:disabled)'));
 }
 
 document.getElementById('addPrBtn').addEventListener('click', openAddModal);
+
+// Alterna entre "em voo" e a lista completa. Recarrega da API porque o filtro é derivado
+// lá (presença + versão no último ambiente), não uma propriedade que o cliente possa calcular.
+const inFlightToggle = document.getElementById('inFlightToggle');
+if (inFlightToggle) {
+    inFlightToggle.addEventListener('change', async (event) => {
+        showOnlyInFlight = event.target.checked;
+        persistirFiltrosNaUrl();
+        // A lista completa já está em memória: alternar é só re-renderizar.
+        refreshOpenPrs(true);
+        refreshApprovedPrs(true);
+    });
+}
+
 if (document.getElementById('setupBtn')) {
     document.getElementById('setupBtn').addEventListener('click', openSetupModal);
 }
@@ -1199,7 +1730,7 @@ if (projectHelpBtn && projectHelpTooltip) {
     });
 }
 
-document.getElementById('addRelatedTaskBtn').addEventListener('click', () => addRelatedTaskInput());
+document.getElementById('addRelatedTaskBtn')?.addEventListener('click', () => addRelatedTaskInput());
 
 const taskLinkInput = document.getElementById('taskLink');
 if (taskLinkInput) {
@@ -1214,7 +1745,7 @@ function updateSummaryLabel() {
     
     if (!primaryTagsContainer || !relatedTagsContainer) return;
 
-    const mainUrl = document.getElementById('taskLink').value;
+    const mainUrl = document.getElementById('taskLink')?.value || '';
     const primaryId = extractJiraId(mainUrl);
 
     if (primaryId) {
@@ -1320,7 +1851,7 @@ document.getElementById('newSprintBtn').addEventListener('click', () => {
     if (newSprintNameInput) newSprintNameInput.value = '';
     sprintDateRangePicker.reset();
     clearNewSprintValidation();
-    if (newSprintModal) newSprintModal.style.display = 'flex';
+    openAccessibleModal(newSprintModal, newSprintNameInput);
 });
 
 newSprintNameInput?.addEventListener('input', () => {
@@ -1406,7 +1937,7 @@ window.approvePr = async (prId) => {
         }
     } catch (error) {
         console.error('Erro ao aprovar:', error);
-        DOM.showToast('Erro ao aprovar: ' + error.message, 'error');
+        DOM.showToast(`Não foi possível aprovar. ${error.message}`, 'error');
     }
 };
 
@@ -1552,7 +2083,7 @@ function openSetupModal() {
     }).catch(err => {
         console.error('Erro ao buscar config:', err);
     }).finally(() => {
-        if (setupModal) setupModal.style.display = 'flex';
+        openAccessibleModal(setupModal);
     });
 }
 
@@ -1612,33 +2143,45 @@ prForm.addEventListener('submit', async (e) => {
             project: document.getElementById('project').value,
             devId: selectedDeveloper.id,
             summary: document.getElementById('summary').value,
-            prLink: document.getElementById('prLink').value || '',
-            taskLink: document.getElementById('taskLink').value || '',
-            teamsLink: document.getElementById('teamsLink').value || '',
+            prLink: '',
+            taskLink: null,
+            teamsLink: null,
             noTestingRequired: document.getElementById('noTestingRequired').checked,
-            linksRelatedTask: Array.from(document.querySelectorAll('.related-task-group'))
-                .map(group => {
-                    const url = group.querySelector('.related-task-input-url').value.trim();
-                    const summary = group.querySelector('.related-task-input-summary').value.trim();
-                    return url ? `${summary}|${url}` : '';
-                })
-                .filter(val => val !== '')
-                .join(';')
+            linksRelatedTask: ''
         };
 
         const successMessage = prIdInput
             ? 'PR atualizado com sucesso!'
             : 'PR criado com sucesso!';
 
+        let linkFailures = 0;
         if (prIdInput) {
             await API.updatePR(prIdInput, prData);
         } else {
-            await API.createPR(prData);
+            const createdPr = await API.createPR(prData);
+            const linksToCreate = [...draftPrLinks];
+            for (const link of linksToCreate) {
+                try {
+                    await API.addPrLink(createdPr.appId, createdPr.id, {
+                        kind: link.kind,
+                        url: link.url,
+                        label: link.label,
+                    });
+                } catch (linkError) {
+                    linkFailures += 1;
+                    console.error('PR criado, mas um vínculo não pôde ser salvo:', linkError);
+                }
+            }
         }
 
         prModal.style.display = 'none';
         prForm.reset();
-        DOM.showToast(successMessage);
+        DOM.showToast(
+            linkFailures > 0
+                ? `PR criado, mas ${linkFailures} vínculo(s) não puderam ser salvo(s). Adicione-os ao editar o PR.`
+                : successMessage,
+            linkFailures > 0 ? 'warning' : 'success'
+        );
 
         try {
             await loadPrTablesData(true);
@@ -1705,7 +2248,12 @@ window.saveGroupVersion = async (batchId) => {
         return;
     }
 
-    if (confirm(`Aplicar versão ${version} para este lote?`)) {
+    const confirmado = await DOM.confirmDialog(
+        `A versão ${version} será aplicada a todos os PRs deste lote.`,
+        `Aplicar a versão ${version}?`,
+        { confirmLabel: 'Aplicar versão' },
+    );
+    if (confirmado) {
         try {
             DOM.showLoading(true);
             
@@ -1728,10 +2276,28 @@ window.saveGroupVersion = async (batchId) => {
     }
 };
 
-window.requestVersionBatch = async (prIds, projectName) => {
+// A lista de PRs do corte é resolvida NO CLIQUE, não na renderização, e sobre dados recarregados:
+// cortar em cima do retrato antigo da tela deixava PR aprovado de fora do lote sem aviso nenhum.
+window.requestVersionBatch = async (appId, projectName) => {
     if (!projectName) projectName = 'este projeto';
-    
-    console.log('Solicitando versão para IDs:', prIds);
+
+    try {
+        DOM.showLoading(true);
+        await loadPrTablesData(true);
+    } catch (error) {
+        console.error('Não foi possível atualizar os PRs antes do corte:', error);
+        DOM.showToast('Não foi possível atualizar a lista de PRs. Tente de novo.', 'error');
+        return;
+    } finally {
+        DOM.showLoading(false);
+    }
+
+    const prIds = prsElegiveisParaCorte(appId).map(pr => pr.id);
+    if (prIds.length === 0) {
+        DOM.showToast('Nenhum PR aprovado disponível para cortar versão neste app.', 'warning');
+        return;
+    }
+
     openRequestVersionModal(prIds, projectName);
 };
 
@@ -1752,30 +2318,74 @@ window.fetchBatches = async () => {
     }
 };
 
-window.confirmDeploy = async (batchId) => {
-    const hasActiveSprint = currentData.sprints && currentData.sprints.some(s => s.isActive);
-    if (!hasActiveSprint) {
-        DOM.showToast('Não há uma Sprint ativa. Crie uma Sprint antes de liberar para STG.', 'warning');
-        return;
-    }
-
-    if (confirm(`Confirmar liberação deste lote para ambiente de Teste (STG)?`)) {
+window.confirmDeploy = async (batchId, appId, targetKind, targetLabel) => {
+    const confirmed = await DOM.confirmDialog(
+        `Fazer deploy desta versão em ${targetLabel}? A composição do lote ficará congelada no primeiro deploy.`,
+        `Deploy ${targetLabel}`,
+        { confirmLabel: 'Deploy' },
+    );
+    if (confirmed) {
         try {
             DOM.showLoading(true);
-            await API.releaseBatchToStaging(batchId);
-            DOM.showToast('Versão liberada para Teste (STG) com sucesso!');
+            await API.deployToEnvironment(appId, String(targetKind).toLowerCase(), batchId);
+            esteirasPorApp.delete(appId);
+            if (appId === currentAppId || appId === filtros.app) await carregarEsteiraDoApp(appId);
+            DOM.showToast(`Versão implantada em ${targetLabel}.`);
             await loadData(true);
         } catch (error) {
-            console.error('Erro ao liberar lote:', error);
-            DOM.showToast('Erro ao liberar lote: ' + error.message, 'error');
+            console.error('Erro ao implantar lote:', error);
+            DOM.showToast('Erro ao implantar lote: ' + error.message, 'error');
         } finally {
             DOM.showLoading(false);
         }
     }
 };
 
+window.markBatchHotfix = (batchId) => {
+    pendingHotfixBatchId = batchId;
+    hotfixReasonInput.value = '';
+    document.getElementById('hotfixReasonError')?.classList.remove('visible');
+    openAccessibleModal(hotfixModal, hotfixReasonInput);
+};
+
+document.getElementById('hotfixCancelBtn')?.addEventListener('click', () => {
+    pendingHotfixBatchId = null;
+    closeAllModals();
+});
+
+document.getElementById('hotfixConfirmBtn')?.addEventListener('click', async () => {
+    const reason = hotfixReasonInput.value.trim();
+    const errorElement = document.getElementById('hotfixReasonError');
+    if (!reason) {
+        errorElement.textContent = 'Informe a justificativa do hotfix.';
+        errorElement.classList.add('visible');
+        hotfixReasonInput.focus();
+        return;
+    }
+
+    const button = document.getElementById('hotfixConfirmBtn');
+    button.disabled = true;
+    try {
+        await API.markBatchAsHotfix(pendingHotfixBatchId, reason);
+        pendingHotfixBatchId = null;
+        hotfixModal.style.display = 'none';
+        DOM.showToast('Versão marcada como hotfix. A justificativa foi registrada.');
+        await loadData(true);
+    } catch (error) {
+        errorElement.textContent = error?.message || 'Não foi possível marcar o hotfix.';
+        errorElement.classList.add('visible');
+    } finally {
+        button.disabled = false;
+    }
+});
+
 window.removeVersionFromBatch = async (batchId) => {
-    if (confirm(`ATENÇÃO: Deseja remover as informações de versão deste lote? \nIsso fará com que os PRs voltem para o status 'Aguardando Versão'.`)) {
+    const confirmado = await DOM.confirmDialog(
+        'Os PRs voltarão para o status "Aguardando Versão".',
+        'Remover as informações de versão?',
+        { confirmLabel: 'Remover versão', danger: true },
+    );
+    if (confirmado) {
         try {
             DOM.showLoading(true);
             await API.removeVersionFromBatch(batchId);
@@ -1791,7 +2401,12 @@ window.removeVersionFromBatch = async (batchId) => {
 };
 
 window.removePrFromBatch = async (batchId, prId) => {
-    if (confirm(`DESEJA REMOVER ESSE PR DO LOTE?\nEle voltará para o status de 'Aprovado' e sairá desta versão.`)) {
+    const confirmado = await DOM.confirmDialog(
+        'O PR voltará para o status "Aprovado" e sairá desta versão.',
+        'Remover este PR do lote?',
+        { confirmLabel: 'Remover do lote', danger: true },
+    );
+    if (confirmado) {
         try {
             DOM.showLoading(true);
             await API.removePrFromBatch(batchId, prId);
@@ -1809,7 +2424,12 @@ window.removePrFromBatch = async (batchId, prId) => {
 window.cancelVersionRequestByPrIds = async (prIds) => {
     if (!prIds || !prIds.length) return;
     
-    if (confirm(`Deseja CANCELAR a solicitação de versão para estes ${prIds.length} PRs? \nEles voltarão para a lista de 'Aprovados'.`)) {
+    const confirmado = await DOM.confirmDialog(
+        `Os ${prIds.length} PRs voltarão para a lista de "Aprovados" e o lote será removido.`,
+        'Cancelar a solicitação de versão?',
+        { confirmLabel: 'Cancelar solicitação', danger: true },
+    );
+    if (confirmado) {
         try {
             DOM.showLoading(true);
             await API.cancelVersionRequestByPrIds(prIds);
@@ -1825,7 +2445,12 @@ window.cancelVersionRequestByPrIds = async (prIds) => {
 };
 
 window.cancelVersionRequest = async (batchId) => {
-    if (confirm(`Deseja CANCELAR a solicitação de versão? \nOs PRs voltarão para a lista de 'Aprovados' e sairão deste lote.`)) {
+    const confirmado = await DOM.confirmDialog(
+        'Os PRs voltarão para a lista de "Aprovados" e o lote será removido.',
+        'Cancelar a solicitação de versão?',
+        { confirmLabel: 'Cancelar solicitação', danger: true },
+    );
+    if (confirmado) {
         try {
             DOM.showLoading(true);
             await API.cancelVersionRequest(batchId);
@@ -1841,7 +2466,12 @@ window.cancelVersionRequest = async (batchId) => {
 };
 
 window.deleteBatch = async (batchId) => {
-    if (confirm(`ATENÇÃO: Deseja DELETAR este lote completamente?\nTodos os PRs voltarão para o status 'Aprovado' e o lote será removido.`)) {
+    const confirmado = await DOM.confirmDialog(
+        'Todos os PRs voltarão para o status "Aprovado" e o lote será removido.',
+        'Deletar este lote?',
+        { confirmLabel: 'Deletar lote', danger: true },
+    );
+    if (confirmado) {
         try {
             DOM.showLoading(true);
             await API.deleteBatch(batchId);
@@ -1874,7 +2504,12 @@ function showErrorModal(friendlyMsg, error) {
 }
 
 window.createGitLabIssue = async (batchId) => {
-    if (confirm(`Criar issue de deploy no GitLab para esse lote de versão?`)) {
+    const confirmado = await DOM.confirmDialog(
+        'Uma issue de deploy será aberta no GitLab para este lote.',
+        'Criar issue no GitLab?',
+        { confirmLabel: 'Criar issue' },
+    );
+    if (confirmado) {
         try {
             DOM.showLoading(true);
             await GitLabService.createIssue(batchId);

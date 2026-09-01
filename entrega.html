@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrega - PR Manager</title>
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="module-page-header">
+            <div class="logo-area">
+                <div>
+                    <h1 class="module-title">Entrega</h1>
+                    <p id="entregaSummary" style="color: var(--text-secondary); margin: 0.2rem 0 0;"></p>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="themeToggleBtn" class="btn btn-outline" type="button" title="Alternar tema">
+                    <i data-role="theme-icon" data-lucide="sun"></i>
+                </button>
+                <a href="index.html" class="btn btn-outline">Voltar</a>
+            </div>
+        </header>
+
+        <div id="entregaLoading" style="padding: 2rem; color: var(--text-secondary);">Carregando entrega...</div>
+
+        <div id="entregaError" class="entrega-panel" style="display: none;">
+            <p id="entregaErrorText" style="margin: 0; color: var(--danger-color);"></p>
+        </div>
+
+        <div id="entregaContent" class="entrega-grid" style="display: none;">
+            <div>
+                <section class="entrega-panel">
+                    <h2 class="entrega-panel__title">Situação na esteira</h2>
+                    <div id="entregaMatrix"></div>
+                    <div id="entregaPresenceActions" style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
+                </section>
+
+                <section class="entrega-panel">
+                    <h2 class="entrega-panel__title">Histórico</h2>
+                    <div id="entregaTimeline"></div>
+                </section>
+            </div>
+
+            <div>
+                <section class="entrega-panel">
+                    <h2 class="entrega-panel__title">Ciclo do PR</h2>
+                    <dl id="entregaCiclo" class="entrega-meta"></dl>
+                </section>
+
+                <section class="entrega-panel">
+                    <h2 class="entrega-panel__title">Vínculos</h2>
+                    <ul id="entregaLinks" class="link-list"></ul>
+
+                    <!-- Vínculo nunca é obrigatório: hotfix e bugfix entram sem task. -->
+                    <form id="linkForm" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;" novalidate>
+                        <div>
+                            <label for="linkKind" class="form-label" style="font-size: 0.8rem;">Tipo</label>
+                            <select id="linkKind" class="form-select form-select-sm">
+                                <option value="Task">Task</option>
+                                <option value="Pr">Pull Request</option>
+                                <option value="Communication">Comunicação</option>
+                                <option value="Pipeline">Pipeline</option>
+                                <option value="Other">Outro</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="linkUrl" class="form-label" style="font-size: 0.8rem;">Endereço</label>
+                            <input type="url" id="linkUrl" class="form-control form-control-sm" placeholder="https://...">
+                            <div class="field-error" id="linkUrlError"></div>
+                        </div>
+                        <div>
+                            <label for="linkLabel" class="form-label" style="font-size: 0.8rem;">Rótulo (opcional)</label>
+                            <input type="text" id="linkLabel" class="form-control form-control-sm" maxlength="200">
+                            <div class="field-error" id="linkLabelError"></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Adicionar vínculo</button>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revert de presença: sair da branch de integração exige motivo -->
+    <div id="revertModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 id="revertModalTitle">Reverter presença</h3>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Isto registra que o código saiu da branch de integração. Não use para marcar
+                    entrega — o que já chegou em produção some da lista sozinho.
+                </p>
+                <label for="revertReason" class="form-label">Motivo</label>
+                <textarea id="revertReason" class="form-control" rows="3"></textarea>
+                <div class="field-error" id="revertReasonError"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="revertCancelBtn">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="revertConfirmBtn">Confirmar revert</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script type="module" src="src/entrega.js"></script>
+</body>
+
+</html>
