@@ -478,7 +478,10 @@ function updateTenantSwitcher() {
     const tenants = me?.tenants || [];
     const current = tenants.find(t => t.tenantId === me?.currentTenantId);
     label.textContent = current ? current.tenantName : '';
-    btn.style.display = tenants.length > 1 ? 'inline-flex' : 'none';
+    // Sempre visível com tenant carregado (era só com mais de um — escondia justamente a
+    // informação de "onde estou trabalhando" de quem tem um só). Só some antes do primeiro
+    // carregamento de dados, quando ainda não há tenant nenhum pra mostrar.
+    btn.style.display = tenants.length > 0 ? 'inline-flex' : 'none';
 }
 
 document.getElementById('tenantSwitchBtn')?.addEventListener('click', async () => {

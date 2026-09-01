@@ -83,7 +83,8 @@
                         style="display:none; font-size:0.62rem; font-weight:700; letter-spacing:0.09em; color:#da3633; border:1px solid #da3633; padding:2px 8px; border-radius:12px; margin-left:4px;">LOCAL</span>
                 </div>
                 <!-- Épico 9 §6: fica na identidade do cabeçalho, não nas ações — é "onde estou
-                     trabalhando", não uma ação da tela. Só aparece com mais de um tenant ativo. -->
+                     trabalhando", não uma ação da tela. Sempre visível com tenant carregado,
+                     mesmo pra quem só tem um (updateTenantSwitcher() em script.js). -->
                 <button id="tenantSwitchBtn" class="btn btn-outline tenant-switch-btn" title="Trocar tenant" style="display: none;">
                     <i data-lucide="building-2"></i>
                     <span id="currentTenantLabel"></span>
