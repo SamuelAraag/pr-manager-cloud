@@ -303,6 +303,22 @@ function renderTable(prs, batches, sprints, onEdit, animate = true) {
     }
 }
 
+// Issue #70: a tabela "PRs em aberto" agrupa pelo destino do PR, não pelo projeto.
+// main e dev são grupos fixos; cada branch de épico é o seu próprio grupo.
+function openPrGroupKey(pr) {
+    const kind = pr.targetBranch || 'Main';
+    if (kind === 'Dev') return { id: 'dev', label: 'dev', order: 1 };
+    if (kind === 'Epic') {
+        const nome = (pr.epicBranchName || '').trim();
+        return {
+            id: `epic:${nome.toLowerCase()}`,
+            label: nome ? `épico · ${nome}` : 'épico (sem nome)',
+            order: 2,
+        };
+    }
+    return { id: 'main', label: 'main', order: 0 };
+}
+
 function renderOpenTable(data, containerId, onEdit, animate = true) {
     const body = document.getElementById(containerId);
     if (!body) return;
@@ -312,18 +328,20 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
         return;
     }
     const grouped = data.reduce((acc, pr) => {
-        const project = getDemoProject(pr.project) || 'Outros';
-        if (!acc[project]) acc[project] = [];
-        acc[project].push(pr);
+        const g = openPrGroupKey(pr);
+        (acc[g.id] || (acc[g.id] = { ...g, prs: [] })).prs.push(pr);
         return acc;
     }, {});
-    const projectNames = Object.keys(grouped).sort();
-    
+    // main, dev, depois os épicos em ordem alfabética.
+    const groups = Object.values(grouped).sort(
+        (a, b) => a.order - b.order || a.label.localeCompare(b.label, 'pt-BR')
+    );
+
     let animationDelay = 0;
 
-    projectNames.forEach(projectName => {
-        const projectPrs = grouped[projectName];
-        const headerContent = `${projectName} (${projectPrs.length})`;
+    groups.forEach(group => {
+        const projectPrs = group.prs;
+        const headerContent = `${group.label} (${projectPrs.length})`;
         const headerRow = document.createElement('tr');
         headerRow.className = animate ? 'group-header fade-in-row' : 'group-header';
         if(animate) headerRow.style.animationDelay = `${animationDelay}ms`;
@@ -376,7 +394,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
 
             tr.innerHTML = `
                 ${renderTaskIdCell(pr, { includeExpand: true })}
-                <td style="font-weight: 500; padding-left: 0px;">${pr.summary || '-'}</td>
+                <td style="font-weight: 500; padding-left: 0px;">${pr.project ? `<span style="color: var(--text-secondary); font-weight: 400;">${escapeHtml(getDemoProject(pr.project) || pr.project)} · </span>` : ''}${pr.summary || '-'}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">
