@@ -625,6 +625,63 @@ const deployToEnvironment = (appId, kind, batchId) =>
 const rollbackDeployment = (appId, kind, deploymentId) =>
   environmentsRequest(appId, `/${kind}/deployments/${deploymentId}/rollback`, { method: "POST" });
 
+// ── Vínculos personalizados por app (Épico 10, 10.2) ────────────────────────
+// O erro carrega status e body: a tela diferencia 403 (sem papel) e 400
+// (rotulo_obrigatorio / rotulo_duplicado / rotulo_reservado / rotulo_muito_longo).
+
+async function linkFieldsRequest(appId, path, options = {}) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/LinkFields${path}`, {
+    headers: getBackendHeaders(),
+    cache: "no-store",
+    ...options,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const error = new Error(body.error || `Erro na API de vínculos: ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+  return response.status === 204 ? null : await response.json();
+}
+
+const fetchLinkFields = (appId) => linkFieldsRequest(appId, "");
+// Branches de épico do app (Épico 10) — alimentam o autocomplete do "Nome do épico".
+async function fetchEpicBranches(appId) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/EpicBranches`, {
+    headers: getBackendHeaders(),
+    cache: "no-store",
+  });
+  if (!response.ok) return [];
+  return response.status === 204 ? [] : await response.json();
+}
+const createLinkField = (appId, data) =>
+  linkFieldsRequest(appId, "", { method: "POST", body: JSON.stringify(data) });
+const updateLinkField = (appId, fieldId, data) =>
+  linkFieldsRequest(appId, `/${fieldId}`, { method: "PUT", body: JSON.stringify(data) });
+const deleteLinkField = (appId, fieldId) =>
+  linkFieldsRequest(appId, `/${fieldId}`, { method: "DELETE" });
+const fetchLinkFieldUsage = (appId, fieldId) =>
+  linkFieldsRequest(appId, `/${fieldId}/usage`);
+
+// Vínculo avulso de um PR já criado (Épico 2, 2.8) — usado pelo formulário de PR
+// para gravar cada campo personalizado preenchido como PrLink (Kind = Other).
+// A rota de links é escopada por app (só existe em AppPullRequestsController).
+async function addPrLink(appId, prId, data) {
+  const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/PullRequests/${prId}/links`, {
+    method: "POST",
+    headers: getBackendHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const body = await parseResponseBody(response).catch(() => ({}));
+    const error = new Error(body?.error || `Erro ao adicionar vínculo: ${response.statusText}`);
+    error.status = response.status;
+    throw error;
+  }
+  return parseResponseBody(response);
+}
+
 // ── Gestão de usuários (Épico 2 — Admin) ────────────────────────────────────
 
 async function createUser(userData) {
@@ -900,6 +957,13 @@ export {
   fetchEnvironmentHistory,
   deployToEnvironment,
   rollbackDeployment,
+  fetchLinkFields,
+  fetchEpicBranches,
+  createLinkField,
+  updateLinkField,
+  deleteLinkField,
+  fetchLinkFieldUsage,
+  addPrLink,
   createUser,
   updateUser,
   deactivateUser,

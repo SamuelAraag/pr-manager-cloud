@@ -50,6 +50,7 @@ async function loadProjectOptions(expectedRevision = tenantOperations.snapshot()
                     const option = document.createElement('option');
                     option.value = app.name;
                     option.textContent = app.name;
+                    option.dataset.appId = app.id; // Épico 10: LinkFields é rota por appId
                     projectSelect.appendChild(option);
                 });
             if (previousValue && apps.some(a => a.name === previousValue)) {
@@ -134,7 +135,8 @@ function populateDeveloperSelect() {
 }
 
 function setPrCreationRequiredState(isCreate) {
-    const fields = ['project', 'dev', 'summary', 'prLink', 'taskLink', 'teamsLink'];
+    // Épico 10: no cadastro de PR todo campo fixo é obrigatório, sem exceção.
+    const fields = ['project', 'dev', 'summary', 'prTargetBranch', 'prLink', 'taskLink'];
     fields.forEach(id => {
         const field = document.getElementById(id);
         if (field) field.required = isCreate;
@@ -145,29 +147,21 @@ function validatePrForm(isCreate) {
     const project = document.getElementById('project');
     const dev = document.getElementById('dev');
     const summary = document.getElementById('summary');
+    const targetBranch = document.getElementById('prTargetBranch');
+    const epicBranchName = document.getElementById('prEpicBranchName');
     const prLink = document.getElementById('prLink');
     const taskLink = document.getElementById('taskLink');
-    const teamsLink = document.getElementById('teamsLink');
     const rules = [
         { field: project, validate: Form.isRequired, message: 'Selecione uma aplicação.' },
         { field: dev, validate: value => Boolean(findDeveloperById(availableUsers, value)), message: 'Selecione um desenvolvedor válido da lista.' },
         { field: summary, validate: Form.isRequired, message: 'Informe o resumo do PR.' },
-        { field: prLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o PR.' },
+        { field: targetBranch, validate: value => !isCreate || Form.isRequired(value), message: 'Selecione a branch de destino do PR.' },
+        // Só exige nome quando o destino é "épico" E o dev escolheu "Nova branch" (lista vazia
+        // ou "__nova__"). Escolher uma branch existente da lista já é válido.
+        { field: epicBranchName, validate: () => targetBranch.value !== 'Epic' || Form.isRequired(currentEpicBranchName()), message: 'Informe o nome da branch de épico.' },
+        { field: prLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o Pull Request.' },
         { field: taskLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para a task.' },
-        { field: teamsLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o post no Teams.' },
     ];
-
-    document.querySelectorAll('.related-task-group').forEach(group => {
-        const urlField = group.querySelector('.related-task-input-url');
-        const summaryField = group.querySelector('.related-task-input-summary');
-        rules.push({
-            field: urlField,
-            validate: value => Form.isRequired(value)
-                ? Form.isOptionalUrl(value)
-                : !Form.isRequired(summaryField?.value),
-            message: 'Informe uma URL válida para a task relacionada.'
-        });
-    });
 
     return Form.validateFields(rules);
 }
@@ -180,6 +174,13 @@ function getPrErrorMessage(errorMessage) {
         pr_link_required: 'Link PR é obrigatório.',
         task_link_required: 'Link Task (Jira) é obrigatório.',
         teams_link_required: 'Post no Teams é obrigatório.',
+        task_obrigatoria_ausente: 'Informe o link da Task — é obrigatório em todo PR.',
+        pull_request_obrigatorio_ausente: 'Informe o link do Pull Request — é obrigatório em todo PR.',
+        branch_destino_ausente: 'Selecione a branch de destino do PR.',
+        branch_destino_invalida: 'Branch de destino inválida.',
+        epico_sem_nome: 'Informe o nome do épico.',
+        epico_invalido: 'Épico de destino inválido.',
+        epico_nome_muito_longo: 'O nome do épico passa de 120 caracteres.',
     };
 
     return friendlyMessages[errorMessage] || errorMessage;
@@ -1027,61 +1028,29 @@ function openEditModal(pr) {
     Form.resetFormState(prForm);
     document.getElementById('modalTitle').textContent = 'Editar Pull Request';
     setPrCreationRequiredState(false);
+    // Épico 10 (10.3): campos personalizados são digitados na criação; edição não os mexe.
+    resetCustomLinkFields();
     document.getElementById('prId').value = pr.id;
     document.getElementById('project').value = pr.project || '';
     document.getElementById('dev').value = resolveDeveloperId(availableUsers, pr.devId, pr.dev);
     document.getElementById('summary').value = pr.summary || '';
+    document.getElementById('prTargetBranch').value = pr.targetBranch || 'Main';
+    loadEpicBranches(selectedProjectAppId(), pr.targetBranch === 'Epic' ? pr.epicBranchName : null);
+    toggleEpicBranchName();
     document.getElementById('prLink').value = pr.prLink || '';
     document.getElementById('taskLink').value = pr.taskLink || '';
-    document.getElementById('teamsLink').value = pr.teamsLink || '';
-    
+
     updateSummaryLabel(pr.taskLink || '');
 
-    const relatedContainer = document.getElementById('relatedTasksContainer');
-    relatedContainer.innerHTML = '';
-    
-    if (pr.linksRelatedTask) {
-        const links = pr.linksRelatedTask.split(';').filter(link => link.trim() !== '');
-        links.forEach(linkData => {
-            let [summary, url] = linkData.split('|');
-            if (!url) {
-                url = summary;
-                summary = '';
-            }
-            addRelatedTaskInput(url, summary);
-        });
-    }
-    
-    updateSummaryLabel();
-
-    const noTestingCheckbox = document.getElementById('noTestingRequired');
-    if (noTestingCheckbox) {
-        noTestingCheckbox.checked = !!pr.noTestingRequired;
-    }
-
-    const appUser = LocalStorage.getItem('appUser');
     const isApproved = !!pr.approved;
 
-
-    const fieldsToLock = ['project', 'dev', 'summary', 'prLink', 'taskLink', 'teamsLink'];
+    const fieldsToLock = ['project', 'dev', 'summary', 'prTargetBranch', 'prEpicBranchSelect', 'prEpicBranchName', 'prLink', 'taskLink'];
     fieldsToLock.forEach(id => {
-        document.getElementById(id).disabled = isApproved;
+        const el = document.getElementById(id);
+        if (el) el.disabled = isApproved;
     });
     // Épico 5.3: dentro de um app, o campo projeto fica travado mesmo com o PR não aprovado.
     if (appFilter) document.getElementById('project').disabled = true;
-
-    if (noTestingCheckbox) {
-        noTestingCheckbox.disabled = isApproved;
-    }
-
-    const relatedInputs = document.querySelectorAll('.related-task-input');
-    relatedInputs.forEach(input => input.disabled = isApproved);
-    
-    const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
-    if (addRelatedBtn) addRelatedBtn.disabled = isApproved;
-    
-    const removeRelatedBtns = document.querySelectorAll('#relatedTasksContainer button');
-    removeRelatedBtns.forEach(btn => btn.disabled = isApproved);
 
     if (isApproved) {
         document.getElementById('modalTitle').innerHTML = 'Editar Pull Request <span class="tag" style="background: color-mix(in srgb, var(--success-color) 16%, transparent); color: var(--success-color); margin-left:10px;">Aprovado</span>';
@@ -1104,10 +1073,8 @@ function openAddModal() {
     prForm.reset();
     Form.resetFormState(prForm);
     document.getElementById('prId').value = '';
-    
+
     updateSummaryLabel();
-    
-    document.getElementById('relatedTasksContainer').innerHTML = '';
 
     const currentMe = AuthService.getMe();
     document.getElementById('dev').value = resolveDeveloperId(
@@ -1116,9 +1083,10 @@ function openAddModal() {
         currentMe?.name || LocalStorage.getItem('appUser')
     );
 
-    const fieldsToLock = ['project', 'dev', 'summary', 'prLink', 'taskLink', 'teamsLink'];
+    const fieldsToLock = ['project', 'dev', 'summary', 'prTargetBranch', 'prEpicBranchSelect', 'prEpicBranchName', 'prLink', 'taskLink'];
     fieldsToLock.forEach(id => {
-        document.getElementById(id).disabled = false;
+        const el = document.getElementById(id);
+        if (el) el.disabled = false;
     });
     // Épico 5.3: dentro de um app, o PR herda o projeto — sem campo de escolha.
     // prForm.reset() (acima) já desfez o value pré-selecionado; refaz antes de travar.
@@ -1128,14 +1096,10 @@ function openAddModal() {
         projectField.disabled = true;
     }
 
-    const noTestingCheckbox = document.getElementById('noTestingRequired');
-    if (noTestingCheckbox) {
-        noTestingCheckbox.checked = false;
-        noTestingCheckbox.disabled = false;
-    }
-
-    const addRelatedBtn = document.getElementById('addRelatedTaskBtn');
-    if (addRelatedBtn) addRelatedBtn.disabled = false;
+    // Épico 10 (10.3): campos personalizados + branches de épico carregam ao abrir/trocar o projeto.
+    loadCustomLinkFields(selectedProjectAppId());
+    loadEpicBranches(selectedProjectAppId());
+    toggleEpicBranchName();
 
     if (!tenantOperations.isCurrent(openingRevision) || tenantOperations.isTransitioning()) return;
     prModal.style.display = 'flex';
@@ -1199,7 +1163,223 @@ if (projectHelpBtn && projectHelpTooltip) {
     });
 }
 
-document.getElementById('addRelatedTaskBtn').addEventListener('click', () => addRelatedTaskInput());
+// ── Épico 10 (10.3): campos personalizados do app no formulário de PR ────────
+// Só aparecem na CRIAÇÃO. Cada um preenchido vira um PrLink (Kind = Other) depois
+// que o PR é criado. O cadastro dos campos fica em "Configurações de cadastro de PR".
+let customLinkFieldsState = []; // [{ id, label, required }]
+let customLinkFieldsAppId = null;
+
+function resetCustomLinkFields() {
+    customLinkFieldsState = [];
+    customLinkFieldsAppId = null;
+    const box = document.getElementById('customLinkFields');
+    if (box) box.innerHTML = '';
+    document.getElementById('customLinkFieldsGroup')?.style.setProperty('display', 'none');
+}
+
+function renderCustomLinkFields() {
+    const box = document.getElementById('customLinkFields');
+    const group = document.getElementById('customLinkFieldsGroup');
+    if (!box || !group) return;
+    box.innerHTML = '';
+    if (customLinkFieldsState.length === 0) {
+        group.style.display = 'none';
+        return;
+    }
+    customLinkFieldsState.forEach((field, indice) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'form-group';
+        wrap.style.margin = '0';
+
+        const inputId = `customLinkField-${field.id || indice}`;
+
+        const label = document.createElement('label');
+        label.htmlFor = inputId;
+        label.textContent = field.label;
+        if (field.required) {
+            const star = document.createElement('span');
+            star.setAttribute('aria-hidden', 'true');
+            star.style.color = 'var(--danger-color)';
+            star.textContent = ' *';
+            label.appendChild(star);
+        }
+
+        const input = document.createElement('input');
+        input.type = 'url';
+        input.id = inputId;
+        input.className = 'custom-link-field-input';
+        input.placeholder = 'https://...';
+        input.dataset.label = field.label;
+        input.dataset.required = field.required ? '1' : '';
+        // Limpar o erro ao digitar já vem do Form.prepareForm(prForm) (listener de 'input').
+
+        // .field-error nasce escondido; Form.setFieldError/clearFieldError é quem alterna
+        // .visible. O texto entra na validação, conforme o motivo real da falha.
+        const err = document.createElement('span');
+        err.className = 'field-error';
+
+        wrap.append(label, input, err);
+        box.appendChild(wrap);
+    });
+    group.style.display = ''; // volta ao display da folha de estilo (.form-group)
+}
+
+async function loadCustomLinkFields(appId) {
+    resetCustomLinkFields();
+    if (!appId) return;
+    customLinkFieldsAppId = appId;
+    try {
+        const fields = await API.fetchLinkFields(appId);
+        // corrida: o usuário pode ter trocado de app antes da resposta chegar
+        if (customLinkFieldsAppId !== appId) return;
+        customLinkFieldsState = Array.isArray(fields) ? fields : [];
+        renderCustomLinkFields();
+        if (window.lucide) window.lucide.createIcons();
+    } catch (error) {
+        console.error('Falha ao carregar vínculos personalizados do app:', error);
+        customLinkFieldsState = [];
+        renderCustomLinkFields();
+    }
+}
+
+function selectedProjectAppId() {
+    const sel = document.getElementById('project');
+    return sel?.selectedOptions?.[0]?.dataset?.appId || null;
+}
+
+// Valida os campos personalizados do app. Mostra o erro no campo culpado (mesmo mecanismo
+// dos campos fixos: is-invalid + .field-error visível) e foca o primeiro. Retorna true se ok.
+function validateCustomLinkInputs() {
+    let firstInvalid = null;
+    document.querySelectorAll('.custom-link-field-input').forEach(input => {
+        Form.clearFieldError(input);
+        const value = input.value.trim();
+        const isRequired = input.dataset.required === '1';
+
+        let message = '';
+        if (isRequired && !Form.isRequired(value)) {
+            message = 'Este vínculo é obrigatório para PRs deste app.';
+        } else if (value && !Form.isOptionalUrl(value)) {
+            message = 'Informe uma URL válida.';
+        }
+
+        if (message) {
+            Form.setFieldError(input, message);
+            firstInvalid ||= input;
+        }
+    });
+    firstInvalid?.focus();
+    return firstInvalid === null;
+}
+
+// Campos personalizados preenchidos, a gravar como PrLink (Kind = Other) após criar o PR.
+function collectCustomLinkPayloads() {
+    const payloads = [];
+    document.querySelectorAll('.custom-link-field-input').forEach(input => {
+        const value = input.value.trim();
+        if (value) payloads.push({ kind: 'Other', url: value, label: input.dataset.label });
+    });
+    return payloads;
+}
+
+// ── Épico 10: branch de destino "épico" — nome com autocomplete dos já cadastrados ──
+// Valor da opção "digitar uma branch de épico nova".
+const EPIC_BRANCH_NOVA = '__nova__';
+
+function toggleEpicBranchName() {
+    const isEpic = document.getElementById('prTargetBranch')?.value === 'Epic';
+    const group = document.getElementById('prEpicBranchNameGroup');
+    // '' e não 'block': deixa o .form-group voltar ao display:flex/column da folha de estilo.
+    // Com 'block' o input perde o stretch e a coluna fica com largura nativa (~170px).
+    if (group) group.style.display = isEpic ? '' : 'none';
+
+    const input = document.getElementById('prEpicBranchName');
+    const select = document.getElementById('prEpicBranchSelect');
+    if (isEpic) {
+        // Reexibe o texto só se "Nova" seguir selecionada da última vez.
+        syncEpicBranchNameInput();
+    } else {
+        if (input) { input.value = ''; Form.clearFieldError(input); }
+        if (select) Form.clearFieldError(select);
+    }
+}
+
+// Preenche o <select> com as branches de épico já cadastradas no app + a opção "Nova".
+// preselectName: usado na edição, pra deixar marcada a branch que o PR já aponta.
+async function loadEpicBranches(appId, preselectName = null) {
+    const select = document.getElementById('prEpicBranchSelect');
+    if (!select) return;
+    select.innerHTML = '';
+
+    let branches = [];
+    if (appId) {
+        try {
+            branches = await API.fetchEpicBranches(appId);
+        } catch (error) {
+            console.error('Falha ao carregar branches de épico do app:', error);
+        }
+    }
+    // corrida: o usuário pode ter trocado de app antes da resposta chegar
+    if (selectedProjectAppId() !== appId) return;
+    branches = Array.isArray(branches) ? branches : [];
+
+    branches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.name;
+        opt.textContent = b.name;
+        select.appendChild(opt);
+    });
+    const nova = document.createElement('option');
+    nova.value = EPIC_BRANCH_NOVA;
+    nova.textContent = branches.length ? '+ Nova branch de épico…' : 'Nova branch de épico…';
+    select.appendChild(nova);
+
+    const input = document.getElementById('prEpicBranchName');
+    if (preselectName && branches.some(b => b.name === preselectName)) {
+        select.value = preselectName;
+        syncEpicBranchNameInput();
+    } else if (preselectName) {
+        select.value = EPIC_BRANCH_NOVA;
+        syncEpicBranchNameInput();
+        if (input) input.value = preselectName;
+    } else {
+        // Pré-seleciona a primeira branch existente pra evitar digitação. Sem nenhuma, "Nova".
+        select.value = branches.length ? branches[0].name : EPIC_BRANCH_NOVA;
+        syncEpicBranchNameInput();
+    }
+}
+
+// Mostra o campo de texto só quando "Nova branch de épico…" está selecionada.
+function syncEpicBranchNameInput() {
+    const select = document.getElementById('prEpicBranchSelect');
+    const input = document.getElementById('prEpicBranchName');
+    if (!select || !input) return;
+    const nova = select.value === EPIC_BRANCH_NOVA;
+    input.style.display = nova ? '' : 'none';
+    if (nova) {
+        input.focus();
+    } else {
+        input.value = '';
+        Form.clearFieldError(input);
+    }
+}
+
+// A branch de épico efetiva: a escolhida na lista, ou o texto digitado no caso "Nova".
+function currentEpicBranchName() {
+    const select = document.getElementById('prEpicBranchSelect');
+    if (select && select.value && select.value !== EPIC_BRANCH_NOVA) return select.value;
+    return document.getElementById('prEpicBranchName')?.value.trim() || '';
+}
+
+document.getElementById('prTargetBranch')?.addEventListener('change', toggleEpicBranchName);
+document.getElementById('prEpicBranchSelect')?.addEventListener('change', syncEpicBranchNameInput);
+// Limpar o erro do texto ao digitar já vem do Form.prepareForm(prForm).
+
+document.getElementById('project')?.addEventListener('change', () => {
+    const appId = selectedProjectAppId();
+    loadCustomLinkFields(appId);
+    loadEpicBranches(appId);
+});
 
 const taskLinkInput = document.getElementById('taskLink');
 if (taskLinkInput) {
@@ -1208,96 +1388,17 @@ if (taskLinkInput) {
     });
 }
 
+// Tag com o ID do Jira extraído do link da Task, no cabeçalho do modal.
 function updateSummaryLabel() {
     const primaryTagsContainer = document.getElementById('taskIdTagsContainer');
-    const relatedTagsContainer = document.getElementById('relatedTaskIdsContainer');
-    
-    if (!primaryTagsContainer || !relatedTagsContainer) return;
+    if (!primaryTagsContainer) return;
 
-    const mainUrl = document.getElementById('taskLink').value;
-    const primaryId = extractJiraId(mainUrl);
-
+    const primaryId = extractJiraId(document.getElementById('taskLink')?.value || '');
     if (primaryId) {
         primaryTagsContainer.innerHTML = `<span class="tag" style="background: var(--accent-color); color: white; font-size: 0.7rem; padding: 0.2rem 0.6rem;">${primaryId}</span>`;
         primaryTagsContainer.style.display = 'flex';
     } else {
         primaryTagsContainer.style.display = 'none';
-    }
-
-    const relatedUrls = Array.from(document.querySelectorAll('.related-task-input-url')).map(i => i.value);
-    const relatedIds = [...new Set(relatedUrls.map(url => extractJiraId(url)).filter(id => id !== null && id !== primaryId))];
-
-    if (relatedIds.length > 0) {
-        const tags = relatedIds.map(id => `<span class="tag" style="background: color-mix(in srgb, var(--accent-color) 12%, transparent); color: var(--accent-color); font-size: 0.7rem; padding: 0.2rem 0.6rem; border: 1px solid color-mix(in srgb, var(--accent-color) 28%, transparent);">${id}</span>`).join('');
-        relatedTagsContainer.innerHTML = tags;
-        relatedTagsContainer.style.display = 'flex';
-    } else {
-        relatedTagsContainer.style.display = 'none';
-    }
-}
-
-function addRelatedTaskInput(url = '', summary = '') {
-    const container = document.getElementById('relatedTasksContainer');
-    if (container.children.length >= 5) {
-        DOM.showToast('Máximo de 5 links vinculados permitidos.', 'warning');
-        return;
-    }
-    
-    const div = document.createElement('div');
-    div.className = 'related-task-group form-group';
-    div.style.display = 'flex';
-    div.style.flexWrap = 'wrap';
-    div.style.gap = '10px';
-    div.style.alignItems = 'center';
-    
-    const urlInput = document.createElement('input');
-    urlInput.type = 'url';
-    urlInput.className = 'related-task-input-url';
-    urlInput.placeholder = 'Link Jira...';
-    urlInput.value = url;
-    urlInput.style.flex = '1';
-    
-    const summaryInput = document.createElement('input');
-    summaryInput.type = 'text';
-    summaryInput.className = 'related-task-input-summary';
-    summaryInput.placeholder = 'Resumo da task...';
-    summaryInput.value = summary;
-    summaryInput.style.flex = '1.5';
-    
-    urlInput.classList.add('related-task-input');
-    summaryInput.classList.add('related-task-input');
-    
-    urlInput.addEventListener('input', () => updateSummaryLabel());
-    summaryInput.addEventListener('input', () => updateSummaryLabel());
-    
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.className = 'btn btn-outline';
-    removeBtn.style.padding = '0.4rem';
-    removeBtn.style.minWidth = '34px';
-    removeBtn.style.height = '34px';
-    removeBtn.style.color = 'var(--danger-color)';
-    removeBtn.style.borderColor = 'var(--border-color)';
-    removeBtn.style.display = 'flex';
-    removeBtn.style.alignItems = 'center';
-    removeBtn.style.justifyContent = 'center';
-    removeBtn.title = 'Remover link';
-    removeBtn.innerHTML = '<i data-lucide="trash-2" style="width: 16px;"></i>';
-    removeBtn.onclick = () => {
-        div.remove();
-        updateSummaryLabel();
-    };
-    
-    div.appendChild(summaryInput);
-    div.appendChild(urlInput);
-    div.appendChild(removeBtn);
-    const errorElement = document.createElement('span');
-    errorElement.className = 'field-error';
-    div.appendChild(errorElement);
-    container.appendChild(div);
-    
-    if(window.lucide) {
-        window.lucide.createIcons();
     }
 }
 
@@ -1597,7 +1698,11 @@ prForm.addEventListener('submit', async (e) => {
     const developerSelect = document.getElementById('dev');
     const prIdInput = document.getElementById('prId').value;
 
-    if (!validatePrForm(!prIdInput)) {
+    const isCreate = !prIdInput;
+    if (!validatePrForm(isCreate)) {
+        return;
+    }
+    if (isCreate && !validateCustomLinkInputs()) {
         return;
     }
 
@@ -1612,19 +1717,15 @@ prForm.addEventListener('submit', async (e) => {
             project: document.getElementById('project').value,
             devId: selectedDeveloper.id,
             summary: document.getElementById('summary').value,
+            targetBranch: document.getElementById('prTargetBranch').value,
             prLink: document.getElementById('prLink').value || '',
             taskLink: document.getElementById('taskLink').value || '',
-            teamsLink: document.getElementById('teamsLink').value || '',
-            noTestingRequired: document.getElementById('noTestingRequired').checked,
-            linksRelatedTask: Array.from(document.querySelectorAll('.related-task-group'))
-                .map(group => {
-                    const url = group.querySelector('.related-task-input-url').value.trim();
-                    const summary = group.querySelector('.related-task-input-summary').value.trim();
-                    return url ? `${summary}|${url}` : '';
-                })
-                .filter(val => val !== '')
-                .join(';')
         };
+        if (prData.targetBranch === 'Epic') {
+            // Branch de épico: escolhida da lista (existente) ou digitada em "Nova". Se é nova,
+            // o backend cadastra na hora; se já existe, acha pelo nome exato.
+            prData.epicBranchName = currentEpicBranchName();
+        }
 
         const successMessage = prIdInput
             ? 'PR atualizado com sucesso!'
@@ -1633,11 +1734,33 @@ prForm.addEventListener('submit', async (e) => {
         if (prIdInput) {
             await API.updatePR(prIdInput, prData);
         } else {
-            await API.createPR(prData);
+            const createdPr = await API.createPR(prData);
+            // Épico 10 (10.3): cada campo personalizado preenchido vira um PrLink (Kind = Other).
+            const linkPayloads = collectCustomLinkPayloads();
+            const linkAppId = createdPr.appId || selectedProjectAppId();
+            const vinculosFalhos = [];
+            for (const payload of linkPayloads) {
+                try {
+                    await API.addPrLink(linkAppId, createdPr.id, payload);
+                } catch (linkError) {
+                    console.error('PR criado, mas um vínculo não pôde ser salvo:', payload, linkError);
+                    vinculosFalhos.push(payload.label);
+                }
+            }
+            if (vinculosFalhos.length > 0) {
+                // Um aviso só, não um por vínculo.
+                DOM.showToast(
+                    `PR criado. ${vinculosFalhos.length === 1 ? 'O vínculo' : 'Os vínculos'} ` +
+                    `${vinculosFalhos.map(l => `"${l}"`).join(', ')} não ` +
+                    `${vinculosFalhos.length === 1 ? 'foi salvo' : 'foram salvos'} — adicione pelo PR.`,
+                    'warning'
+                );
+            }
         }
 
         prModal.style.display = 'none';
         prForm.reset();
+        resetCustomLinkFields();
         DOM.showToast(successMessage);
 
         try {
