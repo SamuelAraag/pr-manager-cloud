@@ -69,6 +69,9 @@
   --danger-color: #D90429;
   --glass-bg: rgba(255, 255, 255, 0.04);
   --glass-border: rgba(189, 182, 176, 0.12);
+  --branch-main-color: #75b798;
+  --branch-dev-color: #6ea8fe;
+  --branch-epic-color: #ffda6a;
   --bs-primary: #FF073A;
   --bs-primary-text-emphasis: #ffffff;
   --bs-primary-bg-subtle: rgba(255, 7, 58, 0.12);
@@ -126,6 +129,9 @@
   --danger-color: #D90429;
   --glass-bg: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(189, 182, 176, 0.18);
+  --branch-main-color: #1a7431;
+  --branch-dev-color: #0a58ca;
+  --branch-epic-color: #9a6700;
   --bs-primary: #FF073A;
   --bs-primary-text-emphasis: #A00022;
   --bs-primary-bg-subtle: #ffd9e1;
@@ -2495,13 +2501,58 @@ table {
   font-size: 0.85rem;
 }
 
-.group-header .badge {
-  background: rgba(88, 166, 255, 0.2);
-  padding: 2px 8px;
-  border-radius: 12px;
+td.branch-group-header-cell {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.branch-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.5rem 1rem;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+.branch-group-header .bgh-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--branch-main-color);
+}
+.branch-group-header .bgh-name {
+  font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.branch-group-header .bgh-kind {
+  font-size: 0.6875rem;
+  line-height: 16px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: var(--branch-main-color);
+}
+.branch-group-header .bgh-count {
+  margin-left: auto;
+  min-width: 20px;
+  text-align: center;
   font-size: 0.75rem;
-  margin-left: 0.5rem;
-  color: white;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+.branch-group-header[data-kind=dev] .bgh-icon,
+.branch-group-header[data-kind=dev] .bgh-kind {
+  color: var(--branch-dev-color);
+}
+.branch-group-header[data-kind=epic] .bgh-icon,
+.branch-group-header[data-kind=epic] .bgh-kind {
+  color: var(--branch-epic-color);
 }
 
 th {

@@ -1034,8 +1034,10 @@ function openEditModal(pr) {
     document.getElementById('project').value = pr.project || '';
     document.getElementById('dev').value = resolveDeveloperId(availableUsers, pr.devId, pr.dev);
     document.getElementById('summary').value = pr.summary || '';
-    document.getElementById('prTargetBranch').value = pr.targetBranch || 'Main';
-    loadEpicBranches(selectedProjectAppId(), pr.targetBranch === 'Epic' ? pr.epicBranchName : null);
+    const targetKind = pr.targetBranchKind || 'Main';
+    document.getElementById('prTargetBranch').value = targetKind;
+    // includeClosed: se o épico do PR fechou depois, a opção ainda precisa aparecer na edição.
+    loadEpicBranches(selectedProjectAppId(), targetKind === 'Epic' ? pr.targetBranchName : null, { includeClosed: true });
     toggleEpicBranchName();
     document.getElementById('prLink').value = pr.prLink || '';
     document.getElementById('taskLink').value = pr.taskLink || '';
@@ -1306,22 +1308,23 @@ function toggleEpicBranchName() {
 
 // Preenche o <select> com as branches de épico já cadastradas no app + a opção "Nova".
 // preselectName: usado na edição, pra deixar marcada a branch que o PR já aponta.
-async function loadEpicBranches(appId, preselectName = null) {
+async function loadEpicBranches(appId, preselectName = null, { includeClosed = false } = {}) {
     const select = document.getElementById('prEpicBranchSelect');
     if (!select) return;
     select.innerHTML = '';
 
-    let branches = [];
+    let destinos = [];
     if (appId) {
         try {
-            branches = await API.fetchEpicBranches(appId);
+            destinos = await API.fetchDestinationBranches(appId, { includeClosed });
         } catch (error) {
-            console.error('Falha ao carregar branches de épico do app:', error);
+            console.error('Falha ao carregar destinos do app:', error);
         }
     }
     // corrida: o usuário pode ter trocado de app antes da resposta chegar
     if (selectedProjectAppId() !== appId) return;
-    branches = Array.isArray(branches) ? branches : [];
+    // Só os épicos entram no autocomplete de nome; main/dev são opções fixas do outro select.
+    const branches = (Array.isArray(destinos) ? destinos : []).filter(b => b.kind === 'Epic');
 
     branches.forEach(b => {
         const opt = document.createElement('option');
@@ -1713,17 +1716,19 @@ prForm.addEventListener('submit', async (e) => {
     try {
         DOM.showLoading(true);
 
+        const targetKind = document.getElementById('prTargetBranch').value;
         const prData = {
             project: document.getElementById('project').value,
             devId: selectedDeveloper.id,
             summary: document.getElementById('summary').value,
-            targetBranch: document.getElementById('prTargetBranch').value,
+            // issue #70: manda o tipo do destino. main/dev o backend resolve pela linha fixa
+            // do tenant; épico vai pelo nome (escolhido na lista ou digitado em "Nova"), que o
+            // backend acha ou cadastra na hora.
+            targetBranchKind: targetKind,
             prLink: document.getElementById('prLink').value || '',
             taskLink: document.getElementById('taskLink').value || '',
         };
-        if (prData.targetBranch === 'Epic') {
-            // Branch de épico: escolhida da lista (existente) ou digitada em "Nova". Se é nova,
-            // o backend cadastra na hora; se já existe, acha pelo nome exato.
+        if (targetKind === 'Epic') {
             prData.epicBranchName = currentEpicBranchName();
         }
 

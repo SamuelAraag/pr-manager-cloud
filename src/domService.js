@@ -2,6 +2,7 @@ import { getItem } from './localStorageService.js';
 import { extractJiraId } from './utils.js';
 import * as AuthService from './authService.js';
 import { DEMO_MODE, DEMO_USERS, getDemoProject, getDemoName } from './constants/apiConstants.js';
+import { groupOpenPrsByDestination } from './openPrGrouping.js';
 
 const TOAST_STORAGE_KEY = 'pr_manager_toasts';
 
@@ -303,6 +304,14 @@ function renderTable(prs, batches, sprints, onEdit, animate = true) {
     }
 }
 
+// Issue #70: rótulo e atributo de tipo da branch no cabeçalho de grupo. A cor mora no CSS
+// (.branch-group-header[data-kind]) via token de tema — não em style inline aqui.
+const BRANCH_KIND_META = {
+    Main: { attr: 'main', label: 'principal' },
+    Dev: { attr: 'dev', label: 'desenvolvimento' },
+    Epic: { attr: 'epic', label: 'épico' },
+};
+
 function renderOpenTable(data, containerId, onEdit, animate = true) {
     const body = document.getElementById(containerId);
     if (!body) return;
@@ -311,27 +320,31 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
         body.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Nenhum PR pendente.</td></tr>';
         return;
     }
-    const grouped = data.reduce((acc, pr) => {
-        const project = getDemoProject(pr.project) || 'Outros';
-        if (!acc[project]) acc[project] = [];
-        acc[project].push(pr);
-        return acc;
-    }, {});
-    const projectNames = Object.keys(grouped).sort();
-    
+    // Issue #70: grupos por destino do PR (main, dev, épicos), não por projeto.
+    const groups = groupOpenPrsByDestination(data);
+
     let animationDelay = 0;
 
-    projectNames.forEach(projectName => {
-        const projectPrs = grouped[projectName];
-        const headerContent = `${projectName} (${projectPrs.length})`;
+    groups.forEach(group => {
+        const projectPrs = group.prs;
+        const meta = BRANCH_KIND_META[group.kind] || BRANCH_KIND_META.Main;
         const headerRow = document.createElement('tr');
-        headerRow.className = animate ? 'group-header fade-in-row' : 'group-header';
+        headerRow.className = animate ? 'branch-group-header-row fade-in-row' : 'branch-group-header-row';
         if(animate) headerRow.style.animationDelay = `${animationDelay}ms`;
         if(animate) animationDelay += 50;
 
-        headerRow.innerHTML = `<td colspan="6"><div style="display:flex; justify-content:space-between; align-items:center;"><div style="font-weight: 600;">${headerContent}</div></div></td>`;
+        // Nome da branch verbatim (mono, sem uppercase), tipo como tag apagada, contagem no pill.
+        headerRow.innerHTML = `<td colspan="6" class="branch-group-header-cell">
+            <div class="branch-group-header" data-kind="${meta.attr}"
+                aria-label="branch ${escapeHtml(group.name)}, ${projectPrs.length} PRs">
+                <i data-lucide="git-branch" class="bgh-icon"></i>
+                <span class="bgh-name">${escapeHtml(group.name)}</span>
+                <span class="bgh-kind">${meta.label}</span>
+                <span class="bgh-count">${projectPrs.length}</span>
+            </div>
+        </td>`;
         body.appendChild(headerRow);
-        
+
         projectPrs.forEach((pr) => {
             const tr = document.createElement('tr');
             tr.className = animate ? 'fade-in-row' : '';
@@ -376,7 +389,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
 
             tr.innerHTML = `
                 ${renderTaskIdCell(pr, { includeExpand: true })}
-                <td style="font-weight: 500; padding-left: 0px;">${pr.summary || '-'}</td>
+                <td style="font-weight: 500; padding-left: 0px;">${pr.project ? `<span style="color: var(--text-secondary); font-weight: 400;">${escapeHtml(getDemoProject(pr.project) || pr.project)} · </span>` : ''}${pr.summary || '-'}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">

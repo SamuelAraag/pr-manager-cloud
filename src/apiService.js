@@ -646,9 +646,11 @@ async function linkFieldsRequest(appId, path, options = {}) {
 }
 
 const fetchLinkFields = (appId) => linkFieldsRequest(appId, "");
-// Branches de épico do app (Épico 10) — alimentam o autocomplete do "Nome do épico".
-async function fetchEpicBranches(appId) {
-  const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/EpicBranches`, {
+// Destinos possíveis do PR do app (issue #70): main, dev e os épicos. Alimentam o
+// seletor de branch de destino do formulário de PR.
+async function fetchDestinationBranches(appId, { includeClosed = false } = {}) {
+  const qs = includeClosed ? "?includeClosed=true" : "";
+  const response = await fetch(`${ApiConstants.BASE_URL}/Apps/${appId}/DestinationBranches${qs}`, {
     headers: getBackendHeaders(),
     cache: "no-store",
   });
@@ -958,7 +960,7 @@ export {
   deployToEnvironment,
   rollbackDeployment,
   fetchLinkFields,
-  fetchEpicBranches,
+  fetchDestinationBranches,
   createLinkField,
   updateLinkField,
   deleteLinkField,

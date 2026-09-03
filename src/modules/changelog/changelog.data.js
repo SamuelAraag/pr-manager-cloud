@@ -1,5 +1,14 @@
 export const ChangelogData = [
     {
+        version: "7.1.0",
+        date: "2026-09-03",
+        changes: [
+            "A tabela \"PRs em aberto\" passa a agrupar pelo destino do PR (main, dev ou branch de épico), não mais por projeto — um grupo por destino, com o nome do app em cada linha",
+            "Épicos diferentes ficam em grupos separados; ordem fixa: main, dev, depois os épicos por nome",
+            "Ao criar o PR, o destino \"épico\" aceita escolher uma branch de épico já usada no app ou digitar uma nova"
+        ]
+    },
+    {
         version: "7.0.24",
         date: "2026-08-05",
         changes: [
