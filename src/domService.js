@@ -2,6 +2,7 @@ import { getItem } from './localStorageService.js';
 import { extractJiraId } from './utils.js';
 import * as AuthService from './authService.js';
 import { DEMO_MODE, DEMO_USERS, getDemoProject, getDemoName } from './constants/apiConstants.js';
+import { groupOpenPrsByDestination } from './openPrGrouping.js';
 
 const TOAST_STORAGE_KEY = 'pr_manager_toasts';
 
@@ -303,22 +304,6 @@ function renderTable(prs, batches, sprints, onEdit, animate = true) {
     }
 }
 
-// Issue #70: a tabela "PRs em aberto" agrupa pelo destino do PR, não pelo projeto.
-// main e dev são grupos fixos; cada branch de épico é o seu próprio grupo.
-function openPrGroupKey(pr) {
-    const kind = pr.targetBranch || 'Main';
-    if (kind === 'Dev') return { id: 'dev', label: 'dev', order: 1 };
-    if (kind === 'Epic') {
-        const nome = (pr.epicBranchName || '').trim();
-        return {
-            id: `epic:${nome.toLowerCase()}`,
-            label: nome ? `épico · ${nome}` : 'épico (sem nome)',
-            order: 2,
-        };
-    }
-    return { id: 'main', label: 'main', order: 0 };
-}
-
 function renderOpenTable(data, containerId, onEdit, animate = true) {
     const body = document.getElementById(containerId);
     if (!body) return;
@@ -327,15 +312,8 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
         body.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Nenhum PR pendente.</td></tr>';
         return;
     }
-    const grouped = data.reduce((acc, pr) => {
-        const g = openPrGroupKey(pr);
-        (acc[g.id] || (acc[g.id] = { ...g, prs: [] })).prs.push(pr);
-        return acc;
-    }, {});
-    // main, dev, depois os épicos em ordem alfabética.
-    const groups = Object.values(grouped).sort(
-        (a, b) => a.order - b.order || a.label.localeCompare(b.label, 'pt-BR')
-    );
+    // Issue #70: grupos por destino do PR (main, dev, épicos), não por projeto.
+    const groups = groupOpenPrsByDestination(data);
 
     let animationDelay = 0;
 
