@@ -262,6 +262,8 @@ table {
     border-collapse: collapse;
 }
 
+// .group-header — sem uso desde a issue #70 (a tabela "PRs em aberto" passou a usar
+// .branch-group-header). Mantido só até a próxima limpeza do legado.
 .group-header td {
     background-color: rgba(88, 166, 255, 0.1);
     color: var(--accent-color);
@@ -275,13 +277,67 @@ table {
     font-size: 0.85rem;
 }
 
-.group-header .badge {
-    background: rgba(88, 166, 255, 0.2);
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    margin-left: 0.5rem;
-    color: white;
+// Issue #70 — cabeçalho de grupo da tabela "PRs em aberto", agora por branch de destino.
+// Estrutura sentida pela superfície + ícone + tipografia; a cor só pinta o glifo e a tag.
+// A <td colspan=6> segue table-cell (pra abarcar a linha); o flex fica no <div> interno.
+td.branch-group-header-cell {
+    padding: 0;
+    border-bottom: 0;
+}
+
+.branch-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.5rem 1rem;
+    background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+
+    .bgh-icon {
+        flex: none;
+        width: 15px;
+        height: 15px;
+        color: var(--branch-main-color);
+    }
+
+    .bgh-name {
+        font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .bgh-kind {
+        font-size: 0.6875rem;
+        line-height: 16px;
+        padding: 0 6px;
+        border: 1px solid currentColor;
+        border-radius: 4px;
+        color: var(--branch-main-color);
+    }
+
+    .bgh-count {
+        margin-left: auto;
+        min-width: 20px;
+        text-align: center;
+        font-size: 0.75rem;
+        padding: 1px 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+    }
+
+    &[data-kind="dev"] {
+        .bgh-icon,
+        .bgh-kind { color: var(--branch-dev-color); }
+    }
+
+    &[data-kind="epic"] {
+        .bgh-icon,
+        .bgh-kind { color: var(--branch-epic-color); }
+    }
 }
 
 th {

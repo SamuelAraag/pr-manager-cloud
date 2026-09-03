@@ -15,6 +15,10 @@ $theme-light: map.merge(
     "warning-color": #F77F00,
     "success-color": #2E7D32,
     "danger-color": #D90429,
+    // Issue #70 — cor do tipo de branch no cabeçalho de grupo (escurecida p/ contraste no claro).
+    "branch-main-color": #1a7431,
+    "branch-dev-color": #0a58ca,
+    "branch-epic-color": #9a6700,
     "glass-bg": rgba(255, 255, 255, 0.72),
     "glass-border": rgba(189, 182, 176, 0.18),
     "bs-primary": #FF073A,

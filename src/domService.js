@@ -304,6 +304,14 @@ function renderTable(prs, batches, sprints, onEdit, animate = true) {
     }
 }
 
+// Issue #70: rótulo e atributo de tipo da branch no cabeçalho de grupo. A cor mora no CSS
+// (.branch-group-header[data-kind]) via token de tema — não em style inline aqui.
+const BRANCH_KIND_META = {
+    Main: { attr: 'main', label: 'principal' },
+    Dev: { attr: 'dev', label: 'desenvolvimento' },
+    Epic: { attr: 'epic', label: 'épico' },
+};
+
 function renderOpenTable(data, containerId, onEdit, animate = true) {
     const body = document.getElementById(containerId);
     if (!body) return;
@@ -319,15 +327,24 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
 
     groups.forEach(group => {
         const projectPrs = group.prs;
-        const headerContent = `${group.label} (${projectPrs.length})`;
+        const meta = BRANCH_KIND_META[group.kind] || BRANCH_KIND_META.Main;
         const headerRow = document.createElement('tr');
-        headerRow.className = animate ? 'group-header fade-in-row' : 'group-header';
+        headerRow.className = animate ? 'branch-group-header-row fade-in-row' : 'branch-group-header-row';
         if(animate) headerRow.style.animationDelay = `${animationDelay}ms`;
         if(animate) animationDelay += 50;
 
-        headerRow.innerHTML = `<td colspan="6"><div style="display:flex; justify-content:space-between; align-items:center;"><div style="font-weight: 600;">${headerContent}</div></div></td>`;
+        // Nome da branch verbatim (mono, sem uppercase), tipo como tag apagada, contagem no pill.
+        headerRow.innerHTML = `<td colspan="6" class="branch-group-header-cell">
+            <div class="branch-group-header" data-kind="${meta.attr}"
+                aria-label="branch ${escapeHtml(group.name)}, ${projectPrs.length} PRs">
+                <i data-lucide="git-branch" class="bgh-icon"></i>
+                <span class="bgh-name">${escapeHtml(group.name)}</span>
+                <span class="bgh-kind">${meta.label}</span>
+                <span class="bgh-count">${projectPrs.length}</span>
+            </div>
+        </td>`;
         body.appendChild(headerRow);
-        
+
         projectPrs.forEach((pr) => {
             const tr = document.createElement('tr');
             tr.className = animate ? 'fade-in-row' : '';

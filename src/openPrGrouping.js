@@ -5,16 +5,15 @@
 
 const GROUP_ORDER = { Main: 0, Dev: 1, Epic: 2 };
 
-/** Chave/rótulo/ordem do grupo de um PR na tabela "PRs em aberto". */
+/** Chave/nome/tipo/ordem do grupo de um PR na tabela "PRs em aberto". */
 export function openPrGroupKey(pr) {
     const kind = pr.targetBranchKind || 'Main';
-    const nome = (pr.targetBranchName || '').trim();
-    const label = kind === 'Epic'
-        ? (nome ? `épico · ${nome}` : 'épico (sem nome)')
-        : (nome || (kind === 'Dev' ? 'dev' : 'main'));
+    const name = (pr.targetBranchName || '').trim()
+        || (kind === 'Dev' ? 'dev' : kind === 'Epic' ? '(sem nome)' : 'main');
     return {
         id: pr.targetBranchId || `kind:${kind}`,
-        label,
+        name,
+        kind,
         order: GROUP_ORDER[kind] ?? 2,
     };
 }
@@ -27,6 +26,6 @@ export function groupOpenPrsByDestination(prs) {
         return acc;
     }, {});
     return Object.values(grouped).sort(
-        (a, b) => a.order - b.order || a.label.localeCompare(b.label, 'pt-BR', { numeric: true })
+        (a, b) => a.order - b.order || a.name.localeCompare(b.name, 'pt-BR', { numeric: true })
     );
 }
