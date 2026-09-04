@@ -1103,7 +1103,18 @@ function createApprovedCard(projectName, projectPrs, currentUser, batchId, batch
             </td>`;
         tbody.appendChild(tr);
 
-        if (prHasRelated) {
+        // issue #77: mesma prioridade de renderTaskIdCell -- um PR de consolidação já
+        // mergeado continua caindo aqui (em "PRs Aprovados"), e precisa da sub-linha da
+        // árvore tanto quanto em "PRs em Aberto" (renderOpenTable). Sem isso o botão que
+        // renderTaskIdCell já desenha fica sem a linha #consolidated-${pr.id} pra abrir.
+        if (Array.isArray(pr.consolidatedPrs) && pr.consolidatedPrs.length > 0) {
+            const consolidatedRow = document.createElement('tr');
+            consolidatedRow.id = `consolidated-${pr.id}`;
+            consolidatedRow.className = 'consolidated-prs-row';
+            consolidatedRow.style.display = 'none';
+            consolidatedRow.innerHTML = `<td colspan="6">${renderConsolidatedTree(pr)}</td>`;
+            tbody.appendChild(consolidatedRow);
+        } else if (prHasRelated) {
             const subRow = document.createElement('tr');
             subRow.id = `related-${pr.id}`;
             subRow.className = 'related-tasks-row';
