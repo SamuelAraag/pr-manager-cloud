@@ -2555,6 +2555,31 @@ td.branch-group-header-cell {
   color: var(--branch-epic-color);
 }
 
+.branch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  color: var(--branch-main-color);
+}
+.branch-chip i,
+.branch-chip svg {
+  width: 12px;
+  height: 12px;
+}
+.branch-chip[data-kind=dev] {
+  color: var(--branch-dev-color);
+}
+.branch-chip[data-kind=epic] {
+  color: var(--branch-epic-color);
+}
+
 th {
   text-align: left;
   padding: 10px;

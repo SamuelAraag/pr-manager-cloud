@@ -311,6 +311,29 @@ const BRANCH_KIND_META = {
     Dev: { attr: 'dev', label: 'desenvolvimento' },
     Epic: { attr: 'epic', label: 'épico' },
 };
+const BRANCH_KIND_ORDER = { Main: 0, Dev: 1, Epic: 2 };
+
+// Cabeçalho de um grupo de branch — ícone git-branch, nome mono verbatim, tag do tipo,
+// contagem no pill. Usado na tabela "PRs em aberto" (dentro de <td>) e em "PRs aprovados".
+function branchGroupHeaderEl(kind, name, count) {
+    const meta = BRANCH_KIND_META[kind] || BRANCH_KIND_META.Main;
+    const el = document.createElement('div');
+    el.className = 'branch-group-header';
+    el.dataset.kind = meta.attr;
+    el.setAttribute('aria-label', `branch ${name}, ${count} ${count === 1 ? 'item' : 'itens'}`);
+    el.innerHTML = `<i data-lucide="git-branch" class="bgh-icon"></i>
+        <span class="bgh-name">${escapeHtml(name)}</span>
+        <span class="bgh-kind">${meta.label}</span>
+        <span class="bgh-count">${count}</span>`;
+    return el;
+}
+
+// Issue #74: chip da branch de destino de uma versão, para os cards de lote (STG, histórico).
+function branchChipHtml(kind, name) {
+    if (!name) return '';
+    const meta = BRANCH_KIND_META[kind] || BRANCH_KIND_META.Main;
+    return `<span class="branch-chip" data-kind="${meta.attr}" title="Branch de destino"><i data-lucide="git-branch"></i>${escapeHtml(name)}</span>`;
+}
 
 function renderOpenTable(data, containerId, onEdit, animate = true) {
     const body = document.getElementById(containerId);
@@ -327,22 +350,15 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
 
     groups.forEach(group => {
         const projectPrs = group.prs;
-        const meta = BRANCH_KIND_META[group.kind] || BRANCH_KIND_META.Main;
         const headerRow = document.createElement('tr');
         headerRow.className = animate ? 'branch-group-header-row fade-in-row' : 'branch-group-header-row';
         if(animate) headerRow.style.animationDelay = `${animationDelay}ms`;
         if(animate) animationDelay += 50;
 
         // Nome da branch verbatim (mono, sem uppercase), tipo como tag apagada, contagem no pill.
-        headerRow.innerHTML = `<td colspan="6" class="branch-group-header-cell">
-            <div class="branch-group-header" data-kind="${meta.attr}"
-                aria-label="branch ${escapeHtml(group.name)}, ${projectPrs.length} PRs">
-                <i data-lucide="git-branch" class="bgh-icon"></i>
-                <span class="bgh-name">${escapeHtml(group.name)}</span>
-                <span class="bgh-kind">${meta.label}</span>
-                <span class="bgh-count">${projectPrs.length}</span>
-            </div>
-        </td>`;
+        headerRow.innerHTML = `<td colspan="6" class="branch-group-header-cell">${
+            branchGroupHeaderEl(group.kind, group.name, projectPrs.length).outerHTML
+        }</td>`;
         body.appendChild(headerRow);
 
         projectPrs.forEach((pr) => {
@@ -549,9 +565,16 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
         if (deployedBatches.length === 0) return;
 
         const sortedBatches = deployedBatches.sort((a, b) => {
-            const projectCompare = (a.project || '').localeCompare(b.project || ''); //project name first
+            // Issue #74: branch primeiro (main, dev, épicos por nome), depois projeto, depois versão.
+            const kindA = BRANCH_KIND_ORDER[a.targetBranchKind] ?? 2;
+            const kindB = BRANCH_KIND_ORDER[b.targetBranchKind] ?? 2;
+            if (kindA !== kindB) return kindA - kindB;
+            const branchCompare = (a.targetBranchName || '').localeCompare(b.targetBranchName || '', 'pt-BR', { numeric: true });
+            if (branchCompare !== 0) return branchCompare;
+
+            const projectCompare = (a.project || '').localeCompare(b.project || ''); //project name second
             if (projectCompare !== 0) return projectCompare;
-            
+
             const versionA = a.version || '0.0.0.0';
             const versionB = b.version || '0.0.0.0';
             
@@ -638,6 +661,7 @@ function renderTestingTable(activeSprints, containerId, onEdit, animate = true) 
             headerDiv.innerHTML = `
                 <div style="display:flex; align-items:center;">
                     <span style="font-weight: 600; font-size: 1.1rem;">${getDemoProject(batch.project)} (${(batch.pullRequests || []).length})</span>
+                    ${branchChipHtml(batch.targetBranchKind, batch.targetBranchName)}
                     <span class="tag" style="background:${testingTheme.accentSoft}; color:${testingTheme.accentText}; margin-left: 10px;">v${batch.version}</span>
                 </div>
                 <div style="display:flex; align-items:center;">
@@ -727,8 +751,10 @@ function renderHistoryTable(inactiveSprints, containerId, onEdit, animate = true
             headerDiv.style.background = '#21262d';
             
             headerDiv.innerHTML = `
+                <div style="display:flex; align-items:center;">
                     <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-secondary);">${getDemoProject(batch.project)}</span>
-                    <span class="tag" style="background:#555; color:#ccc; font-size:0.7rem;">v${batch.version}</span>
+                    ${branchChipHtml(batch.targetBranchKind, batch.targetBranchName)}
+                    <span class="tag" style="background:#555; color:#ccc; font-size:0.7rem; margin-left:10px;">v${batch.version}</span>
                 </div>
                 <div>${gitlabLink}</div>
             `;
@@ -768,44 +794,68 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate
         totalApprovedBadge.textContent = pendingBatches.length;
         totalApprovedBadge.style.display = pendingBatches.length > 0 ? 'inline-block' : 'none';
     }
-    
-    const backlogByProject = backlogPrs.reduce((acc, pr) => {
-        const p = getDemoProject(pr.project) || 'Outros';
-        if (!acc[p]) acc[p] = [];
-        acc[p].push(pr);
-        return acc;
-    }, {});
-    
-    let animationDelay = 0;
-
-    const currentUser = getItem('appUser');
-    pendingBatches.forEach(batch => {
-        const card = createApprovedCard(
-            getDemoProject(batch.project),
-            batch.pullRequests,
-            currentUser,
-            batch.batchId,
-            batch.gitlabIssueLink,
-            batch.requestedVersionDevName
-        );
-        if(animate) card.classList.add('fade-in-row');
-        if(animate) card.style.animationDelay = `${animationDelay}ms`;
-        if(animate) animationDelay += 50;
-        container.appendChild(card);
-    });
-
-    Object.keys(backlogByProject).sort().forEach(projectName => {
-        const projectPrs = backlogByProject[projectName];
-        const card = createApprovedCard(projectName, projectPrs, currentUser, null, null, null);
-        if(animate) card.classList.add('fade-in-row');
-        if(animate) card.style.animationDelay = `${animationDelay}ms`;
-        if(animate) animationDelay += 50;
-        container.appendChild(card);
-    });
 
     if (pendingBatches.length === 0 && backlogPrs.length === 0) {
-        container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary); background: #161b22; border: 1px solid #30363d; border-radius: 6px;">Nenhum PR aguardando liberação.</div>';
+        container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary); background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px;">Nenhum PR aguardando liberação.</div>';
+        return;
     }
+
+    // Issue #74: mesma agregação por destino da tabela "PRs em aberto" — um grupo de branch
+    // por vez, com os lotes daquela branch e, abaixo, o card de backlog (aprovado sem lote).
+    const backlogGroups = groupOpenPrsByDestination(backlogPrs); // [{ id, name, kind, order, prs }]
+    const branchInfo = new Map();
+    backlogGroups.forEach(g => branchInfo.set(g.id, g));
+    pendingBatches.forEach(b => {
+        if (!branchInfo.has(b.targetBranchId)) branchInfo.set(b.targetBranchId, {
+            id: b.targetBranchId,
+            name: b.targetBranchName || '(sem branch)',
+            kind: b.targetBranchKind || 'Main',
+            order: BRANCH_KIND_ORDER[b.targetBranchKind] ?? 2,
+        });
+    });
+    const orderedBranches = [...branchInfo.values()].sort(
+        (a, b) => a.order - b.order || a.name.localeCompare(b.name, 'pt-BR', { numeric: true })
+    );
+
+    let animationDelay = 0;
+    const currentUser = getItem('appUser');
+
+    const withAnim = (el) => {
+        if (animate) {
+            el.classList.add('fade-in-row');
+            el.style.animationDelay = `${animationDelay}ms`;
+            animationDelay += 50;
+        }
+        return el;
+    };
+
+    orderedBranches.forEach(branch => {
+        const branchBatches = pendingBatches.filter(b => b.targetBranchId === branch.id);
+        const backlog = backlogGroups.find(g => g.id === branch.id);
+        const total = branchBatches.reduce((n, b) => n + (b.pullRequests || []).length, 0)
+            + (backlog ? backlog.prs.length : 0);
+
+        const header = branchGroupHeaderEl(branch.kind, branch.name, total);
+        header.style.marginBottom = '0.75rem';
+        container.appendChild(withAnim(header));
+
+        branchBatches.forEach(batch => {
+            container.appendChild(withAnim(createApprovedCard(
+                getDemoProject(batch.project),
+                batch.pullRequests,
+                currentUser,
+                batch.batchId,
+                batch.gitlabIssueLink,
+                batch.requestedVersionDevName
+            )));
+        });
+
+        if (backlog) {
+            container.appendChild(withAnim(createApprovedCard(
+                branch.name, backlog.prs, currentUser, null, null, null
+            )));
+        }
+    });
 }
 
 function createApprovedCard(projectName, projectPrs, currentUser, batchId, batchLink = null, requestedVersionDevName = null) {

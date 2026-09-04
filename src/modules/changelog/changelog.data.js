@@ -1,5 +1,13 @@
 export const ChangelogData = [
     {
+        version: "7.2.0",
+        date: "2026-09-03",
+        changes: [
+            "A tabela \"PRs aprovados\" agrupa pelo destino do PR (main, dev, épico), igual à de PRs em aberto — cada grupo com seus lotes e o backlog daquela branch",
+            "A versão passa a viver numa branch: um lote agrupa os PRs aprovados de um mesmo (app, destino), e cada versão mostra a branch (main, dev ou épico) no card, no STG e no histórico"
+        ]
+    },
+    {
         version: "7.1.0",
         date: "2026-09-03",
         changes: [
