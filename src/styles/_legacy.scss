@@ -489,56 +489,73 @@ td.branch-group-header-cell {
     background: color-mix(in srgb, var(--branch-epic-color) 4%, transparent);
 }
 
-// Árvore dos PRs filhos — mesmo desenho de conector do .tree-item existente, mas com nó
-// próprio (.ct-node) porque o .tree-node original tem hover pensado pra item clicável.
+// Árvore dos PRs filhos — conector revisado (ver _mockup-consolidacao-prs-filhos.html):
+// tronco contínuo (.ct-trunk, border-left) com cotovelo arredondado por item, em vez do
+// desenho anterior calculado por :first-of-type/:only-of-type.
 .consolidated-tree {
-    padding: 0.75rem 0 1rem 3.5rem;
+    padding: 0 0 1rem 2rem;
+
+    // display:flow-root em vez de só position:relative: sem isso, a margin-bottom da legenda
+    // (.ct-caption) escapa por baixo do tronco quando ela é a última filha (caso de 1 PR só)
+    // — collapsing margin clássico do CSS — e sobra um vão de ~10px antes do item começar.
+    .ct-trunk {
+        position: relative;
+        display: flow-root;
+        padding-top: 0.75rem;
+        border-left: 2px solid var(--border-color);
+    }
 
     .ct-caption {
         margin: 0 0 0.6rem;
+        padding-left: 1.5rem;
         font-size: 0.8rem;
         color: var(--text-secondary);
 
         strong { color: var(--text-primary); }
     }
 
-    // Conector em árvore: ::before é o galho horizontal (sempre no meio do item, igual pra
-    // todos); ::after é o tronco vertical, que por padrão liga o meio do item anterior ao
-    // meio deste (top:-50% + height:100% = de -0.5H a +0.5H, ou seja, já para exatamente no
-    // galho — não precisa (nem pode) ser truncado de novo no último item, senão o tronco
-    // para 0.5H cedo demais e deixa o galho do último item solto, sem linha nenhuma o
-    // alcançando). O primeiro item recorta a metade de cima do tronco, que não tem o que
-    // conectar acima; sozinho, não tem tronco nenhum, só o galho.
-    // :first-child/:only-child NÃO servem aqui — o <p class="ct-caption"> antes dos itens é
-    // o primeiro filho de .consolidated-tree, então eles nunca bateriam. :first-of-type e
-    // :only-of-type comparam só entre <div>, ignorando o <p>.
     .ct-item {
         position: relative;
-        padding: 0.3rem 0;
+        padding: 0.3rem 0 0.3rem 1.5rem;
     }
 
+    // Cotovelo arredondado: uma caixa com só borda esquerda + borda inferior e raio no canto
+    // entre as duas — a técnica de sempre pra curvar um conector vertical->horizontal em CSS.
+    // left:-2px pra nascer alinhada com a borda do .ct-trunk (2px de largura, por fora da
+    // caixa do item); a parte de cima (border-left) repete o traço do tronco por cima dele —
+    // mesma cor, mesma posição, não faz diferença visual, só fecha a curva embaixo.
     .ct-item::before {
         content: "";
         position: absolute;
-        left: -25px;
-        top: 50%;
-        width: 25px;
-        height: 2px;
-        background: var(--border-color);
+        left: -2px;
+        top: 0;
+        width: calc(1.5rem + 2px);
+        height: 50%;
+        border-left: 2px solid var(--border-color);
+        border-bottom: 2px solid var(--border-color);
+        border-bottom-left-radius: 8px;
     }
 
-    .ct-item::after {
-        content: "";
-        position: absolute;
-        left: -25px;
-        top: -50%;
-        width: 2px;
-        height: 100%;
-        background: var(--border-color);
-    }
+    // O último item NÃO fica dentro de .ct-trunk (o border-left não alcança ele) — é irmão
+    // dele, com um traço vertical PRÓPRIO indo só do seu topo (onde o tronco parou, sem
+    // intervalo) até o seu meio, mais o galho horizontal de sempre (.ct-item::before, comum
+    // aos dois). Cobre exatamente 1 filho (só o traço próprio) até N filhos (tronco cobre até
+    // o penúltimo, o traço próprio fecha no último) sem precisar calcular nada por posição.
+    // margin-left:2px recoloca ele na mesma coluna dos itens de dentro do tronco (que ficam
+    // empurrados pelos 2px da borda do tronco).
+    .ct-item--last {
+        margin-left: 2px;
 
-    .ct-item:first-of-type::after { height: 50%; top: 0; }
-    .ct-item:only-of-type::after { content: none; }
+        &::after {
+            content: "";
+            position: absolute;
+            left: -2px;
+            top: -7px;
+            height: 50%;
+            width: 2px;
+            background: var(--border-color);
+        }
+    }
 
     .ct-node {
         display: flex;

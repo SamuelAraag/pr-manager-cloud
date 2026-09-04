@@ -1435,8 +1435,10 @@ async function loadConsolidatableEpics(appId) {
     // corrida: o projeto pode ter mudado antes da resposta chegar
     if (selectedProjectAppId() !== appId) return;
 
+    // status 'Closed' só acontece quando o épico já foi consolidado (PullRequestService.cs) —
+    // sem esse filtro, o select oferece um épico que o backend vai recusar com epico_ja_consolidado.
     consolidatableEpics = (Array.isArray(destinos) ? destinos : [])
-        .filter(b => b.kind === 'Epic')
+        .filter(b => b.kind === 'Epic' && b.status !== 'Closed')
         .map(b => ({ id: b.id, name: b.name, approvedCount: approvedPrsForEpic(b.id).length }))
         .filter(b => b.approvedCount > 0)
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));

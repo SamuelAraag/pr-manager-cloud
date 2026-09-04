@@ -354,8 +354,8 @@ function consolidationChipHtml(pr) {
 // por isso só leitura: task, resumo, selo "mergeado", dev e os links, sem botão de ação.
 function renderConsolidatedTree(pr) {
     const filhos = Array.isArray(pr.consolidatedPrs) ? pr.consolidatedPrs : [];
-    const itens = filhos.map(filho => `
-        <div class="ct-item">
+    const ctItem = (filho, isLast) => `
+        <div class="ct-item${isLast ? ' ct-item--last' : ''}">
             <div class="ct-node">
                 <span class="tag">${escapeHtml(extractJiraId(filho.taskLink) || '-')}</span>
                 <span class="ct-sum">${escapeHtml(filho.summary || '-')}</span>
@@ -366,12 +366,22 @@ function renderConsolidatedTree(pr) {
                     ${filho.prLink ? `<a href="${filho.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}
                 </span>
             </div>
-        </div>`).join('');
+        </div>`;
+
+    // O tronco (.ct-trunk) carrega a legenda + os filhos até o penúltimo; o último item é
+    // irmão dele, fora do tronco, com o traço vertical próprio de .ct-item--last — ver
+    // _mockup-consolidacao-prs-filhos.html (revisão do conector, issue #77).
+    const ultimo = filhos.length - 1;
+    const itensDoTronco = filhos.slice(0, ultimo).map(filho => ctItem(filho, false)).join('');
+    const itemFinal = filhos.length > 0 ? ctItem(filhos[ultimo], true) : '';
 
     return `
         <div class="consolidated-tree">
-            <p class="ct-caption">Incluídos nesta consolidação — ${filhos.length} ${filhos.length === 1 ? 'PR' : 'PRs'} do épico <strong>${escapeHtml(pr.consolidatesEpicBranchName || '')}</strong></p>
-            ${itens}
+            <div class="ct-trunk">
+                <p class="ct-caption">Incluídos nesta consolidação — ${filhos.length} ${filhos.length === 1 ? 'PR' : 'PRs'} do épico <strong>${escapeHtml(pr.consolidatesEpicBranchName || '')}</strong></p>
+                ${itensDoTronco}
+            </div>
+            ${itemFinal}
         </div>`;
 }
 

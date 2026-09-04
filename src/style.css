@@ -2697,10 +2697,17 @@ td.branch-group-header-cell {
 }
 
 .consolidated-tree {
-  padding: 0.75rem 0 1rem 3.5rem;
+  padding: 0 0 1rem 2rem;
+}
+.consolidated-tree .ct-trunk {
+  position: relative;
+  display: flow-root;
+  padding-top: 0.75rem;
+  border-left: 2px solid var(--border-color);
 }
 .consolidated-tree .ct-caption {
   margin: 0 0 0.6rem;
+  padding-left: 1.5rem;
   font-size: 0.8rem;
   color: var(--text-secondary);
 }
@@ -2709,32 +2716,30 @@ td.branch-group-header-cell {
 }
 .consolidated-tree .ct-item {
   position: relative;
-  padding: 0.3rem 0;
+  padding: 0.3rem 0 0.3rem 1.5rem;
 }
 .consolidated-tree .ct-item::before {
   content: "";
   position: absolute;
-  left: -25px;
-  top: 50%;
-  width: 25px;
-  height: 2px;
-  background: var(--border-color);
+  left: -2px;
+  top: 0;
+  width: calc(1.5rem + 2px);
+  height: 50%;
+  border-left: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+  border-bottom-left-radius: 8px;
 }
-.consolidated-tree .ct-item::after {
+.consolidated-tree .ct-item--last {
+  margin-left: 2px;
+}
+.consolidated-tree .ct-item--last::after {
   content: "";
   position: absolute;
-  left: -25px;
-  top: -50%;
-  width: 2px;
-  height: 100%;
-  background: var(--border-color);
-}
-.consolidated-tree .ct-item:first-of-type::after {
+  left: -2px;
+  top: -7px;
   height: 50%;
-  top: 0;
-}
-.consolidated-tree .ct-item:only-of-type::after {
-  content: none;
+  width: 2px;
+  background: var(--border-color);
 }
 .consolidated-tree .ct-node {
   display: flex;
