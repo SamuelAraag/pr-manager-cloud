@@ -94,6 +94,8 @@ Se criar algo novo e reutilizável, **registre aqui na mesma task**.
 | `.modal-overlay` / `.modal-content` / `.modal-header` | modal de confirmação curta ou formulário de uma etapa | `#userModal` em `usuarios.html` |
 | `.btn btn-primary` / `btn-outline` / `btn-danger` | ação principal / secundária / destrutiva (`btn-danger` vem do Bootstrap) | `src/styles/_legacy.scss` |
 | `.is-invalid` + `.field-error` | erro de validação inline no campo | `src/styles/_legacy.scss` |
+| `.prc-toggle` (+ `.prc-toggle-body`, `.prc-toggle-label`, `.prc-toggle-hint`) | checkbox com rótulo e dica ao lado, num `.form-group` | `#prConsolidateToggleGroup` em `index.html` |
+| `.consolidation-preview` (+ `.cp-head`, `.cp-list`, `.cp-id`, `.cp-sum`, `.cp-empty`) | prévia só-leitura de itens ligados a um registro, com marcador de árvore | `renderConsolidationPreview()` em `src/script.js` |
 
 ### Funções JS
 

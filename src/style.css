@@ -2580,6 +2580,93 @@ td.branch-group-header-cell {
   color: var(--branch-epic-color);
 }
 
+.prc-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+.prc-toggle input {
+  flex: none;
+  margin-top: 0.15rem;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+}
+.prc-toggle .prc-toggle-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.prc-toggle .prc-toggle-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prc-toggle .prc-toggle-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.prc-toggle input:disabled {
+  cursor: not-allowed;
+}
+.prc-toggle input:disabled ~ .prc-toggle-body {
+  opacity: 0.55;
+}
+
+.consolidation-preview {
+  margin-top: 0.6rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--branch-epic-color) 6%, transparent);
+}
+.consolidation-preview .cp-head {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.consolidation-preview .cp-head strong {
+  color: var(--text-primary);
+}
+.consolidation-preview .cp-head .branch-chip {
+  margin-left: 4px;
+}
+.consolidation-preview .cp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.consolidation-preview .cp-list li {
+  position: relative;
+  display: flex;
+  gap: 0.5rem;
+  padding-left: 0.9rem;
+  font-size: 0.8125rem;
+}
+.consolidation-preview .cp-list li::before {
+  content: "└";
+  position: absolute;
+  left: 0;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+.consolidation-preview .cp-list .cp-id {
+  flex: none;
+  font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  color: var(--branch-epic-color);
+}
+.consolidation-preview .cp-list .cp-sum {
+  color: var(--text-primary);
+}
+.consolidation-preview .cp-empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
 th {
   text-align: left;
   padding: 10px;

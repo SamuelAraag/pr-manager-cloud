@@ -429,6 +429,32 @@
                             style="display: none; margin-top: 0.5rem;">
                         <span class="field-error">Informe o nome do épico.</span>
                     </div>
+
+                    <!-- issue #77: consolidação de épico. Marca que este PR (indo para main/dev)
+                         reúne um épico já criado; os PRs aprovados desse épico ficam vinculados
+                         a ele. Só aparece quando o destino é main ou dev. -->
+                    <div class="form-group full-width"
+                        style="margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                        <h3 style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.8rem;">Consolidação</h3>
+                    </div>
+                    <div class="form-group full-width" id="prConsolidateToggleGroup">
+                        <label class="prc-toggle" for="prConsolidatesEpic">
+                            <input type="checkbox" id="prConsolidatesEpic">
+                            <span class="prc-toggle-body">
+                                <span class="prc-toggle-label">Este PR consolida um épico</span>
+                                <span class="prc-toggle-hint" id="prConsolidatesEpicHint">Marque quando este PR reúne, para main ou dev, tudo o que já foi aprovado num épico criado antes. Os PRs aprovados do épico ficam vinculados a este.</span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="form-group full-width" id="prConsolidateEpicGroup" style="display: none;">
+                        <label for="prConsolidatesEpicSelect">Épico a consolidar <span aria-hidden="true" style="color: var(--danger-color);">*</span></label>
+                        <select id="prConsolidatesEpicSelect">
+                            <option value="">Selecione o épico</option>
+                        </select>
+                        <span class="field-error">Selecione o épico a consolidar.</span>
+                        <div id="prConsolidatesPreview" class="consolidation-preview" style="display: none;"></div>
+                    </div>
+
                     <div class="form-group full-width"
                         style="margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
                         <h3 style="margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.8rem;">Vínculos</h3>
