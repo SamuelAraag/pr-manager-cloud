@@ -844,8 +844,14 @@ function renderApprovedTables(approvedPrs, batches, containerId, onEdit, animate
     if (!container) return;
     container.innerHTML = '';
 
+    // issue #77: um PR já capturado por uma consolidação (consolidatedByPrId) segue existindo
+    // com o mesmo targetBranchId do épico -- sem este filtro ele aparece duas vezes: uma vez
+    // na árvore do PR de consolidação, outra como se ainda estivesse represado no grupo do
+    // próprio épico. Tirando-o daqui, o grupo do épico some sozinho quando fica sem PR nenhum.
+    approvedPrs = approvedPrs.filter(pr => !pr.consolidatedByPrId);
+
     const pendingBatches = batches.filter(b => b.status === 'Pending' || b.status === 'Released');
-    
+
     const prIdsInBatches = new Set(batches.flatMap(b => b.pullRequests.map(pr => pr.id)));
     const backlogPrs = approvedPrs.filter(pr => !prIdsInBatches.has(pr.id));
     
