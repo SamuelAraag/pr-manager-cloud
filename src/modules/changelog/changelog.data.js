@@ -1,5 +1,14 @@
 export const ChangelogData = [
     {
+        version: "7.3.0",
+        date: "2026-09-04",
+        changes: [
+            "No cadastro de PR, a opção \"Este PR consolida um épico\" reúne num PR para main ou dev um épico já criado; ao escolher o épico, o formulário mostra os PRs aprovados dele que serão vinculados",
+            "A opção só aparece quando o destino é main ou dev, e apenas para épicos que já têm PR aprovado",
+            "Ao salvar, os PRs aprovados do épico ficam vinculados a esse PR de consolidação e o épico é fechado; cada épico aceita um único PR de consolidação"
+        ]
+    },
+    {
         version: "7.2.0",
         date: "2026-09-03",
         changes: [

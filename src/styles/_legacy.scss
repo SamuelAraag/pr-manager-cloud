@@ -456,6 +456,130 @@ td.branch-group-header-cell {
     }
 }
 
+// Issue #77 — marca do PR de consolidação em "PRs em aberto": chip do épico (reusa
+// .branch-chip) + pílula de contagem, ao lado do resumo. Só decorativo — a seta que expande
+// a árvore dos filhos mora na célula de Task (.expand-btn, mesmo padrão de "relacionados").
+// Embrulha os dois num inline-flex: sozinhos, .branch-chip (line-height:1) e a pílula de
+// contagem (line-height herdado) tinham altura e vertical-align diferentes e não batiam.
+.consolidation-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+
+    .branch-chip { margin-left: 0; }
+}
+
+.consolidation-count {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--branch-epic-color) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--branch-epic-color) 45%, transparent);
+    color: var(--branch-epic-color);
+    white-space: nowrap;
+}
+
+.consolidated-prs-row > td {
+    padding: 0;
+    background: color-mix(in srgb, var(--branch-epic-color) 4%, transparent);
+}
+
+// Árvore dos PRs filhos — mesmo desenho de conector do .tree-item existente, mas com nó
+// próprio (.ct-node) porque o .tree-node original tem hover pensado pra item clicável.
+.consolidated-tree {
+    padding: 0.75rem 0 1rem 3.5rem;
+
+    .ct-caption {
+        margin: 0 0 0.6rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+
+        strong { color: var(--text-primary); }
+    }
+
+    // Conector em árvore: ::before é o galho horizontal (sempre no meio do item, igual pra
+    // todos); ::after é o tronco vertical, que por padrão liga o meio do item anterior ao
+    // meio deste (top:-50% + height:100% = de -0.5H a +0.5H, ou seja, já para exatamente no
+    // galho — não precisa (nem pode) ser truncado de novo no último item, senão o tronco
+    // para 0.5H cedo demais e deixa o galho do último item solto, sem linha nenhuma o
+    // alcançando). O primeiro item recorta a metade de cima do tronco, que não tem o que
+    // conectar acima; sozinho, não tem tronco nenhum, só o galho.
+    // :first-child/:only-child NÃO servem aqui — o <p class="ct-caption"> antes dos itens é
+    // o primeiro filho de .consolidated-tree, então eles nunca bateriam. :first-of-type e
+    // :only-of-type comparam só entre <div>, ignorando o <p>.
+    .ct-item {
+        position: relative;
+        padding: 0.3rem 0;
+    }
+
+    .ct-item::before {
+        content: "";
+        position: absolute;
+        left: -25px;
+        top: 50%;
+        width: 25px;
+        height: 2px;
+        background: var(--border-color);
+    }
+
+    .ct-item::after {
+        content: "";
+        position: absolute;
+        left: -25px;
+        top: -50%;
+        width: 2px;
+        height: 100%;
+        background: var(--border-color);
+    }
+
+    .ct-item:first-of-type::after { height: 50%; top: 0; }
+    .ct-item:only-of-type::after { content: none; }
+
+    .ct-node {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 860px;
+        padding: 0.5rem 0.9rem;
+        background: rgba(48, 54, 61, 0.2);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+    }
+
+    .ct-sum { color: var(--text-primary); font-size: 0.85rem; }
+
+    .ct-dev {
+        margin-left: auto;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    .ct-links {
+        display: flex;
+        gap: 0.6rem;
+
+        i, svg { width: 14px; height: 14px; }
+    }
+}
+
+.chip-merged {
+    flex: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: var(--branch-main-color);
+    border: 1px solid color-mix(in srgb, var(--branch-main-color) 50%, transparent);
+    background: color-mix(in srgb, var(--branch-main-color) 14%, transparent);
+    white-space: nowrap;
+}
+
 th {
     text-align: left;
     padding: 10px;

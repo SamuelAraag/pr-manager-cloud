@@ -55,10 +55,16 @@ const getLinkAttrs = (uniqueId, extraClass = '') => {
 };
 
 function renderTaskIdCell(pr, { includeExpand = false } = {}) {
-    const hasRelated = pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
-    const expandBtn = includeExpand && hasRelated
-        ? `<button class="expand-btn" onclick="window.toggleRelated('${pr.id}', this)"><i data-lucide="chevron-right" style="width: 14px;"></i></button>`
-        : '';
+    // issue #77: um PR de consolidação tem prioridade sobre o expand de "tasks
+    // relacionadas" — não coexistem na prática, e só cabe uma seta na célula.
+    const hasConsolidated = includeExpand && Array.isArray(pr.consolidatedPrs) && pr.consolidatedPrs.length > 0;
+    const hasRelated = !hasConsolidated && includeExpand
+        && pr.linksRelatedTask && pr.linksRelatedTask.split(';').filter(l => l.trim() !== '').length > 0;
+    const expandBtn = hasConsolidated
+        ? `<button class="expand-btn" title="Ver PRs incluídos nesta consolidação" onclick="window.toggleConsolidated('${pr.id}', this)"><i data-lucide="chevron-right" style="width: 14px;"></i></button>`
+        : hasRelated
+            ? `<button class="expand-btn" onclick="window.toggleRelated('${pr.id}', this)"><i data-lucide="chevron-right" style="width: 14px;"></i></button>`
+            : '';
     const mainJiraId = extractJiraId(pr.taskLink) || pr.project || '-';
 
     return `
@@ -335,6 +341,40 @@ function branchChipHtml(kind, name) {
     return `<span class="branch-chip" data-kind="${meta.attr}" title="Branch de destino"><i data-lucide="git-branch"></i>${escapeHtml(name)}</span>`;
 }
 
+// Issue #77: marca (só visual — a seta que expande fica na célula de Task, via
+// renderTaskIdCell) de que este PR consolida um épico. Vazio quando não consolida nada.
+function consolidationChipHtml(pr) {
+    const filhos = Array.isArray(pr.consolidatedPrs) ? pr.consolidatedPrs : [];
+    if (filhos.length === 0) return '';
+    return `<span class="consolidation-mark">${branchChipHtml('Epic', pr.consolidatesEpicBranchName)}` +
+        `<span class="consolidation-count">${filhos.length} ${filhos.length === 1 ? 'PR incluído' : 'PRs incluídos'}</span></span>`;
+}
+
+// Sub-linha (colspan) com a árvore dos PRs filhos de um PR de consolidação — já aprovados,
+// por isso só leitura: task, resumo, selo "mergeado", dev e os links, sem botão de ação.
+function renderConsolidatedTree(pr) {
+    const filhos = Array.isArray(pr.consolidatedPrs) ? pr.consolidatedPrs : [];
+    const itens = filhos.map(filho => `
+        <div class="ct-item">
+            <div class="ct-node">
+                <span class="tag">${escapeHtml(extractJiraId(filho.taskLink) || '-')}</span>
+                <span class="ct-sum">${escapeHtml(filho.summary || '-')}</span>
+                <span class="chip-merged">mergeado</span>
+                <span class="ct-dev">${escapeHtml(filho.dev || '-')}</span>
+                <span class="ct-links">
+                    ${filho.taskLink ? `<a href="${filho.taskLink}" target="_blank" class="link-icon" title="Link Task"><i data-lucide="external-link" style="width: 14px;"></i></a>` : ''}
+                    ${filho.prLink ? `<a href="${filho.prLink}" target="_blank" class="link-icon" title="Link PR"><i data-lucide="git-pull-request" style="width: 14px;"></i></a>` : ''}
+                </span>
+            </div>
+        </div>`).join('');
+
+    return `
+        <div class="consolidated-tree">
+            <p class="ct-caption">Incluídos nesta consolidação — ${filhos.length} ${filhos.length === 1 ? 'PR' : 'PRs'} do épico <strong>${escapeHtml(pr.consolidatesEpicBranchName || '')}</strong></p>
+            ${itens}
+        </div>`;
+}
+
 function renderOpenTable(data, containerId, onEdit, animate = true) {
     const body = document.getElementById(containerId);
     if (!body) return;
@@ -405,7 +445,7 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
 
             tr.innerHTML = `
                 ${renderTaskIdCell(pr, { includeExpand: true })}
-                <td style="font-weight: 500; padding-left: 0px;">${pr.project ? `<span style="color: var(--text-secondary); font-weight: 400;">${escapeHtml(getDemoProject(pr.project) || pr.project)} · </span>` : ''}${pr.summary || '-'}</td>
+                <td style="font-weight: 500; padding-left: 0px;">${pr.project ? `<span style="color: var(--text-secondary); font-weight: 400;">${escapeHtml(getDemoProject(pr.project) || pr.project)} · </span>` : ''}${pr.summary || '-'}${consolidationChipHtml(pr)}</td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <img src="${getDemoImage(pr.dev)}" style="width: 34px; height: 34px; object-fit: cover; border-radius: 50%;" title="${getDemoName(pr.dev)}">
@@ -471,6 +511,16 @@ function renderOpenTable(data, containerId, onEdit, animate = true) {
                 subRow.style.display = 'none';
                 subRow.innerHTML = `<td colspan="6">${renderRelatedTasksList(pr.linksRelatedTask, pr.project)}</td>`;
                 body.appendChild(subRow);
+            }
+
+            // Issue #77: PRs filhos de um PR de consolidação, escondidos até o toggle acima.
+            if (Array.isArray(pr.consolidatedPrs) && pr.consolidatedPrs.length > 0) {
+                const consolidatedRow = document.createElement('tr');
+                consolidatedRow.id = `consolidated-${pr.id}`;
+                consolidatedRow.className = 'consolidated-prs-row';
+                consolidatedRow.style.display = 'none';
+                consolidatedRow.innerHTML = `<td colspan="6">${renderConsolidatedTree(pr)}</td>`;
+                body.appendChild(consolidatedRow);
             }
 
             // Timeline de auditoria (Épico 5.4) — carregada sob demanda no primeiro clique.
@@ -1143,4 +1193,4 @@ function showLoading(show) {
     if (dbHist) dbHist.style.display = contentDisplay;
 }
 
-export { showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory, confirmDialog, alertDialog, enableEscapeToCloseModals };
+export { escapeHtml, showToast, renderTable, renderOpenTable, renderApprovedTables, renderTestingTable, renderHistoryTable, showLoading, loadPendingToasts, renderPrHistory, confirmDialog, alertDialog, enableEscapeToCloseModals };

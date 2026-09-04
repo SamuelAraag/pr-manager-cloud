@@ -2194,4 +2194,18 @@ window.toggleRelated = (prId, btn) => {
     }
 };
 
+// issue #77: abre/fecha a árvore de PRs filhos na linha do PR de consolidação.
+window.toggleConsolidated = (prId, btn) => {
+    const subRow = document.getElementById(`consolidated-${prId}`);
+    if (subRow) {
+        const isHidden = subRow.style.display === 'none';
+        subRow.style.display = isHidden ? 'table-row' : 'none';
+        btn.classList.toggle('active', isHidden);
+
+        if (isHidden && window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+};
+
 init();

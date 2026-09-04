@@ -2667,6 +2667,116 @@ td.branch-group-header-cell {
   color: var(--text-secondary);
 }
 
+.consolidation-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.consolidation-mark .branch-chip {
+  margin-left: 0;
+}
+
+.consolidation-count {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--branch-epic-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--branch-epic-color) 45%, transparent);
+  color: var(--branch-epic-color);
+  white-space: nowrap;
+}
+
+.consolidated-prs-row > td {
+  padding: 0;
+  background: color-mix(in srgb, var(--branch-epic-color) 4%, transparent);
+}
+
+.consolidated-tree {
+  padding: 0.75rem 0 1rem 3.5rem;
+}
+.consolidated-tree .ct-caption {
+  margin: 0 0 0.6rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.consolidated-tree .ct-caption strong {
+  color: var(--text-primary);
+}
+.consolidated-tree .ct-item {
+  position: relative;
+  padding: 0.3rem 0;
+}
+.consolidated-tree .ct-item::before {
+  content: "";
+  position: absolute;
+  left: -25px;
+  top: 50%;
+  width: 25px;
+  height: 2px;
+  background: var(--border-color);
+}
+.consolidated-tree .ct-item::after {
+  content: "";
+  position: absolute;
+  left: -25px;
+  top: -50%;
+  width: 2px;
+  height: 100%;
+  background: var(--border-color);
+}
+.consolidated-tree .ct-item:first-of-type::after {
+  height: 50%;
+  top: 0;
+}
+.consolidated-tree .ct-item:only-of-type::after {
+  content: none;
+}
+.consolidated-tree .ct-node {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 860px;
+  padding: 0.5rem 0.9rem;
+  background: rgba(48, 54, 61, 0.2);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+.consolidated-tree .ct-sum {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+.consolidated-tree .ct-dev {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.consolidated-tree .ct-links {
+  display: flex;
+  gap: 0.6rem;
+}
+.consolidated-tree .ct-links i, .consolidated-tree .ct-links svg {
+  width: 14px;
+  height: 14px;
+}
+
+.chip-merged {
+  flex: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--branch-main-color);
+  border: 1px solid color-mix(in srgb, var(--branch-main-color) 50%, transparent);
+  background: color-mix(in srgb, var(--branch-main-color) 14%, transparent);
+  white-space: nowrap;
+}
+
 th {
   text-align: left;
   padding: 10px;
