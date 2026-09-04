@@ -185,6 +185,11 @@ function getPrErrorMessage(errorMessage) {
         epico_sem_nome: 'Informe o nome do épico.',
         epico_invalido: 'Épico de destino inválido.',
         epico_nome_muito_longo: 'O nome do épico passa de 120 caracteres.',
+        // issue #77: consolidação de épico.
+        consolidacao_destino_invalido: 'Consolidação só vale para PR indo à main ou dev.',
+        epico_de_outro_app: 'Esse épico é de outro app.',
+        epico_ja_consolidado: 'Esse épico já tem um PR de consolidação.',
+        epico_sem_prs_aprovados: 'O épico escolhido não tem PR aprovado para consolidar.',
     };
 
     return friendlyMessages[errorMessage] || errorMessage;
