@@ -361,6 +361,242 @@ td.branch-group-header-cell {
     &[data-kind="epic"] { color: var(--branch-epic-color); }
 }
 
+// Issue #77 — toggle "este PR consolida um épico" no cadastro de PR.
+.prc-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    cursor: pointer;
+
+    input {
+        flex: none;
+        margin-top: 0.15rem;
+        width: 16px;
+        height: 16px;
+        accent-color: var(--accent-color);
+    }
+
+    .prc-toggle-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .prc-toggle-label {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .prc-toggle-hint {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    input:disabled {
+        cursor: not-allowed;
+
+        & ~ .prc-toggle-body { opacity: 0.55; }
+    }
+}
+
+// Issue #77 — prévia (só leitura) dos PRs aprovados do épico que serão vinculados ao PR.
+.consolidation-preview {
+    margin-top: 0.6rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--branch-epic-color) 6%, transparent);
+
+    .cp-head {
+        margin: 0 0 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+
+        strong { color: var(--text-primary); }
+        .branch-chip { margin-left: 4px; }
+    }
+
+    .cp-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+
+        li {
+            position: relative;
+            display: flex;
+            gap: 0.5rem;
+            padding-left: 0.9rem;
+            font-size: 0.8125rem;
+        }
+
+        li::before {
+            content: "└";
+            position: absolute;
+            left: 0;
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        .cp-id {
+            flex: none;
+            font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+            color: var(--branch-epic-color);
+        }
+
+        .cp-sum { color: var(--text-primary); }
+    }
+
+    .cp-empty {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+}
+
+// Issue #77 — marca do PR de consolidação em "PRs em aberto": chip do épico (reusa
+// .branch-chip) + pílula de contagem, ao lado do resumo. Só decorativo — a seta que expande
+// a árvore dos filhos mora na célula de Task (.expand-btn, mesmo padrão de "relacionados").
+// Embrulha os dois num inline-flex: sozinhos, .branch-chip (line-height:1) e a pílula de
+// contagem (line-height herdado) tinham altura e vertical-align diferentes e não batiam.
+.consolidation-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+
+    .branch-chip { margin-left: 0; }
+}
+
+.consolidation-count {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--branch-epic-color) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--branch-epic-color) 45%, transparent);
+    color: var(--branch-epic-color);
+    white-space: nowrap;
+}
+
+.consolidated-prs-row > td {
+    padding: 0;
+    background: color-mix(in srgb, var(--branch-epic-color) 4%, transparent);
+}
+
+// Árvore dos PRs filhos — conector revisado (ver _mockup-consolidacao-prs-filhos.html):
+// tronco contínuo (.ct-trunk, border-left) com cotovelo arredondado por item, em vez do
+// desenho anterior calculado por :first-of-type/:only-of-type.
+.consolidated-tree {
+    padding: 0 0 1rem 2rem;
+
+    // display:flow-root em vez de só position:relative: sem isso, a margin-bottom da legenda
+    // (.ct-caption) escapa por baixo do tronco quando ela é a última filha (caso de 1 PR só)
+    // — collapsing margin clássico do CSS — e sobra um vão de ~10px antes do item começar.
+    .ct-trunk {
+        position: relative;
+        display: flow-root;
+        padding-top: 0.75rem;
+        border-left: 2px solid var(--border-color);
+    }
+
+    .ct-caption {
+        margin: 0 0 0.6rem;
+        padding-left: 1.5rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+
+        strong { color: var(--text-primary); }
+    }
+
+    .ct-item {
+        position: relative;
+        padding: 0.3rem 0 0.3rem 1.5rem;
+    }
+
+    // Cotovelo arredondado: uma caixa com só borda esquerda + borda inferior e raio no canto
+    // entre as duas — a técnica de sempre pra curvar um conector vertical->horizontal em CSS.
+    // left:-2px pra nascer alinhada com a borda do .ct-trunk (2px de largura, por fora da
+    // caixa do item); a parte de cima (border-left) repete o traço do tronco por cima dele —
+    // mesma cor, mesma posição, não faz diferença visual, só fecha a curva embaixo.
+    .ct-item::before {
+        content: "";
+        position: absolute;
+        left: -2px;
+        top: 0;
+        width: calc(1.5rem + 2px);
+        height: 50%;
+        border-left: 2px solid var(--border-color);
+        border-bottom: 2px solid var(--border-color);
+        border-bottom-left-radius: 8px;
+    }
+
+    // O último item NÃO fica dentro de .ct-trunk (o border-left não alcança ele) — é irmão
+    // dele, com um traço vertical PRÓPRIO indo só do seu topo (onde o tronco parou, sem
+    // intervalo) até o seu meio, mais o galho horizontal de sempre (.ct-item::before, comum
+    // aos dois). Cobre exatamente 1 filho (só o traço próprio) até N filhos (tronco cobre até
+    // o penúltimo, o traço próprio fecha no último) sem precisar calcular nada por posição.
+    // margin-left:2px recoloca ele na mesma coluna dos itens de dentro do tronco (que ficam
+    // empurrados pelos 2px da borda do tronco).
+    .ct-item--last {
+        margin-left: 2px;
+
+        &::after {
+            content: "";
+            position: absolute;
+            left: -2px;
+            top: -7px;
+            height: 50%;
+            width: 2px;
+            background: var(--border-color);
+        }
+    }
+
+    .ct-node {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 860px;
+        padding: 0.5rem 0.9rem;
+        background: rgba(48, 54, 61, 0.2);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+    }
+
+    .ct-sum { color: var(--text-primary); font-size: 0.85rem; }
+
+    .ct-dev {
+        margin-left: auto;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+
+    .ct-links {
+        display: flex;
+        gap: 0.6rem;
+
+        i, svg { width: 14px; height: 14px; }
+    }
+}
+
+.chip-merged {
+    flex: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    color: var(--branch-main-color);
+    border: 1px solid color-mix(in srgb, var(--branch-main-color) 50%, transparent);
+    background: color-mix(in srgb, var(--branch-main-color) 14%, transparent);
+    white-space: nowrap;
+}
+
 th {
     text-align: left;
     padding: 10px;

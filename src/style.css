@@ -2580,6 +2580,208 @@ td.branch-group-header-cell {
   color: var(--branch-epic-color);
 }
 
+.prc-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+.prc-toggle input {
+  flex: none;
+  margin-top: 0.15rem;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+}
+.prc-toggle .prc-toggle-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.prc-toggle .prc-toggle-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prc-toggle .prc-toggle-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.prc-toggle input:disabled {
+  cursor: not-allowed;
+}
+.prc-toggle input:disabled ~ .prc-toggle-body {
+  opacity: 0.55;
+}
+
+.consolidation-preview {
+  margin-top: 0.6rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--branch-epic-color) 6%, transparent);
+}
+.consolidation-preview .cp-head {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.consolidation-preview .cp-head strong {
+  color: var(--text-primary);
+}
+.consolidation-preview .cp-head .branch-chip {
+  margin-left: 4px;
+}
+.consolidation-preview .cp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.consolidation-preview .cp-list li {
+  position: relative;
+  display: flex;
+  gap: 0.5rem;
+  padding-left: 0.9rem;
+  font-size: 0.8125rem;
+}
+.consolidation-preview .cp-list li::before {
+  content: "└";
+  position: absolute;
+  left: 0;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+.consolidation-preview .cp-list .cp-id {
+  flex: none;
+  font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  color: var(--branch-epic-color);
+}
+.consolidation-preview .cp-list .cp-sum {
+  color: var(--text-primary);
+}
+.consolidation-preview .cp-empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.consolidation-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.consolidation-mark .branch-chip {
+  margin-left: 0;
+}
+
+.consolidation-count {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--branch-epic-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--branch-epic-color) 45%, transparent);
+  color: var(--branch-epic-color);
+  white-space: nowrap;
+}
+
+.consolidated-prs-row > td {
+  padding: 0;
+  background: color-mix(in srgb, var(--branch-epic-color) 4%, transparent);
+}
+
+.consolidated-tree {
+  padding: 0 0 1rem 2rem;
+}
+.consolidated-tree .ct-trunk {
+  position: relative;
+  display: flow-root;
+  padding-top: 0.75rem;
+  border-left: 2px solid var(--border-color);
+}
+.consolidated-tree .ct-caption {
+  margin: 0 0 0.6rem;
+  padding-left: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.consolidated-tree .ct-caption strong {
+  color: var(--text-primary);
+}
+.consolidated-tree .ct-item {
+  position: relative;
+  padding: 0.3rem 0 0.3rem 1.5rem;
+}
+.consolidated-tree .ct-item::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 0;
+  width: calc(1.5rem + 2px);
+  height: 50%;
+  border-left: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+  border-bottom-left-radius: 8px;
+}
+.consolidated-tree .ct-item--last {
+  margin-left: 2px;
+}
+.consolidated-tree .ct-item--last::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: -7px;
+  height: 50%;
+  width: 2px;
+  background: var(--border-color);
+}
+.consolidated-tree .ct-node {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 860px;
+  padding: 0.5rem 0.9rem;
+  background: rgba(48, 54, 61, 0.2);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+.consolidated-tree .ct-sum {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+.consolidated-tree .ct-dev {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.consolidated-tree .ct-links {
+  display: flex;
+  gap: 0.6rem;
+}
+.consolidated-tree .ct-links i, .consolidated-tree .ct-links svg {
+  width: 14px;
+  height: 14px;
+}
+
+.chip-merged {
+  flex: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--branch-main-color);
+  border: 1px solid color-mix(in srgb, var(--branch-main-color) 50%, transparent);
+  background: color-mix(in srgb, var(--branch-main-color) 14%, transparent);
+  white-space: nowrap;
+}
+
 th {
   text-align: left;
   padding: 10px;

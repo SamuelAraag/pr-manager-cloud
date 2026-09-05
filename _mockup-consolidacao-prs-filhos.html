@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup - conector da árvore de PRs filhos (issue #77)</title>
+<style>
+  /* Tokens do tema escuro real (tema-escuro.scss) — só os usados aqui. */
+  :root {
+    --bg-color: #121211;
+    --card-bg: rgba(26, 26, 26, 0.92);
+    --border-color: rgba(189, 182, 176, 0.2);
+    --text-primary: #FFFFFF;
+    --text-secondary: #BDB6B0;
+    --branch-main-color: #75b798;
+    --branch-dev-color: #6ea8fe;
+    --branch-epic-color: #ffda6a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2.5rem 1.5rem;
+    background: var(--bg-color); color: var(--text-primary);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .page { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 1.1rem; margin: 0 0 0.35rem; }
+  .lead { color: var(--text-secondary); margin: 0 0 1.5rem; font-size: 0.88rem; max-width: 70ch; }
+
+  .data-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px; background: rgba(48, 54, 61, 0.2); color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); }
+  td { padding: 14px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+
+  /* ===== CSS abaixo é cópia literal de src/style.css (compilado do _legacy.scss real) ===== */
+
+  td.branch-group-header-cell { padding: 0; border-bottom: 0; }
+  .branch-group-header { display: flex; align-items: center; gap: 10px; padding: 0.5rem 1rem; background: color-mix(in srgb, var(--text-primary) 5%, transparent); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
+  .branch-group-header .bgh-icon { flex: none; width: 15px; height: 15px; color: var(--branch-main-color); }
+  .branch-group-header .bgh-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; font-weight: 500; color: var(--text-primary); }
+  .branch-group-header .bgh-kind { font-size: 0.6875rem; line-height: 16px; padding: 0 6px; border: 1px solid currentColor; border-radius: 4px; color: var(--branch-main-color); }
+  .branch-group-header .bgh-count { margin-left: auto; min-width: 20px; text-align: center; font-size: 0.75rem; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--text-primary) 8%, transparent); border: 1px solid var(--border-color); color: var(--text-secondary); }
+
+  .branch-chip { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; line-height: 1; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; color: var(--branch-main-color); }
+  .branch-chip i, .branch-chip svg { width: 12px; height: 12px; }
+  .branch-chip[data-kind=epic] { color: var(--branch-epic-color); }
+
+  .expand-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.2s ease; }
+  .expand-btn.active { transform: rotate(90deg); }
+
+  .tag { background: #30363d; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; color: #58a6ff; white-space: nowrap; }
+
+  .consolidation-mark { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; vertical-align: middle; }
+  .consolidation-mark .branch-chip { margin-left: 0; }
+
+  .consolidation-count { display: inline-flex; align-items: center; line-height: 1; font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--branch-epic-color) 14%, transparent); border: 1px solid color-mix(in srgb, var(--branch-epic-color) 45%, transparent); color: var(--branch-epic-color); white-space: nowrap; }
+
+  .consolidated-prs-row > td { padding: 0; background: color-mix(in srgb, var(--branch-epic-color) 4%, transparent); }
+
+  /* Conector: border-left num wrapper (.ct-trunk) que envolve a legenda + os itens. A linha
+     nasce onde o wrapper começa (encostando na linha do PR pai, logo acima) e cresce
+     sozinha com o conteúdo — sem % nem primeiro/último item calculado à mão. Cada item só
+     puxa um traço horizontal (::before) até o próprio nó. */
+  .consolidated-tree { padding: 0 0 1rem 2rem; }
+  /* display:flow-root em vez de só position:relative: sem isso, a margin-bottom da legenda
+     (.ct-caption) escapa por baixo do tronco quando ela é a última filha (caso de 1 PR só)
+     — collapsing margin clássico do CSS — e sobra um vão de ~10px antes do item começar. */
+  .consolidated-tree .ct-trunk { position: relative; display: flow-root; padding-top: 0.75rem; border-left: 2px solid var(--border-color); }
+  .consolidated-tree .ct-caption { margin: 0 0 0.6rem; padding-left: 1.5rem; font-size: 0.8rem; color: var(--text-secondary); }
+  .consolidated-tree .ct-caption strong { color: var(--text-primary); }
+  .consolidated-tree .ct-item { position: relative; padding: 0.3rem 0 0.3rem 1.5rem; }
+  /* Cotovelo arredondado: uma caixa com só borda esquerda + borda inferior e raio no canto
+     entre as duas — a técnica de sempre pra curvar um conector vertical->horizontal em CSS.
+     left:-2px pra nascer alinhada com a borda do .ct-trunk (2px de largura, por fora da
+     caixa do item); a parte de cima (border-left) repete o traço do tronco por cima dele —
+     mesma cor, mesma posição, não faz diferença visual, só fecha a curva embaixo. */
+  .consolidated-tree .ct-item::before { content: ""; position: absolute; left: -2px; top: 0; width: calc(1.5rem + 2px); height: 50%; border-left: 2px solid var(--border-color); border-bottom: 2px solid var(--border-color); border-bottom-left-radius: 8px; }
+  /* Tentei "apagar" a ponta com um retângulo da cor de fundo por cima — não funciona: o
+     fundo já é translúcido (color-mix(...,transparent)), então empilhar a MESMA cor
+     translúcida de novo por cima soma a tinta ao invés de igualar, e sobra uma mancha.
+     Solução geométrica em vez de cor: o último item NÃO fica dentro de .ct-trunk (o
+     border-left não alcança ele) — é irmão dele, com um traço vertical PRÓPRIO indo só do
+     seu topo (onde o tronco parou, sem intervalo) até o seu meio, mais o galho horizontal
+     de sempre. Cobre exatamente 1 filho (só o traço próprio) até N filhos (tronco cobre até
+     o penúltimo, o traço próprio fecha no último) sem precisar calcular nada por cor. */
+  /* .ct-item--last é irmão de .ct-trunk, não filho — não fica empurrado pelos 2px da borda
+     do tronco como os outros itens ficam. margin-left:2px recoloca ele na mesma coluna
+     (nó e traço horizontal alinhados com os demais); o traço vertical próprio (::after)
+     olha pra trás (-2px) exatamente pra onde a borda do tronco parou. */
+  .consolidated-tree .ct-item--last { margin-left: 2px; }
+  .consolidated-tree .ct-item--last::after { content: ""; position: absolute; left: -2px; top: 0; height: 50%; width: 2px; background: var(--border-color); }
+  /* .ct-node/.ct-sum/.ct-dev/.ct-links sem escopo de ancestral — são usados tanto dentro de
+     .consolidated-tree (exemplo 1) quanto de .cg-tree (exemplo 3); escopados só em
+     ".consolidated-tree X" eles somem no exemplo 3 (some o display:flex/o tamanho dos ícones
+     e o card explode: bug real que apareceu testando). */
+  .ct-node { display: flex; align-items: center; gap: 12px; max-width: 860px; padding: 0.5rem 0.9rem; background: rgba(48, 54, 61, 0.2); border: 1px solid var(--border-color); border-radius: 6px; }
+  .ct-sum { color: var(--text-primary); font-size: 0.85rem; }
+  .ct-dev { margin-left: auto; color: var(--text-secondary); font-size: 0.8rem; white-space: nowrap; }
+  .ct-links { display: flex; gap: 0.6rem; }
+  .ct-links i, .ct-links svg { width: 14px; height: 14px; }
+
+  .chip-merged { flex: none; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; color: var(--branch-main-color); border: 1px solid color-mix(in srgb, var(--branch-main-color) 50%, transparent); background: color-mix(in srgb, var(--branch-main-color) 14%, transparent); white-space: nowrap; }
+
+  /* ===== fim da cópia — só o essencial pro layout da página do mockup ===== */
+  .link-icon { color: #ff073a; }
+  .task-cell { display: flex; align-items: center; gap: 8px; }
+  .row-actions { color: var(--text-secondary); font-size: 0.8rem; }
+  .note { margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-secondary); max-width: 78ch; }
+  .note code { background: rgba(255,255,255,0.07); padding: 0.05rem 0.3rem; border-radius: 3px; }
+  h2 { font-size: 0.95rem; margin: 2.5rem 0 0.4rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+  .example-lead { color: var(--text-secondary); margin: 0 0 1rem; font-size: 0.85rem; max-width: 78ch; }
+
+  /* ===== Exemplo 2 — grafo estilo git (baseado na imagem de referência) =====
+     Mesma linguagem visual do exemplo 1 (linha 2px, curva arredondada, cor --border-color
+     pra estrutura e --branch-epic-color pra marcar o que é do épico) — só que em vez de uma
+     árvore recolhível, é uma coluna de grafo fixa (como um log do git): um traço contínuo
+     passa por todo PR, e um laço colorido sai do PR de consolidação, "abraça" os PRs que ele
+     incluiu e volta pro tronco no último. */
+  .git-graph-card { position: relative; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+  .git-graph-row {
+    position: relative;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0.55rem 1rem 0.55rem 3.25rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .git-graph-row:last-child { border-bottom: 0; }
+  .git-graph-row.is-anchor { background: color-mix(in srgb, var(--branch-epic-color) 5%, transparent); }
+  .gg-summary { color: var(--text-primary); font-size: 0.85rem; }
+  .gg-summary.is-muted { color: var(--text-secondary); }
+  .gg-svg { position: absolute; left: 0; top: 0; width: 3.25rem; height: 100%; overflow: visible; }
+
+  /* Exemplo 3 — a tabela real (igual ao exemplo 1: cabeçalho de grupo, linha do PR com a
+     seta na célula Task, sub-linha que expande, task/resumo/dev/status/links/ações) — o
+     conector dentro da sub-linha não é mais CSS (border-radius não fica igual a um traço de
+     SVG) — é o MESMO <svg>/<line> do exemplo 2, copiado, só que "solto" do topo (o ponto de
+     partida é o próprio PR pai, que já existe como <tr> ali em cima — não precisa de uma
+     linha/ponto pra ele aqui dentro). */
+  .cg-tree { position: relative; padding: 0 0 1rem 3.25rem; }
+  .cg-svg { position: absolute; left: 0; top: 0; width: 3.25rem; height: 100%; overflow: visible; }
+  .cg-caption { margin: 0 0 0.6rem; font-size: 0.8rem; color: var(--text-secondary); }
+  .cg-caption strong { color: var(--text-primary); }
+  .cg-item { height: 3rem; display: flex; align-items: center; }
+  .cg-item .ct-node { width: 100%; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Conector da árvore de PRs filhos — revisão (issue #77)</h1>
+  <p class="lead">
+    Mesmo CSS do app real (copiado de <code>src/style.css</code>), três casos pra revisar o
+    conector: 1 filho, 2 filhos e 3 filhos. Espessura da linha em 2px, como pedido.
+  </p>
+
+  <h2>Exemplo 1 — árvore recolhível (na tabela "PRs em aberto")</h2>
+  <div class="data-card">
+    <table>
+      <thead>
+        <tr><th>Task</th><th>Resumo</th><th>Dev</th><th>Status</th><th>Links</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="branch-group-header-cell" colspan="6">
+          <div class="branch-group-header" data-kind="main">
+            <svg class="bgh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            <span class="bgh-name">main</span><span class="bgh-kind">principal</span><span class="bgh-count">3</span>
+          </div>
+        </td></tr>
+
+        <!-- 1 filho -->
+        <tr>
+          <td><div class="task-cell">
+            <button class="expand-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 18l6-6-6-6"/></svg></button>
+            <span class="tag">TASK-78</span>
+          </div></td>
+          <td>Loja · <strong>Consolida o épico epico-1 pra main</strong>
+            <span class="consolidation-mark">
+              <span class="branch-chip" data-kind="epic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>epico-1</span>
+              <span class="consolidation-count">1 PR incluído</span>
+            </span>
+          </td>
+          <td>Admin</td><td>pending</td><td>—</td><td class="row-actions">···</td>
+        </tr>
+        <tr class="consolidated-prs-row"><td colspan="6">
+          <div class="consolidated-tree">
+            <div class="ct-trunk">
+            <p class="ct-caption">Incluídos nesta consolidação — 1 PR do épico <strong>epico-1</strong></p>
+            </div>
+            <div class="ct-item ct-item--last"><div class="ct-node">
+              <span class="tag">PTC-111</span><span class="ct-sum">epico-1 pr 2</span>
+              <span class="chip-merged">mergeado</span>
+              <span class="ct-dev">Admin</span>
+              <span class="ct-links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><path d="M7 17L17 7M7 7h10v10"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg></span>
+            </div></div>
+          </div>
+        </td></tr>
+
+        <!-- 2 filhos -->
+        <tr>
+          <td><div class="task-cell">
+            <button class="expand-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 18l6-6-6-6"/></svg></button>
+            <span class="tag">TASK-77</span>
+          </div></td>
+          <td>Loja · <strong>Consolida o épico 12-outbox pra main</strong>
+            <span class="consolidation-mark">
+              <span class="branch-chip" data-kind="epic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>12-outbox</span>
+              <span class="consolidation-count">2 PRs incluídos</span>
+            </span>
+          </td>
+          <td>Admin</td><td>pending</td><td>—</td><td class="row-actions">···</td>
+        </tr>
+        <tr class="consolidated-prs-row"><td colspan="6">
+          <div class="consolidated-tree">
+            <div class="ct-trunk">
+            <p class="ct-caption">Incluídos nesta consolidação — 2 PRs do épico <strong>12-outbox</strong></p>
+            <div class="ct-item"><div class="ct-node">
+              <span class="tag">-</span><span class="ct-sum">PR outbox</span>
+              <span class="chip-merged">mergeado</span><span class="ct-dev">Admin</span>
+              <span class="ct-links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><path d="M7 17L17 7M7 7h10v10"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg></span>
+            </div></div>
+            </div>
+            <div class="ct-item ct-item--last"><div class="ct-node">
+              <span class="tag">TASK-35</span><span class="ct-sum">12 outbox outro pr</span>
+              <span class="chip-merged">mergeado</span><span class="ct-dev">Admin</span>
+              <span class="ct-links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><path d="M7 17L17 7M7 7h10v10"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg></span>
+            </div></div>
+          </div>
+        </td></tr>
+
+        <!-- 3 filhos (caso extra, pra estressar o item do meio) -->
+        <tr>
+          <td><div class="task-cell">
+            <button class="expand-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 18l6-6-6-6"/></svg></button>
+            <span class="tag">TASK-90</span>
+          </div></td>
+          <td>Loja · <strong>Consolida o épico pagamentos pra main</strong>
+            <span class="consolidation-mark">
+              <span class="branch-chip" data-kind="epic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>pagamentos</span>
+              <span class="consolidation-count">3 PRs incluídos</span>
+            </span>
+          </td>
+          <td>Admin</td><td>pending</td><td>—</td><td class="row-actions">···</td>
+        </tr>
+        <tr class="consolidated-prs-row"><td colspan="6">
+          <div class="consolidated-tree">
+            <div class="ct-trunk">
+            <p class="ct-caption">Incluídos nesta consolidação — 3 PRs do épico <strong>pagamentos</strong></p>
+            <div class="ct-item"><div class="ct-node">
+              <span class="tag">PAG-12</span><span class="ct-sum">Cobrança recorrente mensal</span>
+              <span class="chip-merged">mergeado</span><span class="ct-dev">Admin</span>
+              <span class="ct-links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><path d="M7 17L17 7M7 7h10v10"/></svg></span>
+            </div></div>
+            <div class="ct-item"><div class="ct-node">
+              <span class="tag">PAG-15</span><span class="ct-sum">Retentativa de cobrança recusada</span>
+              <span class="chip-merged">mergeado</span><span class="ct-dev">Admin</span>
+              <span class="ct-links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><path d="M7 17L17 7M7 7h10v10"/></svg></span>
+            </div></div>
+            </div>
+            <div class="ct-item ct-item--last"><div class="ct-node">
+              <span class="tag">PAG-18</span><span class="ct-sum">Webhook de status da assinatura</span>
+              <span class="chip-merged">mergeado</span><span class="ct-dev">Admin</span>
+              <span class="ct-links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><path d="M7 17L17 7M7 7h10v10"/></svg></span>
+            </div></div>
+          </div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="note">
+    Conector: <code>.ct-trunk</code> (border-left) carrega a legenda + os filhos até o
+    penúltimo; o último item é irmão dele, com um traço próprio só até o meio
+    (<code>.ct-item--last</code>) — evita a ponta solta que sobrava tentando cortar a altura
+    do tronco. Cada galho é um "cotovelo" arredondado (<code>::before</code>, border-left +
+    border-bottom + border-radius), a mesma peça em todo item.
+  </p>
+
+  <h2>Exemplo 2 — grafo estilo git (baseado na imagem)</h2>
+  <p class="example-lead">
+    Mesma linguagem visual do exemplo 1: linha de 2px, curva arredondada,
+    <code>--border-color</code> pra estrutura e <code>--branch-epic-color</code> pra marcar o
+    que é do épico. Em vez de uma árvore que expande, é uma coluna de grafo fixa (como um log
+    do git): o traço passa por todo PR da lista, e um laço colorido sai do PR de
+    consolidação, "abraça" os PRs que ele incluiu e volta pro tronco no último — igual ao
+    laço do <code>master</code> na imagem.
+  </p>
+  <div class="git-graph-card">
+    <svg class="gg-svg" viewBox="0 0 52 240" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="20" y1="10" x2="20" y2="230" stroke="var(--border-color)" stroke-width="2"/>
+      <path d="M20,24 A14,14 0 0 1 34,38 L34,106 A14,14 0 0 1 20,120"
+            fill="none" stroke="var(--branch-epic-color)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="34" y1="72" x2="20" y2="72" stroke="var(--branch-epic-color)" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="20" cy="24" r="6" fill="var(--branch-epic-color)"/>
+      <circle cx="20" cy="72" r="5" fill="var(--text-secondary)"/>
+      <circle cx="20" cy="120" r="5" fill="var(--text-secondary)"/>
+      <circle cx="20" cy="168" r="5" fill="var(--text-secondary)"/>
+      <circle cx="20" cy="216" r="5" fill="var(--text-secondary)"/>
+    </svg>
+    <div class="git-graph-row is-anchor" style="height: 3rem;">
+      <span class="branch-chip" data-kind="epic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>12-outbox</span>
+      <span class="gg-summary"><strong>TASK-77</strong> · Consolida o épico 12-outbox pra main</span>
+    </div>
+    <div class="git-graph-row" style="height: 3rem;">
+      <span class="chip-merged">mergeado</span>
+      <span class="gg-summary">TASK-35 · 12 outbox outro pr</span>
+    </div>
+    <div class="git-graph-row" style="height: 3rem;">
+      <span class="chip-merged">mergeado</span>
+      <span class="gg-summary">PR outbox</span>
+    </div>
+    <div class="git-graph-row" style="height: 3rem;">
+      <span class="tag">PTC-111</span>
+      <span class="gg-summary is-muted">main 1</span>
+    </div>
+    <div class="git-graph-row" style="height: 3rem;">
+      <span class="tag">Loja</span>
+      <span class="gg-summary is-muted">dev 2</span>
+    </div>
+  </div>
+  <p class="note">
+    O laço marca "estes PRs foram capturados por este de consolidação" de um jeito mais
+    compacto que a árvore — não precisa expandir pra ver quem está incluído, mas também não
+    mostra dev/links/status de cada filho na mesma linha (precisaria de hover ou expandir
+    igual ao exemplo 1 pra esse detalhe).
+  </p>
+
+  <h2>Exemplo 3 — a tabela real, com a linha do exemplo 2 (cor e estilo)</h2>
+  <p class="example-lead">
+    A mesma tabela do exemplo 1 (cabeçalho de grupo, seta na célula Task, sub-linha que
+    expande, task/resumo/dev/status/links/ações de cada filho) — o conector dentro da
+    sub-linha ganha a bolinha do exemplo 2 <strong>e a cor/estilo da linha do laço</strong>:
+    <code>--branch-epic-color</code> em vez de <code>--border-color</code>. Faz sentido aqui
+    porque, diferente do exemplo 2 (que mistura PRs do épico com PRs de fora, daí o tronco
+    cinza + laço amarelo), essa sub-linha só tem filho do épico — a linha inteira já É o laço.
+  </p>
+  <div class="data-card">
+    <table>
+      <thead>
+        <tr><th>Task</th><th>Resumo</th><th>Dev</th><th>Status</th><th>Links</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="branch-group-header-cell" colspan="6">
+          <div class="branch-group-header" data-kind="main">
+            <svg class="bgh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            <span class="bgh-name">main</span><span class="bgh-kind">principal</span><span class="bgh-count">1</span>
+          </div>
+        </td></tr>
+        <tr>
+          <td><div class="task-cell">
+            <button class="expand-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 18l6-6-6-6"/></svg></button>
+            <span class="tag">TASK-77</span>
+          </div></td>
+          <td>Loja · <strong>Consolida o épico 12-outbox pra main</strong>
+            <span class="consolidation-mark">
+              <span class="branch-chip" data-kind="epic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>12-outbox</span>
+              <span class="consolidation-count">2 PRs incluídos</span>
+            </span>
+          </td>
+          <td>Admin</td><td>pending</td><td>—</td><td class="row-actions">···</td>
+        </tr>
+        <tr class="consolidated-prs-row"><td colspan="6">
+          <div class="cg-tree">
+            <svg class="cg-svg" viewBox="0 0 40 144" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="20" y1="0" x2="20" y2="102" stroke="var(--branch-epic-color)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="20" y1="53" x2="34" y2="53" stroke="var(--branch-epic-color)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="20" y1="102" x2="34" y2="102" stroke="var(--branch-epic-color)" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="20" cy="53" r="5" fill="var(--branch-epic-color)"/>
+              <circle cx="20" cy="102" r="5" fill="var(--branch-epic-color)"/>
+            </svg>
+            <p class="cg-caption">Incluídos nesta consolidação — 2 PRs do épico <strong>12-outbox</strong></p>
+            <div class="cg-item">
+              <div class="ct-node">
+                <span class="tag">-</span><span class="ct-sum">PR outbox</span>
+                <span class="chip-merged">mergeado</span><span class="ct-dev">Admin</span>
+                <span class="ct-links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><path d="M7 17L17 7M7 7h10v10"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg></span>
+              </div>
+            </div>
+            <div class="cg-item">
+              <div class="ct-node">
+                <span class="tag">TASK-35</span><span class="ct-sum">12 outbox outro pr</span>
+                <span class="chip-merged">mergeado</span><span class="ct-dev">Admin</span>
+                <span class="ct-links"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><path d="M7 17L17 7M7 7h10v10"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="link-icon"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg></span>
+              </div>
+            </div>
+          </div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">
+    Conector não é mais CSS (border-radius não fica igual a um traço de SVG) — é o mesmo
+    <code>&lt;svg&gt;</code> do exemplo 2, com os mesmos <code>&lt;line&gt;</code>/
+    <code>&lt;circle&gt;</code>, <code>stroke-width="2"</code> e
+    <code>stroke-linecap="round"</code>. Só não precisa de ponto/linha pro PR pai aqui dentro
+    — ele já é o <code>&lt;tr&gt;</code> de cima, o traço só nasce encostado nele. Mantém
+    task/resumo/dev/links de cada filho, que o exemplo 2 não mostrava.
+  </p>
+</div>
+</body>
+</html>

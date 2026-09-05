@@ -149,6 +149,8 @@ function validatePrForm(isCreate) {
     const summary = document.getElementById('summary');
     const targetBranch = document.getElementById('prTargetBranch');
     const epicBranchName = document.getElementById('prEpicBranchName');
+    const consolidatesEpic = document.getElementById('prConsolidatesEpic');
+    const consolidatesEpicSelect = document.getElementById('prConsolidatesEpicSelect');
     const prLink = document.getElementById('prLink');
     const taskLink = document.getElementById('taskLink');
     const rules = [
@@ -159,6 +161,8 @@ function validatePrForm(isCreate) {
         // Só exige nome quando o destino é "épico" E o dev escolheu "Nova branch" (lista vazia
         // ou "__nova__"). Escolher uma branch existente da lista já é válido.
         { field: epicBranchName, validate: () => targetBranch.value !== 'Epic' || Form.isRequired(currentEpicBranchName()), message: 'Informe o nome da branch de épico.' },
+        // issue #77: com o toggle de consolidação ligado, escolher o épico é obrigatório.
+        { field: consolidatesEpicSelect, validate: () => !consolidatesEpic?.checked || consolidatesEpic.disabled || Form.isRequired(consolidatesEpicSelect.value), message: 'Selecione o épico a consolidar.' },
         { field: prLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para o Pull Request.' },
         { field: taskLink, validate: value => (!isCreate || Form.isRequired(value)) && Form.isOptionalUrl(value), message: 'Informe uma URL válida para a task.' },
     ];
@@ -181,6 +185,11 @@ function getPrErrorMessage(errorMessage) {
         epico_sem_nome: 'Informe o nome do épico.',
         epico_invalido: 'Épico de destino inválido.',
         epico_nome_muito_longo: 'O nome do épico passa de 120 caracteres.',
+        // issue #77: consolidação de épico.
+        consolidacao_destino_invalido: 'Consolidação só vale para PR indo à main ou dev.',
+        epico_de_outro_app: 'Esse épico é de outro app.',
+        epico_ja_consolidado: 'Esse épico já tem um PR de consolidação.',
+        epico_sem_prs_aprovados: 'O épico escolhido não tem PR aprovado para consolidar.',
     };
 
     return friendlyMessages[errorMessage] || errorMessage;
@@ -1046,13 +1055,20 @@ function openEditModal(pr) {
 
     const isApproved = !!pr.approved;
 
-    const fieldsToLock = ['project', 'dev', 'summary', 'prTargetBranch', 'prEpicBranchSelect', 'prEpicBranchName', 'prLink', 'taskLink'];
+    const fieldsToLock = ['project', 'dev', 'summary', 'prTargetBranch', 'prEpicBranchSelect', 'prEpicBranchName', 'prConsolidatesEpic', 'prConsolidatesEpicSelect', 'prLink', 'taskLink'];
     fieldsToLock.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = isApproved;
     });
     // Épico 5.3: dentro de um app, o campo projeto fica travado mesmo com o PR não aprovado.
     if (appFilter) document.getElementById('project').disabled = true;
+
+    // issue #77: a consolidação é feita no cadastro; a edição não mexe nela (o vínculo dos
+    // PRs filhos é a fatia do backend, ainda não modelada). Entra sempre desligada, e num PR
+    // aprovado o toggle segue travado como os demais campos.
+    prConsolidationLocked = isApproved;
+    document.getElementById('prConsolidatesEpic').checked = false;
+    loadConsolidatableEpics(selectedProjectAppId());
 
     if (isApproved) {
         document.getElementById('modalTitle').innerHTML = 'Editar Pull Request <span class="tag" style="background: color-mix(in srgb, var(--success-color) 16%, transparent); color: var(--success-color); margin-left:10px;">Aprovado</span>';
@@ -1085,7 +1101,7 @@ function openAddModal() {
         currentMe?.name || LocalStorage.getItem('appUser')
     );
 
-    const fieldsToLock = ['project', 'dev', 'summary', 'prTargetBranch', 'prEpicBranchSelect', 'prEpicBranchName', 'prLink', 'taskLink'];
+    const fieldsToLock = ['project', 'dev', 'summary', 'prTargetBranch', 'prEpicBranchSelect', 'prEpicBranchName', 'prConsolidatesEpic', 'prConsolidatesEpicSelect', 'prLink', 'taskLink'];
     fieldsToLock.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
@@ -1102,6 +1118,10 @@ function openAddModal() {
     loadCustomLinkFields(selectedProjectAppId());
     loadEpicBranches(selectedProjectAppId());
     toggleEpicBranchName();
+    // issue #77: consolidação começa desligada; a lista de épicos vem do projeto.
+    prConsolidationLocked = false;
+    document.getElementById('prConsolidatesEpic').checked = false;
+    loadConsolidatableEpics(selectedProjectAppId());
 
     if (!tenantOperations.isCurrent(openingRevision) || tenantOperations.isTransitioning()) return;
     prModal.style.display = 'flex';
@@ -1382,6 +1402,130 @@ document.getElementById('project')?.addEventListener('change', () => {
     const appId = selectedProjectAppId();
     loadCustomLinkFields(appId);
     loadEpicBranches(appId);
+    loadConsolidatableEpics(appId);
+});
+
+// ── issue #77: consolidação de épico no cadastro de PR ─────────────────────────
+const PRC_TOGGLE_HINT_DEFAULT = 'Marque quando este PR reúne, para main ou dev, tudo o que já foi aprovado num épico criado antes. Os PRs aprovados do épico ficam vinculados a este.';
+// Épicos do app com pelo menos um PR aprovado — resolvidos ao abrir o modal e ao trocar
+// de projeto. Um épico sem PR aprovado não entra: não há o que consolidar.
+let consolidatableEpics = [];
+// Edição de PR aprovado trava todos os campos, o toggle de consolidação junto.
+let prConsolidationLocked = false;
+
+function approvedPrsForEpic(epicBranchId) {
+    if (!epicBranchId) return [];
+    return currentData.prs.filter(p => p.approved && p.targetBranchId === epicBranchId);
+}
+
+async function loadConsolidatableEpics(appId) {
+    const select = document.getElementById('prConsolidatesEpicSelect');
+    if (!select) return;
+    consolidatableEpics = [];
+    select.innerHTML = '<option value="">Selecione o épico</option>';
+
+    let destinos = [];
+    if (appId) {
+        try {
+            destinos = await API.fetchDestinationBranches(appId, { includeClosed: true });
+        } catch (error) {
+            console.error('Falha ao carregar épicos para consolidação:', error);
+        }
+    }
+    // corrida: o projeto pode ter mudado antes da resposta chegar
+    if (selectedProjectAppId() !== appId) return;
+
+    // status 'Closed' só acontece quando o épico já foi consolidado (PullRequestService.cs) —
+    // sem esse filtro, o select oferece um épico que o backend vai recusar com epico_ja_consolidado.
+    consolidatableEpics = (Array.isArray(destinos) ? destinos : [])
+        .filter(b => b.kind === 'Epic' && b.status !== 'Closed')
+        .map(b => ({ id: b.id, name: b.name, approvedCount: approvedPrsForEpic(b.id).length }))
+        .filter(b => b.approvedCount > 0)
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
+
+    consolidatableEpics.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = `${b.name} · ${b.approvedCount} ${b.approvedCount === 1 ? 'PR aprovado' : 'PRs aprovados'}`;
+        select.appendChild(opt);
+    });
+
+    applyConsolidationAvailability();
+}
+
+// Habilita o toggle só quando o destino é main/dev e há épico consolidável; ajusta a dica.
+function applyConsolidationAvailability() {
+    const toggle = document.getElementById('prConsolidatesEpic');
+    const hint = document.getElementById('prConsolidatesEpicHint');
+    if (!toggle) return;
+    const targetKind = document.getElementById('prTargetBranch')?.value;
+    const isEpicTarget = targetKind === 'Epic';
+    const canConsolidate = !isEpicTarget && !prConsolidationLocked && consolidatableEpics.length > 0;
+
+    toggle.disabled = !canConsolidate;
+    if (hint) {
+        hint.textContent = isEpicTarget
+            ? 'A consolidação leva um épico para main ou dev — escolha main ou dev como destino.'
+            : (consolidatableEpics.length > 0 ? PRC_TOGGLE_HINT_DEFAULT : 'Nenhum épico com PRs aprovados neste app.');
+    }
+    if (!canConsolidate) toggle.checked = false;
+    toggleConsolidatesEpic();
+}
+
+function toggleConsolidatesEpic() {
+    const toggle = document.getElementById('prConsolidatesEpic');
+    const group = document.getElementById('prConsolidateEpicGroup');
+    const select = document.getElementById('prConsolidatesEpicSelect');
+    if (!toggle || !group) return;
+    const on = toggle.checked && !toggle.disabled;
+    // '' e não 'block': mantém o display:flex/column do .form-group (mesmo motivo do épico).
+    group.style.display = on ? '' : 'none';
+    if (!on && select) {
+        select.value = '';
+        Form.clearFieldError(select);
+    }
+    renderConsolidationPreview();
+}
+
+// Lista, só de leitura, os PRs aprovados do épico escolhido que serão vinculados a este PR.
+function renderConsolidationPreview() {
+    const select = document.getElementById('prConsolidatesEpicSelect');
+    const box = document.getElementById('prConsolidatesPreview');
+    if (!select || !box) return;
+
+    const epicId = select.value;
+    if (!epicId || document.getElementById('prConsolidateEpicGroup')?.style.display === 'none') {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    const targetName = document.getElementById('prTargetBranch')?.value === 'Dev' ? 'dev' : 'main';
+    const prs = approvedPrsForEpic(epicId);
+    box.style.display = '';
+
+    if (prs.length === 0) {
+        box.innerHTML = '<p class="cp-empty">Nenhum PR aprovado neste épico.</p>';
+        return;
+    }
+
+    const items = prs.map(p => {
+        const id = extractJiraId(p.taskLink) || p.project || `PR ${p.id}`;
+        return `<li><span class="cp-id">${DOM.escapeHtml(id)}</span><span class="cp-sum">${DOM.escapeHtml(p.summary || '-')}</span></li>`;
+    }).join('');
+
+    box.innerHTML =
+        `<p class="cp-head"><strong>${prs.length} ${prs.length === 1 ? 'PR' : 'PRs'}</strong> ` +
+        `${prs.length === 1 ? 'será vinculado' : 'serão vinculados'} a este PR ao consolidar para ` +
+        `<span class="branch-chip" data-kind="${targetName}">${targetName}</span></p>` +
+        `<ul class="cp-list">${items}</ul>`;
+}
+
+document.getElementById('prConsolidatesEpic')?.addEventListener('change', toggleConsolidatesEpic);
+document.getElementById('prConsolidatesEpicSelect')?.addEventListener('change', renderConsolidationPreview);
+document.getElementById('prTargetBranch')?.addEventListener('change', () => {
+    applyConsolidationAvailability();
+    renderConsolidationPreview();
 });
 
 const taskLinkInput = document.getElementById('taskLink');
@@ -1731,6 +1875,12 @@ prForm.addEventListener('submit', async (e) => {
         if (targetKind === 'Epic') {
             prData.epicBranchName = currentEpicBranchName();
         }
+        // issue #77: consolidação de épico. O vínculo de fato dos PRs filhos é a fatia do
+        // backend (coluna nova) — por ora manda só qual épico este PR consolida.
+        const consolidatesEpic = document.getElementById('prConsolidatesEpic');
+        if (consolidatesEpic?.checked && !consolidatesEpic.disabled) {
+            prData.consolidatesEpicBranchId = document.getElementById('prConsolidatesEpicSelect').value;
+        }
 
         const successMessage = prIdInput
             ? 'PR atualizado com sucesso!'
@@ -2039,7 +2189,21 @@ window.toggleRelated = (prId, btn) => {
         const isHidden = subRow.style.display === 'none';
         subRow.style.display = isHidden ? 'table-row' : 'none';
         btn.classList.toggle('active', isHidden);
-        
+
+        if (isHidden && window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+};
+
+// issue #77: abre/fecha a árvore de PRs filhos na linha do PR de consolidação.
+window.toggleConsolidated = (prId, btn) => {
+    const subRow = document.getElementById(`consolidated-${prId}`);
+    if (subRow) {
+        const isHidden = subRow.style.display === 'none';
+        subRow.style.display = isHidden ? 'table-row' : 'none';
+        btn.classList.toggle('active', isHidden);
+
         if (isHidden && window.lucide) {
             window.lucide.createIcons();
         }
