@@ -685,9 +685,15 @@ function setLoginSubmitting(submitting) {
     if (!submitting) loginSubmitBtn.disabled = false;
 }
 
-// `prepareForm` limpa o erro ao digitar; validar no blur é exigência do 04-forms.md.
+// `prepareForm` limpa o erro ao digitar; validar no blur é exigência do 04-forms.md,
+// mas só depois que o campo recebeu digitação. Sair de um campo ainda intocado, o que
+// acontece ao clicar no olho de mostrar senha antes de digitar, não deve acusar
+// "obrigatório". O submit continua revalidando tudo, então campo vazio não passa.
 [loginIdentifierInput, loginPasswordInput].forEach((input) => {
-    input?.addEventListener('blur', () => {
+    if (!input) return;
+    input.addEventListener('input', () => { input.dataset.touched = 'true'; });
+    input.addEventListener('blur', () => {
+        if (input.dataset.touched !== 'true') return;
         if (Form.isRequired(input.value)) return;
         Form.setFieldError(input, input === loginPasswordInput
             ? 'Informe sua senha.'
@@ -784,6 +790,10 @@ function showProfileSelection() {
     // tela de login padrão: limpa credenciais e erros antes de exibir
     const passwordInput = document.getElementById('loginPassword');
     if (passwordInput) passwordInput.value = '';
+    // Volta os campos ao estado intocado: um novo login não herda o "touched" do anterior.
+    [loginIdentifierInput, loginPasswordInput].forEach((input) => {
+        if (input) delete input.dataset.touched;
+    });
     clearLoginErrors();
     setLoginSubmitting(false);
     resetLoginPasswordToggle();
